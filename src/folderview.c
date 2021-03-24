@@ -1088,11 +1088,6 @@ FolderItem *folderview_get_opened_item(FolderView *folderview)
 	return folderview->open_item;
 }
 
-void folderview_rescan_tree(Folder *folder, gboolean rebuild)
-{
-	debug_print("========STUB======== folderview_rescan_tree\n");
-}
-
 static void get_row_pixbufs(FolderView *folderview, GtkTreeIter *iter,
 			    GdkPixbuf **pixbuf_closed, GdkPixbuf **pixbuf_open)
 {
@@ -1340,6 +1335,73 @@ static gchar *get_scan_str(FolderItem *item)
 	else
 		return g_strdup_printf(_("Scanning folder %s..."),
 				      item->folder->name);
+}
+
+static void folderview_scan_tree_func(Folder *folder, FolderItem *item,
+				      gpointer data)
+{
+	GList *list;
+	for (list = folderview_list; list != NULL; list = list->next) {
+		FolderView *folderview = (FolderView *)list->data;
+		MainWindow *mainwin = folderview->mainwin;
+		gchar *str = get_scan_str(item);
+
+		STATUSBAR_PUSH(mainwin, str);
+		STATUSBAR_POP(mainwin);
+		g_free(str);
+	}
+}
+
+void folderview_rescan_tree(Folder *folder, gboolean rebuild)
+{
+	GtkWidget *window;
+	MainWindow *mainwin = mainwindow_get_mainwindow();
+	FolderView *folderview = NULL;
+	GtkAdjustment *pos = NULL;
+	gint height = 0;
+
+	cm_return_if_fail(folder != NULL);
+
+	if (!folder->klass->scan_tree) return;
+
+	if (rebuild && 
+	    alertpanel_full(_("Rebuild folder tree"), 
+	    		 _("Rebuilding the folder tree will remove "
+			   "local caches. Do you want to continue?"),
+		       	 _("_No"), _("_Yes"), NULL, ALERTFOCUS_FIRST,
+						 FALSE, NULL, ALERT_WARNING) 
+		!= G_ALERTALTERNATE) {
+		return;
+	}
+
+	inc_lock();
+	if (rebuild)
+		window = label_window_create(_("Rebuilding folder tree..."));
+	else 
+		window = label_window_create(_("Scanning folder tree..."));
+
+	if (mainwin)
+		folderview = mainwin->folderview;
+	
+	if (folderview) {
+		pos = gtk_scrolled_window_get_vadjustment(
+					GTK_SCROLLED_WINDOW(folderview->scrolledwin));
+		height = gtk_adjustment_get_value(pos);
+	}
+
+	folder_set_ui_func(folder, folderview_scan_tree_func, NULL);
+	folder_scan_tree(folder, rebuild);
+	folder_set_ui_func(folder, NULL, NULL);
+
+	folderview_set_all();
+
+	if (folderview) {
+		pos = gtk_scrolled_window_get_vadjustment(
+					GTK_SCROLLED_WINDOW(folderview->scrolledwin));
+		gtk_adjustment_set_value(pos, height);
+	}
+	label_window_destroy(window);
+	inc_unlock();
 }
 
 struct check_ctx {
