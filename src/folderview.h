@@ -101,8 +101,8 @@ void folderview_unselect		(FolderView	*folderview);
 void folderview_select_next_with_flag	(FolderView	*folderview,
 					 MsgPermFlags    flag);
 
-FolderItem *folderview_get_selected_item(FolderView	*folderview);
-FolderItem *folderview_get_opened_item(FolderView	*folderview);
+FolderItem *folderview_get_selected_item	(FolderView	*folderview);
+FolderItem *folderview_get_opened_item		(FolderView	*folderview);
 
 void folderview_rescan_tree		(Folder		*folder,
 					 gboolean	 rebuild);
@@ -114,7 +114,7 @@ void folderview_move_folder		(FolderView 	*folderview,
 					 FolderItem 	*to_folder,
 					 gboolean	 copy);
 
-void folderview_set_target_folder_color (GdkRGBA		color_op);
+void folderview_set_target_folder_color (GdkRGBA	color_op);
 
 void folderview_reinit_fonts		(FolderView *folderview);
 
@@ -130,16 +130,16 @@ void folderview_finish_dnd		(const gchar 		*data,
 					 FolderItem 		*item);
 void folderview_close_opened		(FolderView 		*folderview,
 					 gboolean		 dirty);
-void folderview_remove_item(FolderView *folderview,
-			    FolderItem *item);
+void folderview_remove_item		(FolderView *folderview,
+					 FolderItem *item);
 
-void folderview_freeze(FolderView *folderview);
-void folderview_thaw(FolderView *folderview);
-void folderview_grab_focus(FolderView *folderview);
+void folderview_freeze			(FolderView *folderview);
+void folderview_thaw			(FolderView *folderview);
+void folderview_grab_focus		(FolderView *folderview);
 
-gboolean folderview_is_drag_source(FolderView *folderview,
-		GdkDragContext *context);
+gboolean folderview_is_drag_source	(FolderView *folderview,
+					 GdkDragContext *context);
 
-void folderview_update_row(FolderView *folderview,
-		FolderItem *item);
+void folderview_update_row		(FolderView *folderview,
+					 FolderItem *item);
 #endif /* __FOLDERVIEW_H__ */

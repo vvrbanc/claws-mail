@@ -97,39 +97,55 @@ static GdkPixbuf *m_foldernoselectxpm;
 
 static GdkPixbuf *searchicon;
 
-static gboolean folder_has_children(FolderItem *item);
-static gboolean folder_has_new_children(FolderItem *item);
-static gboolean folder_has_unread_children(FolderItem *item);
-static gboolean folder_has_read_children(FolderItem *item);
-static gboolean folder_has_matching_children(FolderItem *item);
-static gboolean folder_has_marked_children(FolderItem *item);
+static gboolean folder_has_children		(FolderItem *item);
+static gboolean folder_has_new_children		(FolderItem *item);
+static gboolean folder_has_unread_children	(FolderItem *item);
+static gboolean folder_has_read_children	(FolderItem *item);
+static gboolean folder_has_matching_children	(FolderItem *item);
+static gboolean folder_has_marked_children	(FolderItem *item);
 
-static gboolean folderview_open(FolderView *folderview, FolderItem *item);
+static gboolean folderview_open			(FolderView *folderview,
+						 FolderItem *item);
 
-static void folderview_add_folderitem(FolderView *folderview, FolderItem *item);
-static void folderview_remove_folderitem(FolderView *folderview, FolderItem *item);
+static void folderview_add_folderitem		(FolderView *folderview,
+						 FolderItem *item);
+static void folderview_remove_folderitem	(FolderView *folderview,
+						 FolderItem *item);
 
-static void set_sens_and_popup_menu(FolderView *folderview, FolderItem *item,
-		GdkEventButton *event);
-static void mark_all_read_cb(GtkAction *action, gpointer data);
-static void mark_all_unread_cb(GtkAction *action, gpointer data);
-static void mark_all_read_recursive_cb(GtkAction *action, gpointer data);
-static void mark_all_unread_recursive_cb(GtkAction *action, gpointer data);
-static void folderview_run_processing_cb(GtkAction *action, gpointer data);
-static void folderview_search_cb(GtkAction *action, gpointer data);
-static void folderview_property_cb(GtkAction *action, gpointer data);
-static void folderview_processing_cb(GtkAction *action, gpointer data);
-static void folderview_empty_trash_cb(GtkAction *action, gpointer data);
-static void folderview_send_queue_cb(GtkAction *action, gpointer data);
-static void folderview_header_set_displayed_columns_cb(GtkAction *gaction,
-		gpointer data);
-static gboolean folderview_header_button_pressed(GtkWidget *widget,
-		GdkEvent *_event,
-		gpointer user_data);
+static void set_sens_and_popup_menu		(FolderView *folderview,
+						 FolderItem *item,
+						 GdkEventButton *event);
+static void mark_all_read_cb			(GtkAction *action,
+						 gpointer data);
+static void mark_all_unread_cb			(GtkAction *action,
+						 gpointer data);
+static void mark_all_read_recursive_cb		(GtkAction *action,
+						 gpointer data);
+static void mark_all_unread_recursive_cb	(GtkAction *action,
+						 gpointer data);
+static void folderview_run_processing_cb	(GtkAction *action,
+						 gpointer data);
+static void folderview_search_cb		(GtkAction *action,
+						 gpointer data);
+static void folderview_property_cb		(GtkAction *action,
+						 gpointer data);
+static void folderview_processing_cb		(GtkAction *action,
+						 gpointer data);
+static void folderview_empty_trash_cb		(GtkAction *action,
+						 gpointer data);
+static void folderview_send_queue_cb		(GtkAction *action,
+						 gpointer data);
+static void folderview_header_set_displayed_columns_cb	(GtkAction *gaction,
+							 gpointer data);
+static gboolean folderview_header_button_pressed	(GtkWidget *widget,
+							 GdkEvent *_event,
+							 gpointer user_data);
 
 GHashTable *folderview_popups;
 
-static void create_action_groups(gpointer key, gpointer value, gpointer data);
+static void create_action_groups		(gpointer key,
+						 gpointer value,
+						 gpointer data);
 
 static GtkActionEntry folderview_common_popup_entries[] = 
 {
@@ -154,12 +170,12 @@ static GtkActionEntry folderview_header_popup_entries[] =
 };
 
 static void folderview_update_row_iter(FolderView *folderview,
-		GtkTreeIter *iter, FolderItem *item);
+				       GtkTreeIter *iter, FolderItem *item);
 
 /* Sort function for the treeview, making sure that all special
  * folders are on top. */
 static gint folderview_compare_func(GtkTreeModel *model, GtkTreeIter *a,
-					  GtkTreeIter *b, gpointer context)
+				    GtkTreeIter *b, gpointer context)
 {
 	gchar *str_a = NULL, *str_b = NULL;
 	gint val = 0;
@@ -207,7 +223,7 @@ static gint folderview_compare_func(GtkTreeModel *model, GtkTreeIter *a,
  * Treeview signal handlers *
  ****************************/
 static gboolean button_press_cb(GtkWidget *widget, GdkEventButton *event,
-		gpointer user_data)
+				gpointer user_data)
 {
 	FolderView *folderview = (FolderView *)user_data;
 	GtkTreePath *path;
@@ -260,7 +276,7 @@ static gboolean button_press_cb(GtkWidget *widget, GdkEventButton *event,
 }
 
 static gboolean button_release_cb(GtkWidget *widget, GdkEventButton *event,
-		gpointer user_data)
+				  gpointer user_data)
 {
 	FolderView *folderview = (FolderView *)user_data;
 
@@ -277,7 +293,7 @@ static gboolean button_release_cb(GtkWidget *widget, GdkEventButton *event,
 }
 
 static gboolean focus_in_cb(GtkWidget *widget, GdkEvent *event,
-		gpointer user_data)
+			    gpointer user_data)
 {
 	FolderView *folderview = (FolderView *)user_data;
 
@@ -313,7 +329,7 @@ static gboolean cursor_changed_cb(GtkTreeView *treeview, gpointer user_data)
 }
 
 static void row_expanded_collapsed_cb(GtkTreeView *treeview, GtkTreeIter *iter,
-		GtkTreePath *path, gpointer user_data)
+				      GtkTreePath *path, gpointer user_data)
 {
 	FolderView *folderview = (FolderView *)user_data;
 	gboolean expanded = gtk_tree_view_row_expanded(treeview, path);
@@ -356,7 +372,7 @@ static void row_expanded_collapsed_cb(GtkTreeView *treeview, GtkTreeIter *iter,
 }
 
 static void row_activated_cb(GtkTreeView *treeview, GtkTreePath *path,
-		GtkTreeViewColumn *column, gpointer user_data)
+			     GtkTreeViewColumn *column, gpointer user_data)
 {
 	FolderView *folderview = (FolderView *)user_data;
 	GtkTreeIter iter;
@@ -377,7 +393,7 @@ static void row_activated_cb(GtkTreeView *treeview, GtkTreePath *path,
  ***********************************/
 
 static gboolean hook_folder_item_update(gpointer source,
-		gpointer data)
+					gpointer data)
 {
 	FolderItemUpdateData *update_info = (FolderItemUpdateData *)source;
 	FolderView *folderview = (FolderView *)data;
@@ -402,7 +418,7 @@ static gboolean hook_folder_item_update(gpointer source,
 }
 
 static gboolean hook_folder_update(gpointer source,
-		gpointer data)
+				   gpointer data)
 {
 	FolderUpdateData *hookdata = (FolderUpdateData *)source;
 	FolderView *folderview = (FolderView *)data;
@@ -564,7 +580,7 @@ static GtkWidget *_treeview_create()
 	return treeview;
 }
 
-FolderView *folderview_create		(MainWindow *mainwin)
+FolderView *folderview_create(MainWindow *mainwin)
 {
 	FolderView *folderview;
 	GtkWidget *scrolledwin;
@@ -675,7 +691,7 @@ static void folderview_set_fonts(FolderView *folderview)
 	}
 }
 */
-void folderview_initialize		(void)
+void folderview_initialize(void)
 {
 	FolderViewPopup *fpopup;
 
@@ -758,7 +774,7 @@ void folderview_init(FolderView *folderview)
  * all children of that folder. If 'expand_parent' is TRUE,
  * expand the parent row after adding ourself. */
 void _add_folder(FolderView *folderview, GtkTreeStore *store,
-		GNode *node, GtkTreeIter *parent, gboolean expand_parent)
+		 GNode *node, GtkTreeIter *parent, gboolean expand_parent)
 {
 	GtkTreeIter iter;
 	GtkTreePath *path = NULL;
@@ -808,7 +824,7 @@ void _add_folder(FolderView *folderview, GtkTreeStore *store,
 
 /* This will effectively reset contents of the folderview, repopulating
  * it from folder list. */
-void folderview_set			(FolderView	*folderview)
+void folderview_set(FolderView *folderview)
 {
 	debug_print("folderview_set\n");
 	GtkTreeModel *store =
@@ -902,7 +918,9 @@ struct finditer_ctx {
  * to a struct finditer_ctx with a valid item member.
  * The iter member has to be freed by the caller afterwards. */
 static gboolean _find_iter_foreach_func(GtkTreeModel *model,
-		GtkTreePath *path, GtkTreeIter *iter, gpointer user_data)
+					GtkTreePath *path,
+					GtkTreeIter *iter,
+					gpointer user_data)
 {
 	struct finditer_ctx *ctx = (struct finditer_ctx *)user_data;
 	FolderItem *item;
@@ -956,7 +974,8 @@ static void folderview_add_folderitem(FolderView *folderview, FolderItem *item)
 	hooks_invoke(FOLDER_ITEM_UPDATE_HOOKLIST, &hookdata);
 }
 
-static void folderview_remove_folderitem(FolderView *folderview, FolderItem *item)
+static void folderview_remove_folderitem(FolderView *folderview,
+					 FolderItem *item)
 {
 	/* Find the row with our item. */
 	struct finditer_ctx *ctx = g_new0(struct finditer_ctx, 1);
@@ -982,8 +1001,7 @@ static void folderview_remove_folderitem(FolderView *folderview, FolderItem *ite
 
 /* This will place cursor on row belonging to the specified folderitem,
  * and optionally open the folder itself. */
-void folderview_select			(FolderView	*folderview,
-					 FolderItem	*item)
+void folderview_select(FolderView *folderview, FolderItem *item)
 {
 	debug_print("folderview_select\n");
 
@@ -1019,19 +1037,19 @@ void folderview_select			(FolderView	*folderview,
 	folderview_open(folderview, item);
 }
 
-void folderview_unselect		(FolderView	*folderview)
+void folderview_unselect(FolderView *folderview)
 {
 	debug_print("folderview_unselect\n");
 	folderview->open_item = NULL;
 }
 
-void folderview_select_next_with_flag	(FolderView	*folderview,
-					 MsgPermFlags    flag)
+void folderview_select_next_with_flag(FolderView *folderview,
+				      MsgPermFlags flag)
 {
 	debug_print("========STUB======== folderview_select_next_with_flag\n");
 }
 
-FolderItem *folderview_get_selected_item(FolderView	*folderview)
+FolderItem *folderview_get_selected_item(FolderView *folderview)
 {
 	debug_print("folderview_get_selected_item\n");
 
@@ -1064,20 +1082,19 @@ FolderItem *folderview_get_selected_item(FolderView	*folderview)
 	return item;
 }
 
-FolderItem *folderview_get_opened_item(FolderView	*folderview)
+FolderItem *folderview_get_opened_item(FolderView *folderview)
 {
 	debug_print("folderview_get_opened_item\n");
 	return folderview->open_item;
 }
 
-void folderview_rescan_tree		(Folder		*folder,
-					 gboolean	 rebuild)
+void folderview_rescan_tree(Folder *folder, gboolean rebuild)
 {
 	debug_print("========STUB======== folderview_rescan_tree\n");
 }
 
 static void get_row_pixbufs(FolderView *folderview, GtkTreeIter *iter,
-		GdkPixbuf **pixbuf_closed, GdkPixbuf **pixbuf_open)
+			    GdkPixbuf **pixbuf_closed, GdkPixbuf **pixbuf_open)
 {
 	FolderItem *item;
 	GdkPixbuf *xpm, *openxpm;
@@ -1191,7 +1208,7 @@ static void get_row_pixbufs(FolderView *folderview, GtkTreeIter *iter,
 }
 
 static void folderview_update_row_iter(FolderView *folderview,
-		GtkTreeIter *iter, FolderItem *_item)
+				       GtkTreeIter *iter, FolderItem *_item)
 {
 	gboolean expanded;
 	gboolean use_bold, use_color;
@@ -1291,7 +1308,7 @@ static void folderview_update_row_iter(FolderView *folderview,
 }
 
 void folderview_update_row(FolderView *folderview,
-		FolderItem *item)
+			   FolderItem *item)
 {
 	cm_return_if_fail(folderview != NULL);
 	cm_return_if_fail(item != NULL);
@@ -1334,7 +1351,9 @@ struct check_ctx {
 };
 
 static gboolean _check_folder_foreach_func(GtkTreeModel *model,
-		GtkTreePath *path, GtkTreeIter *iter, gpointer user_data)
+					   GtkTreePath *path,
+					   GtkTreeIter *iter,
+					   gpointer user_data)
 {
 	struct check_ctx *ctx = (struct check_ctx *)user_data;
 
@@ -1499,10 +1518,8 @@ void folderview_check_new_all(void)
 	inc_unlock();
 }
 
-void folderview_move_folder		(FolderView 	*folderview,
-					 FolderItem 	*from_folder,
-					 FolderItem 	*to_folder,
-					 gboolean	 copy)
+void folderview_move_folder(FolderView *folderview, FolderItem *from_folder,
+			    FolderItem *to_folder, gboolean copy)
 {
 	debug_print("========STUB======== folderview_move_folder\n");
 }
@@ -1520,15 +1537,15 @@ void folderview_set_target_folder_color(GdkRGBA color_op)
 	}
 }
 
-void folderview_reinit_fonts		(FolderView *folderview)
+void folderview_reinit_fonts(FolderView *folderview)
 {
 	debug_print("========STUB======== folderview_reinit_fonts\n");
 }
 
 /* TODO: this function will eventually set normal or bold fonts,
  * text color, etc. */
-static gboolean update_prefs_func(GtkTreeModel *model,
-		GtkTreePath *path, GtkTreeIter *iter, gpointer user_data)
+static gboolean update_prefs_func(GtkTreeModel *model, GtkTreePath *path,
+				  GtkTreeIter *iter, gpointer user_data)
 {
 	FolderView *folderview = (FolderView *)user_data;
 
@@ -1540,7 +1557,7 @@ static gboolean update_prefs_func(GtkTreeModel *model,
 	return FALSE;
 }
 
-void folderview_reflect_prefs		(FolderView *folderview)
+void folderview_reflect_prefs(FolderView *folderview)
 {
 	gboolean update_font = FALSE;
 	gboolean update_color = FALSE;
@@ -1597,7 +1614,8 @@ void folderview_reflect_prefs		(FolderView *folderview)
 	}
 }
 
-static GtkActionGroup *create_action_group(FolderView *folderview, FolderViewPopup *fpopup)
+static GtkActionGroup *create_action_group(FolderView *folderview,
+					   FolderViewPopup *fpopup)
 {
 	FolderViewPopup *fpopup_common;
 	GtkActionGroup *action_group;
@@ -1646,7 +1664,7 @@ static void create_action_groups(gpointer key, gpointer value, gpointer data)
 	g_hash_table_insert(folderview->popups, fpopup->klass, group);
 }
 
-void folderview_register_popup		(FolderViewPopup	*fpopup)
+void folderview_register_popup(FolderViewPopup *fpopup)
 {
 	GList *folderviews;
 
@@ -1666,7 +1684,7 @@ void folderview_register_popup		(FolderViewPopup	*fpopup)
 	g_hash_table_insert(folderview_popups, fpopup->klass, fpopup);
 }
 
-void folderview_unregister_popup	(FolderViewPopup	*fpopup)
+void folderview_unregister_popup(FolderViewPopup *fpopup)
 {
 	GList *folderviews;
 
@@ -1683,27 +1701,23 @@ void folderview_unregister_popup	(FolderViewPopup	*fpopup)
 	g_hash_table_remove(folderview_popups, fpopup->klass);
 }
 
-void folderview_update_search_icon	(FolderItem 		*item, 	
-					 gboolean 		 matches)
+void folderview_update_search_icon(FolderItem *item, gboolean matches)
 {
 	debug_print("========STUB======== folderview_update_search_icon\n");
 }
 
-void folderview_set_column_order	(FolderView		*folderview)
+void folderview_set_column_order(FolderView *folderview)
 {
 	debug_print("========STUB======== folderview_set_column_order\n");
 }
 
-void folderview_finish_dnd		(const gchar 		*data, 
-					 GdkDragContext 	*drag_context,
-			   		 guint 			 time, 
-					 FolderItem 		*item)
+void folderview_finish_dnd(const gchar *data, GdkDragContext *drag_context,
+			   guint  time, FolderItem *item)
 {
 	debug_print("========STUB======== folderview_finish_dnd\n");
 }
 
-void folderview_close_opened		(FolderView 		*folderview,
-					 gboolean		 dirty)
+void folderview_close_opened(FolderView *folderview, gboolean dirty)
 {
 	debug_print("folderview_close_opened\n");
 
@@ -1732,8 +1746,7 @@ void folderview_close_opened		(FolderView 		*folderview,
 	folderview->open_item = NULL;
 }
 
-void folderview_remove_item(FolderView *folderview,
-			    FolderItem *item)
+void folderview_remove_item(FolderView *folderview, FolderItem *item)
 {
 	debug_print("========STUB======== folderview_remove_item\n");
 }
@@ -1758,7 +1771,7 @@ void folderview_grab_focus(FolderView *folderview)
 }
 
 gboolean folderview_is_drag_source(FolderView *folderview,
-		GdkDragContext *context)
+				   GdkDragContext *context)
 {
 	debug_print("========STUB======== folderview_is_drag_source\n");
 	g_return_val_if_fail(context != NULL, FALSE);
@@ -1837,7 +1850,8 @@ static gboolean folder_has_new_children(FolderItem *item)
 	return folder_has_new_children_sub(item, FALSE);
 }
 
-static gboolean folder_has_unread_children_sub(FolderItem *item, gboolean in_sub)
+static gboolean folder_has_unread_children_sub(FolderItem *item,
+					       gboolean in_sub)
 {
 	GNode *node = NULL;
 
@@ -1908,7 +1922,8 @@ static gboolean folder_has_read_children(FolderItem *item)
 	return folder_has_read_children_sub(item, FALSE);
 }
 
-static gboolean folder_has_matching_children_sub(FolderItem *item, gboolean in_sub)
+static gboolean folder_has_matching_children_sub(FolderItem *item,
+						 gboolean in_sub)
 {
 	GNode *node = NULL;
 
@@ -1941,7 +1956,8 @@ static gboolean folder_has_matching_children(FolderItem *item)
 	return folder_has_matching_children_sub(item, FALSE);
 }
 
-static gboolean folder_has_marked_children_sub( FolderItem *item, gboolean in_sub)
+static gboolean folder_has_marked_children_sub(FolderItem *item,
+					       gboolean in_sub)
 {
 	GNode *node = NULL;
 	
@@ -1979,14 +1995,14 @@ static gboolean folder_has_marked_children(FolderItem *item)
  */
 
 static void folderview_popup_close(GtkMenuShell *menu_shell,
-		FolderView *folderview)
+				   FolderView *folderview)
 {
 	debug_print("folderview_popup_close\n");
 	folderview->menu_item = NULL;
 }
 
 static void set_sens_and_popup_menu(FolderView *folderview, FolderItem *item,
-		GdkEventButton *event)
+				    GdkEventButton *event)
 {
 	GtkUIManager *ui_manager = gtk_ui_manager_new();
 	GtkActionGroup *action_group;
@@ -2236,7 +2252,7 @@ static void folderview_search_cb(GtkAction *action, gpointer data)
 }
 
 static void mark_all_read_unread_handler(GtkAction *action, gpointer data,
-						gboolean recursive, gboolean read)
+					 gboolean recursive, gboolean read)
 {
 	FolderView *folderview = (FolderView *)data;
 	FolderItem *item;
