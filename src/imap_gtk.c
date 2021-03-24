@@ -434,7 +434,7 @@ void imap_gtk_synchronise(FolderItem *item, gint days)
 	main_window_cursor_wait(mainwin);
 	inc_lock();
 	main_window_lock(mainwin);
-	gtk_widget_set_sensitive(folderview->ctree, FALSE);
+	gtk_widget_set_sensitive(folderview->treeview, FALSE);
 	main_window_progress_on(mainwin);
 	GTK_EVENTS_FLUSH();
 	if (item->no_select == FALSE) {
@@ -461,7 +461,7 @@ void imap_gtk_synchronise(FolderItem *item, gint days)
 
 	folder_set_ui_func(item->folder, NULL, NULL);
 	main_window_progress_off(mainwin);
-	gtk_widget_set_sensitive(folderview->ctree, TRUE);
+	gtk_widget_set_sensitive(folderview->treeview, TRUE);
 	main_window_unlock(mainwin);
 	inc_unlock();
 	main_window_cursor_normal(mainwin);

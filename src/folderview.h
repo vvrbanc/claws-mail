@@ -1,6 +1,6 @@
 /*
- * Sylpheed -- a GTK+ based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2012 Hiroyuki Yamamoto and the Claws Mail team
+ * Claws Mail -- a GTK+ based, lightweight, and fast e-mail client
+ * Copyright (C) 1999-2020 the Claws Mail team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,12 +20,8 @@
 #ifndef __FOLDERVIEW_H__
 #define __FOLDERVIEW_H__
 
-typedef struct _FolderViewPopup	FolderViewPopup;
-typedef struct _FolderColumnState	FolderColumnState;
-
 #include <glib.h>
 #include <gtk/gtk.h>
-#include "gtk/gtksctree.h"
 
 #include "mainwindow.h"
 #include "viewtypes.h"
@@ -33,60 +29,42 @@ typedef struct _FolderColumnState	FolderColumnState;
 
 typedef enum
 {
+	F_COL_FOLDERITEM,
+	F_COL_FONT,
+	F_COL_COLOR,
+	F_COL_ICON,
 	F_COL_FOLDER,
 	F_COL_NEW,
 	F_COL_UNREAD,
-	F_COL_TOTAL
+	F_COL_TOTAL,
+	F_COL_ALIGN,
+	N_FOLDER_COLS
 } FolderColumnType;
-
-#define N_FOLDER_COLS	4
-
-struct _FolderColumnState
-{
-	FolderColumnType type;
-	gboolean visible;
-};
 
 struct _FolderView
 {
 	GtkWidget *scrolledwin;
-	GtkWidget *ctree;
+	GtkWidget *treeview;
 	GtkWidget *headerpopupmenu;
 
-	GHashTable *popups;
-
-	GtkCMCTreeNode *selected;
-	GtkCMCTreeNode *opened;
-
-	gboolean open_folder;
+	MainWindow *mainwin;
+	SummaryView *summaryview;
 
 	GdkRGBA color_new;
 	GdkRGBA color_op;
 
-	MainWindow   *mainwin;
-	SummaryView  *summaryview;
+	PangoFontDescription *normal_font;
+	PangoFontDescription *bold_font;
 
-	gint folder_update_callback_id;
-	gint folder_item_update_callback_id;
-	
-	/* DND states */
-	GSList *nodes_to_recollapse;
-	guint   drag_timer_id;		/* timer id */
-	FolderItem *drag_item;		/* dragged item */
-	GtkCMCTreeNode *drag_node;	/* drag node */
-	
-	GtkTargetList *target_list; /* DnD */
-	FolderColumnState col_state[N_FOLDER_COLS];
-	gint col_pos[N_FOLDER_COLS];
-	Folder *scanning_folder;
-	GtkUIManager *ui_manager;
-	GtkActionGroup *popup_common_action_group;
-	GtkActionGroup *popup_specific_action_group;
-	gint scroll_value;
-	guint deferred_refresh_id;
-	guint scroll_timeout_id;
-	guint postpone_select_id;
+	gboolean will_open_selected;
+	FolderItem *open_item; /* Pointer to currently open item */
+	FolderItem *menu_item; /* Pointer to item the popup menu is open for */
+
+	GHashTable *popups;
 };
+
+typedef struct _FolderViewPopup FolderViewPopup;
+typedef struct _FolderColumnState FolderColumnState;
 
 struct _FolderViewPopup
 {
@@ -102,6 +80,12 @@ struct _FolderViewPopup
 	void		  	(*radio_callback)	(GtkAction *action, GtkRadioAction *current, gpointer data);
 	void			(*add_menuitems)	(GtkUIManager *ui_manager, FolderItem *item);
 	void			(*set_sensitivity)	(GtkUIManager *ui_manager, FolderItem *item);
+};
+
+struct _FolderColumnState
+{
+	FolderColumnType type;
+	gboolean visible;
 };
 
 void folderview_initialize		(void);
@@ -125,8 +109,6 @@ void folderview_rescan_tree		(Folder		*folder,
 gint folderview_check_new		(Folder		*folder);
 void folderview_check_new_all		(void);
 
-void folderview_update_all_updated	(gboolean	 update_summary);
-
 void folderview_move_folder		(FolderView 	*folderview,
 					 FolderItem 	*from_folder,
 					 FolderItem 	*to_folder,
@@ -136,7 +118,7 @@ void folderview_set_target_folder_color (GdkRGBA		color_op);
 
 void folderview_reinit_fonts		(FolderView *folderview);
 
-void folderview_reflect_prefs		(void);
+void folderview_reflect_prefs		(FolderView 		*folderview);
 void folderview_register_popup		(FolderViewPopup	*fpopup);
 void folderview_unregister_popup	(FolderViewPopup	*fpopup);
 void folderview_update_search_icon	(FolderItem 		*item, 	
@@ -155,4 +137,9 @@ void folderview_freeze(FolderView *folderview);
 void folderview_thaw(FolderView *folderview);
 void folderview_grab_focus(FolderView *folderview);
 
+gboolean folderview_is_drag_source(FolderView *folderview,
+		GdkDragContext *context);
+
+void folderview_update_row(FolderView *folderview,
+		FolderItem *item);
 #endif /* __FOLDERVIEW_H__ */

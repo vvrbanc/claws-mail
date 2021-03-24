@@ -236,10 +236,8 @@ static void new_folder_cb(GtkAction *action, gpointer data)
 	gchar *name;
 	gchar *p;
 
-	if (!folderview->selected) return;
-
-	item = folderview_get_selected_item(folderview);
-	g_return_if_fail(item != NULL);
+	if ((item = folderview_get_selected_item(folderview)) != NULL)
+		return;
 	g_return_if_fail(item->folder != NULL);
 
 	new_folder = input_dialog(_("New folder"),

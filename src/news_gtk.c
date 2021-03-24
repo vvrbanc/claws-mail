@@ -232,10 +232,8 @@ static void unsubscribe_newsgroup_cb(GtkAction *action, gpointer data)
 	AlertValue avalue;
 	MainWindow *mainwin = mainwindow_get_mainwindow();
 	
-	if (!folderview->selected) return;
-
-	item = folderview_get_selected_item(folderview);
-	cm_return_if_fail(item != NULL);
+	if ((item = folderview_get_selected_item(folderview)) != NULL)
+		return;
 
 	if (mainwin->lock_count || news_folder_locked(item->folder))
 		return;
@@ -367,7 +365,7 @@ void news_gtk_synchronise(FolderItem *item, gint days)
 	main_window_cursor_wait(mainwin);
 	inc_lock();
 	main_window_lock(mainwin);
-	gtk_widget_set_sensitive(folderview->ctree, FALSE);
+	gtk_widget_set_sensitive(folderview->treeview, FALSE);
 	main_window_progress_on(mainwin);
 	GTK_EVENTS_FLUSH();
 
@@ -386,7 +384,7 @@ void news_gtk_synchronise(FolderItem *item, gint days)
 	procmsg_msg_list_free(mlist);
 	folder_set_ui_func(item->folder, NULL, NULL);
 	main_window_progress_off(mainwin);
-	gtk_widget_set_sensitive(folderview->ctree, TRUE);
+	gtk_widget_set_sensitive(folderview->treeview, TRUE);
 	main_window_unlock(mainwin);
 	inc_unlock();
 	main_window_cursor_normal(mainwin);
@@ -397,8 +395,8 @@ static void download_cb(GtkAction *action, gpointer data)
 	FolderView *folderview = (FolderView *)data;
 	FolderItem *item;
 
-	if (!folderview->selected) return;
+	if ((item = folderview_get_selected_item(folderview)) == NULL)
+		return;
 
-	item = folderview_get_selected_item(folderview);
 	news_gtk_synchronise(item, 0);
 }

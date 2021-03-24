@@ -57,10 +57,8 @@ void rssyl_new_feed_cb(GtkAction *action,
 
 	debug_print("RSSyl: new_feed_cb\n");
 
-	g_return_if_fail(folderview->selected != NULL);
-
-	item = folderview_get_selected_item(folderview);
-	g_return_if_fail(item != NULL);
+	if ((item = folderview_get_selected_item(folderview)) == NULL)
+		return;
 	g_return_if_fail(item->folder != NULL);
 
 	url = input_dialog(_("Subscribe feed"),
@@ -83,10 +81,8 @@ void rssyl_new_folder_cb(GtkAction *action,
 	gchar *new_folder, *p, *tmp;
 	gint i = 1;
 
-	if (!folderview->selected) return;
-
-	item = folderview_get_selected_item(folderview);
-	g_return_if_fail(item != NULL);
+	if ((item = folderview_get_selected_item(folderview)) == NULL)
+		return;
 	g_return_if_fail(item->folder != NULL);
 
 	new_folder = input_dialog(_("New folder"),
@@ -360,9 +356,8 @@ void rssyl_import_feed_list_cb(GtkAction *action, gpointer data)
 	}
 
 	/* Find the destination folder for the import */
-	g_return_if_fail(folderview->selected != NULL);
-	item = folderview_get_selected_item(folderview);
-	g_return_if_fail(item != NULL);
+	if ((item = folderview_get_selected_item(folderview)) == NULL)
+		return;
 	g_return_if_fail(item->folder != NULL);
 
 	ctx = malloc( sizeof(OPMLImportCtx) );

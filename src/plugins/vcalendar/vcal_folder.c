@@ -1983,10 +1983,8 @@ static void unsubscribe_cal_cb(GtkAction *action, gpointer data)
 	AlertValue avalue;
 	gchar *old_id;
 
-	if (!folderview->selected) return;
-
-	item = folderview_get_selected_item(folderview);
-	g_return_if_fail(item != NULL);
+	if ((item = folderview_get_selected_item(folderview)) == NULL)
+		return;
 	g_return_if_fail(item->path != NULL);
 	g_return_if_fail(item->folder != NULL);
 	opened = folderview_get_opened_item(folderview);
@@ -2093,13 +2091,10 @@ static void set_view_cb(GtkAction *gaction, GtkRadioAction *current, gpointer da
 	gint action = gtk_radio_action_get_current_value (GTK_RADIO_ACTION (current));
 	FolderItem *item = NULL, *oitem = NULL;
 
-	if (!folderview->selected) return;
 	if (setting_sensitivity) return;
 
 	oitem = folderview_get_opened_item(folderview);
-	item = folderview_get_selected_item(folderview);
-
-	if (!item)
+	if ((item = folderview_get_selected_item(folderview)) == NULL)
 		return;
 
 	if (((VCalFolderItem *)(item))->use_cal_view == action)

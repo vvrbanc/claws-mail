@@ -2313,7 +2313,7 @@ static gboolean reflect_prefs_timeout_cb(gpointer data)
 		headerview_set_visibility(mainwin->messageview->headerview,
 					  prefs_common.display_header_pane);
 		textview_reflect_prefs(mainwin->messageview->mimeview->textview);
-		folderview_reflect_prefs();
+		folderview_reflect_prefs(mainwin->folderview);
 		summary_reflect_prefs();
 #ifndef GENERIC_UMPC
 		summary_redisplay_msg(mainwin->summaryview);
@@ -3558,18 +3558,6 @@ static void mailing_list_compose (GtkWidget *w, gpointer *data)
 	if (mailto)
  		open_uri (mailto, prefs_common_get_uri_cmd());
 } 
-	
-static void fix_folderview_scroll(MainWindow *mainwin)
-{
-	static gboolean fix_done = FALSE;
-
-	if (fix_done)
-		return;
-
-	gtk_widget_queue_resize(mainwin->folderview->ctree);
-
-	fix_done = TRUE;
-}
 
 void main_window_popup(MainWindow *mainwin)
 {
@@ -3594,7 +3582,6 @@ void main_window_popup(MainWindow *mainwin)
 			mainwindow_exit_folder(mainwin);
 		}
 	}
-	fix_folderview_scroll(mainwin);
 }
 
 void main_window_show(MainWindow *mainwin)
@@ -3753,7 +3740,7 @@ static void main_window_set_widgets(MainWindow *mainwin, LayoutType layout_mode)
 
 	if (layout_mode == SMALL_LAYOUT && first_set) {
 		gtk_widget_realize(mainwin->window);
-		gtk_widget_realize(mainwin->folderview->ctree);
+		gtk_widget_realize(mainwin->folderview->treeview);
 		gtk_widget_realize(mainwin->summaryview->hbox);
 		gtk_widget_realize(mainwin->summaryview->hbox_l);
 		gtk_paned_set_position(GTK_PANED(mainwin->hpaned), 800);
@@ -4081,12 +4068,12 @@ static void toggle_col_headers_cb(GtkAction *gaction, gpointer data)
 	MimeView *mimeview = mainwin->messageview->mimeview;
 
 	if (gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (gaction))) {
-		gtk_cmclist_column_titles_show(GTK_CMCLIST(folderview->ctree));
+		gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(folderview->treeview), TRUE);
 		gtk_cmclist_column_titles_show(GTK_CMCLIST(summaryview->ctree));
   		gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(mimeview->ctree), TRUE);
 		prefs_common.show_col_headers = TRUE;
 	} else {
-		gtk_cmclist_column_titles_hide(GTK_CMCLIST(folderview->ctree));
+		gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(folderview->treeview), FALSE);
 		gtk_cmclist_column_titles_hide(GTK_CMCLIST(summaryview->ctree));
    		gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(mimeview->ctree), FALSE);		
 		prefs_common.show_col_headers = FALSE;

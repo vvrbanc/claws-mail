@@ -7626,8 +7626,8 @@ static gboolean summary_drag_motion_cb(GtkWidget      *widget,
 		    && FOLDER_CLASS(item->folder)->add_msg != NULL)) {
 		gdk_drag_status(context, 0, time);
 		return FALSE;
-	} else if (gtk_drag_get_source_widget(context) ==
-		mainwindow_get_mainwindow()->folderview->ctree) {
+	} else if (folderview_is_drag_source(
+				mainwindow_get_mainwindow()->folderview, context)) {
 		/* no folders */
 		gdk_drag_status(context, 0, time);
 		return FALSE;
