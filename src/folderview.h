@@ -61,6 +61,15 @@ struct _FolderView
 	FolderItem *menu_item; /* Pointer to item the popup menu is open for */
 
 	GHashTable *popups;
+
+	/* DND states */
+	GSList *paths_to_recollapse;
+	guint   drag_timer_id;		/* timer id */
+	FolderItem *drag_item;		/* dragged item */
+	GtkTreePath *drag_path;		/* drag node */
+
+	gint scroll_value;
+	guint scroll_timeout_id;
 };
 
 typedef struct _FolderViewPopup FolderViewPopup;
