@@ -138,7 +138,7 @@ static void folderview_send_queue_cb		(GtkAction *action,
 static void folderview_header_set_displayed_columns_cb	(GtkAction *gaction,
 							 gpointer data);
 static gboolean folderview_header_button_pressed	(GtkWidget *widget,
-							 GdkEvent *_event,
+							 GdkEvent *orgevent,
 							 gpointer user_data);
 
 GHashTable *folderview_popups;
@@ -455,7 +455,7 @@ static gboolean hook_folder_update(gpointer source,
 
 /* Helper function for folderview_create()
  * Sets up the treeview widget, minus connecting the signal handlers. */
-static GtkWidget *_treeview_create()
+static GtkWidget *treeview_create_unconnected()
 {
 	GtkTreeViewColumn *column;
 	GtkCellRenderer *renderer, *text_renderer;
@@ -464,7 +464,7 @@ static GtkWidget *_treeview_create()
 	GdkPixbuf *unread_pixbuf = NULL;
 	GdkPixbuf *total_pixbuf = NULL;
 
-	debug_print("_treeview_create\n");
+	debug_print("treeview_create_unconnected\n");
 
 	stock_pixbuf_gdk(STOCK_PIXMAP_NEW, &new_pixbuf);
 	stock_pixbuf_gdk(STOCK_PIXMAP_UNREAD, &unread_pixbuf);
@@ -610,7 +610,7 @@ FolderView *folderview_create(MainWindow *mainwin)
 		 prefs_common.folderview_vscrollbar_policy);
 	
 	folderview->scrolledwin = scrolledwin;
-	folderview->treeview = _treeview_create();
+	folderview->treeview = treeview_create_unconnected();
 
 	/* Set up signal callbacks for the treeview */
 	g_signal_connect(G_OBJECT(folderview->treeview), "button-press-event",
@@ -773,8 +773,9 @@ void folderview_init(FolderView *folderview)
  * Adds folder at 'node' to the tree, then calls itself for
  * all children of that folder. If 'expand_parent' is TRUE,
  * expand the parent row after adding ourself. */
-void _add_folder(FolderView *folderview, GtkTreeStore *store,
-		 GNode *node, GtkTreeIter *parent, gboolean expand_parent)
+void folderview_add_folder(FolderView *folderview, GtkTreeStore *store,
+			   GNode *node, GtkTreeIter *parent,
+			   gboolean expand_parent)
 {
 	GtkTreeIter iter;
 	GtkTreePath *path = NULL;
@@ -819,7 +820,7 @@ void _add_folder(FolderView *folderview, GtkTreeStore *store,
 
 	/* Add all children recursively */
 	for (n = node->children; n != NULL; n = n->next)
-		_add_folder(folderview, store, n, &iter, expand_me);
+		folderview_add_folder(folderview, store, n, &iter, expand_me);
 }
 
 /* This will effectively reset contents of the folderview, repopulating
@@ -838,7 +839,8 @@ void folderview_set(FolderView *folderview)
 	GList *list = folder_get_list();
 	for (; list != NULL; list = list->next) {
 		Folder *folder = FOLDER(list->data);
-		_add_folder(folderview, GTK_TREE_STORE(store), folder->node, NULL, FALSE);
+		folderview_add_folder(folderview, GTK_TREE_STORE(store),
+				      folder->node, NULL, FALSE);
 	}
 }
 
@@ -917,10 +919,10 @@ struct finditer_ctx {
  * gtk_tree_model_foreach(), and user_data has to point
  * to a struct finditer_ctx with a valid item member.
  * The iter member has to be freed by the caller afterwards. */
-static gboolean _find_iter_foreach_func(GtkTreeModel *model,
-					GtkTreePath *path,
-					GtkTreeIter *iter,
-					gpointer user_data)
+static gboolean folderview_find_iter_foreach_func(GtkTreeModel *model,
+						  GtkTreePath *path,
+						  GtkTreeIter *iter,
+						  gpointer user_data)
 {
 	struct finditer_ctx *ctx = (struct finditer_ctx *)user_data;
 	FolderItem *item;
@@ -931,7 +933,7 @@ static gboolean _find_iter_foreach_func(GtkTreeModel *model,
 			F_COL_FOLDERITEM, &item, -1);
 
 	if (ctx->item == item) {
-		debug_print("_find_iter_foreach_func: found the row for '%s'\n",
+		debug_print("folderview_find_iter_foreach_func: found the row for '%s'\n",
 				ctx->item->name);
 		/* We need to make our own copy of the iterator, since the
 		 * original is no longer valid after this function returns. */
@@ -951,7 +953,7 @@ static void folderview_add_folderitem(FolderView *folderview, FolderItem *item)
 	GtkTreeModel *model =
 		gtk_tree_view_get_model(GTK_TREE_VIEW(folderview->treeview));
 
-	gtk_tree_model_foreach(model, _find_iter_foreach_func, ctx);
+	gtk_tree_model_foreach(model, folderview_find_iter_foreach_func, ctx);
 
 	if (ctx->iter == NULL) {
 		g_free(ctx);
@@ -961,7 +963,8 @@ static void folderview_add_folderitem(FolderView *folderview, FolderItem *item)
 	GtkTreeIter *parent_iter = ctx->iter;
 
 	/* Add the folder */
-	_add_folder(folderview, GTK_TREE_STORE(model), item->node, parent_iter, TRUE);
+	folderview_add_folder(folderview, GTK_TREE_STORE(model), item->node,
+			      parent_iter, TRUE);
 
 	gtk_tree_iter_free(ctx->iter);
 	g_free(ctx);
@@ -984,7 +987,7 @@ static void folderview_remove_folderitem(FolderView *folderview,
 	GtkTreeModel *model =
 		gtk_tree_view_get_model(GTK_TREE_VIEW(folderview->treeview));
 
-	gtk_tree_model_foreach(model, _find_iter_foreach_func, ctx);
+	gtk_tree_model_foreach(model, folderview_find_iter_foreach_func, ctx);
 
 	if (ctx->iter == NULL) {
 		g_free(ctx);
@@ -1021,7 +1024,7 @@ void folderview_select(FolderView *folderview, FolderItem *item)
 	GtkTreeModel *model =
 		gtk_tree_view_get_model(GTK_TREE_VIEW(folderview->treeview));
 
-	gtk_tree_model_foreach(model, _find_iter_foreach_func, ctx);
+	gtk_tree_model_foreach(model, folderview_find_iter_foreach_func, ctx);
 
 	/* Place cursor on our row */
 	if (ctx->iter != NULL) {
@@ -1203,7 +1206,7 @@ static void get_row_pixbufs(FolderView *folderview, GtkTreeIter *iter,
 }
 
 static void folderview_update_row_iter(FolderView *folderview,
-				       GtkTreeIter *iter, FolderItem *_item)
+				       GtkTreeIter *iter, FolderItem *orgitem)
 {
 	gboolean expanded;
 	gboolean use_bold, use_color;
@@ -1217,7 +1220,7 @@ static void folderview_update_row_iter(FolderView *folderview,
 
 	GtkTreeModel *model =
 		gtk_tree_view_get_model(GTK_TREE_VIEW(folderview->treeview));
-	FolderItem *item = _item;
+	FolderItem *item = orgitem;
 
 	if (item == NULL) {
 		/* Get the FolderItem belonging to this row */
@@ -1316,7 +1319,7 @@ void folderview_update_row(FolderView *folderview,
 
 	debug_print("folderview_update_row for '%s'\n", item->name);
 
-	gtk_tree_model_foreach(model, _find_iter_foreach_func, ctx);
+	gtk_tree_model_foreach(model, folderview_find_iter_foreach_func, ctx);
 
 	if (ctx->iter != NULL)
 		folderview_update_row_iter(folderview, ctx->iter, item);
@@ -2401,10 +2404,10 @@ static void folderview_header_set_displayed_columns_cb(GtkAction *gaction,
 }
 
 static gboolean folderview_header_button_pressed(GtkWidget *widget,
-		GdkEvent *_event,
-		gpointer user_data)
+						 GdkEvent *orgevent,
+						 gpointer user_data)
 {
-	GdkEventButton *event = (GdkEventButton *)_event;
+	GdkEventButton *event = (GdkEventButton *)orgevent;
 	FolderView *folderview = (FolderView *)user_data;
 
 	cm_return_val_if_fail(folderview != NULL, FALSE);
