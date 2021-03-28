@@ -1850,6 +1850,7 @@ static void folderview_recollapse_paths(FolderView *folderview,
 						   listpath);
 			done = g_slist_append(done, listpath);
 		}
+		gtk_tree_path_free(listpath);
 	}
 	for (list = done; list != NULL; list = g_slist_next(list)) {
 		folderview->paths_to_recollapse = g_slist_remove(folderview->paths_to_recollapse,
