@@ -140,6 +140,11 @@ static void folderview_header_set_displayed_columns_cb	(GtkAction *gaction,
 static gboolean folderview_header_button_pressed	(GtkWidget *widget,
 							 GdkEvent *orgevent,
 							 gpointer user_data);
+static void row_activated_cb			(GtkTreeView *treeview,
+						 GtkTreePath *path,
+						 GtkTreeViewColumn *column,
+						 gpointer user_data);
+
 
 #ifndef GENERIC_UMPC
 static void folderview_drag_begin	 (GtkWidget *widget,
@@ -288,11 +293,17 @@ static gboolean button_press_cb(GtkWidget *widget, GdkEventButton *event,
 	}
 
 	if (event->button == 1) { /* Left click */
-		gtk_tree_path_free(path);
+	        if (event->type == GDK_2BUTTON_PRESS)
+			folderview->will_toggle_expand_selected = TRUE;
 		/* Indicate to cursor-changed handler that it should open the
 		 * folder on selected row. */
 		debug_print("will open selected\n");
 		folderview->will_open_selected = TRUE;
+		/* TM: Workaround "row-activated" not fired on single click */
+		row_activated_cb(GTK_TREE_VIEW(widget), path,
+				 gtk_tree_view_get_column(GTK_TREE_VIEW(widget),0),
+				 folderview);
+		gtk_tree_path_free(path);
 	} else if (event->button == 3) { /* Right click */
 		debug_print("will show popup menu\n");
 
@@ -311,7 +322,21 @@ static gboolean button_press_cb(GtkWidget *widget, GdkEventButton *event,
 		return TRUE;
 	}
 
-	return FALSE;;
+	return FALSE;
+}
+
+static void folderview_toggle_expansion(GtkTreeView *treeview)
+{
+	GtkTreePath *path;
+
+	gtk_tree_view_get_cursor(treeview, &path, NULL);
+	if (path) {
+		if (gtk_tree_view_row_expanded(treeview, path))
+			gtk_tree_view_collapse_row(treeview, path);
+		else
+			gtk_tree_view_expand_row(treeview,path, FALSE);
+		gtk_tree_path_free(path);
+	}
 }
 
 static gboolean button_release_cb(GtkWidget *widget, GdkEventButton *event,
@@ -321,14 +346,19 @@ static gboolean button_release_cb(GtkWidget *widget, GdkEventButton *event,
 
 	debug_print("button-release\n");
 
-	if (!folderview->will_open_selected)
-		return FALSE;
-
-	debug_print("button release: focusing summaryview\n");
-	folderview->will_open_selected = FALSE;
-	summary_grab_focus(folderview->summaryview);
-
-	return TRUE;
+	if (folderview->will_open_selected
+	    || folderview->will_toggle_expand_selected) {
+		if (folderview->will_toggle_expand_selected) {
+			folderview_toggle_expansion
+			    (GTK_TREE_VIEW(folderview->treeview));
+			folderview->will_toggle_expand_selected = FALSE;
+		}
+		debug_print("button release: focusing summaryview\n");
+		folderview->will_open_selected = FALSE;
+		summary_grab_focus(folderview->summaryview);
+		return TRUE;
+	}
+	return FALSE;
 }
 
 static gboolean focus_in_cb(GtkWidget *widget, GdkEvent *event,
@@ -416,7 +446,7 @@ static void row_activated_cb(GtkTreeView *treeview, GtkTreePath *path,
 	FolderView *folderview = (FolderView *)user_data;
 	GtkTreeIter iter;
 	GtkTreeModel *model = gtk_tree_view_get_model(treeview);
-	FolderItem *item;
+	FolderItem *item, *olditem;
 
 	debug_print("row-activated\n");
 
@@ -424,7 +454,48 @@ static void row_activated_cb(GtkTreeView *treeview, GtkTreePath *path,
 	gtk_tree_model_get(model, &iter,
 			F_COL_FOLDERITEM, &item, -1);
 
+	olditem = folderview->open_item;
 	folderview_open(folderview, item);
+
+	/* Save cache for old folder */
+	/* We don't want to lose all caches if sylpheed crashed */
+	if (olditem && olditem != item) {
+		gchar *buf;
+		buf = g_strdup_printf(_("Closing Folder %s..."),
+			olditem->path ? olditem->path:olditem->name);
+		/* will be null if we just moved the previously opened folder */
+		STATUSBAR_PUSH(folderview->mainwin, buf);
+		main_window_cursor_wait(folderview->mainwin);
+		g_free(buf);
+		summary_save_prefs_to_folderitem(folderview->summaryview, olditem);
+		summary_show(folderview->summaryview, NULL, FALSE);
+		folder_item_close(olditem);
+		main_window_cursor_normal(folderview->mainwin);
+		STATUSBAR_POP(folderview->mainwin);
+	}
+
+	/* CLAWS: set compose button type: news folder items
+	 * always have a news folder as parent */
+	if (item->folder)
+		toolbar_set_compose_button
+			(folderview->mainwin->toolbar,
+			 FOLDER_TYPE(item->folder) == F_NEWS ?
+			 COMPOSEBUTTON_NEWS : COMPOSEBUTTON_MAIL);
+
+	if (item->path)
+		debug_print("Folder %s is selected\n", item->path);
+
+	/* TM: Why expand, if there are no children?
+	if (!GTK_CMCTREE_ROW(row)->children)
+		gtk_cmctree_expand(ctree, row);
+	*/
+
+	/* ungrab the mouse event */
+	if (gtk_widget_has_grab(GTK_WIDGET(treeview))) {
+		gtk_grab_remove(GTK_WIDGET(treeview));
+		if (gdk_pointer_is_grabbed())
+			gdk_pointer_ungrab(GDK_CURRENT_TIME);
+	}
 }
 
 /***********************************
@@ -652,6 +723,22 @@ FolderView *folderview_create(MainWindow *mainwin)
 	folderview->treeview = treeview_create_unconnected();
 
 	/* Set up signal callbacks for the treeview */
+	int i;
+	for (i = 0; i < N_FOLDER_COLS; i++) {
+		GtkTreeViewColumn *column = gtk_tree_view_get_column
+		    (GTK_TREE_VIEW(folderview->treeview), i);
+		if (column) {
+			GtkWidget *button = gtk_tree_view_column_get_button(column);
+			if (button) {
+				//TM:no effect(with column as well)//gtk_widget_set_can_focus(button, FALSE);
+				gtk_tree_view_column_set_clickable(column, TRUE);
+				g_signal_connect(G_OBJECT(button),
+							"button-press-event",
+							G_CALLBACK(folderview_header_button_pressed),
+							folderview);
+			}
+		}
+	}
 	g_signal_connect(G_OBJECT(folderview->treeview), "button-press-event",
 			G_CALLBACK(button_press_cb), folderview);
 	g_signal_connect(G_OBJECT(folderview->treeview), "cursor-changed",
@@ -702,6 +789,9 @@ FolderView *folderview_create(MainWindow *mainwin)
 			  GTK_DEST_DEFAULT_ALL & ~GTK_DEST_DEFAULT_HIGHLIGHT,
 			  folderview_drag_types, 2,
 			  GDK_ACTION_MOVE | GDK_ACTION_COPY | GDK_ACTION_DEFAULT);
+	//TM: the "row-activated" signal still doesn't fire
+	//gtk_tree_view_set_activate_on_single_click(GTK_TREE_VIEW(folderview->treeview), TRUE);
+	//TM:TODO: Is there a "resize_column"-like signal?
 
 	gtk_container_add(GTK_CONTAINER(scrolledwin), folderview->treeview);
 	gtk_widget_show_all(scrolledwin);
@@ -924,6 +1014,24 @@ void folderview_set_all(void)
 		folderview_set((FolderView *)list->data);
 }
 
+typedef struct _PostponedSelectData
+{
+	FolderView *folderview;
+	FolderItem *folderitem;
+} PostponedSelectData;
+
+static gboolean postpone_select(void *data)
+{
+	PostponedSelectData *psdata = (PostponedSelectData *)data;
+	debug_print("trying again\n");
+	//psdata->folderview->open_folder = TRUE;
+	main_window_cursor_normal(psdata->folderview->mainwin);
+	STATUSBAR_POP(psdata->folderview->mainwin);
+	folderview_open(psdata->folderview, psdata->folderitem);
+	g_free(psdata);
+	return FALSE;
+}
+
 /* This will just open specified folderitem, without doing anything to
  * the folderview widget. Any UI changes like updating treeview cursor
  * or adjusting folder icons need to be done by the caller. */
@@ -960,13 +1068,22 @@ static gboolean folderview_open(FolderView *folderview, FolderItem *item)
 		alertpanel_error(_("Folder could not be opened."));
 		return FALSE;
 	} else if (res == -2 && item->no_select == FALSE) {
-		/* TODO: postponed open */
+		PostponedSelectData *data = g_new0(PostponedSelectData, 1);
+		data->folderitem = item;
+		data->folderview = folderview;
+		debug_print("postponing open of %s till end of scan\n",
+			item->path ? item->path:item->name);
+		g_timeout_add(500, postpone_select, data);
+		END_TIMING();
+		return FALSE;
 	}
 
 	main_window_cursor_normal(folderview->mainwin);
 
 	summary_set_prefs_from_folderitem(folderview->summaryview, item);
 	summary_opened = summary_show(folderview->summaryview, item, FALSE);
+
+	folder_clean_cache_memory(item);
 
 	STATUSBAR_POP(folderview->mainwin);
 	END_TIMING();
