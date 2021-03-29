@@ -468,7 +468,6 @@ static void row_activated_cb(GtkTreeView *treeview, GtkTreePath *path,
 		main_window_cursor_wait(folderview->mainwin);
 		g_free(buf);
 		summary_save_prefs_to_folderitem(folderview->summaryview, olditem);
-		summary_show(folderview->summaryview, NULL, FALSE);
 		folder_item_close(olditem);
 		main_window_cursor_normal(folderview->mainwin);
 		STATUSBAR_POP(folderview->mainwin);
