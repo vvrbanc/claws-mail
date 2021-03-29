@@ -490,11 +490,15 @@ static void row_activated_cb(GtkTreeView *treeview, GtkTreePath *path,
 	*/
 
 	/* ungrab the mouse event */
+	/* TM: disabled - grab_add was done by ctree
 	if (gtk_widget_has_grab(GTK_WIDGET(treeview))) {
 		gtk_grab_remove(GTK_WIDGET(treeview));
 		if (gdk_pointer_is_grabbed())
 			gdk_pointer_ungrab(GDK_CURRENT_TIME);
-	}
+	} */
+
+	/* TM: ensure focus-change in button-release handler */
+	folderview->will_open_selected = TRUE;
 }
 
 /***********************************
