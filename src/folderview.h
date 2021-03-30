@@ -66,8 +66,9 @@ struct _FolderView
 	/* DND states */
 	GSList *paths_to_recollapse;
 	guint   drag_timer_id;		/* timer id */
-	FolderItem *drag_item;		/* dragged item */
-	GtkTreePath *drag_path;		/* drag node */
+	FolderItem *drag_dst_item;	/* dragged item (destination) */
+	GtkTreePath *drag_dst_path;	/* drag path (destination) */
+	GtkTreePath *drag_src_path;	/* drag path (source: either dragged folder, or folder, that contained the dragged message) */
 
 	gint scroll_value;
 	guint scroll_timeout_id;
