@@ -2299,8 +2299,6 @@ static void free_info (gpointer stuff, gpointer data)
 void folderview_finish_dnd(const gchar *data, GdkDragContext *drag_context,
 			   guint time, FolderItem *item)
 {
-	debug_print("========STUB======== folderview_finish_dnd\n");
-#if 0
 	GList *list, *tmp;
 	GSList *msglist = NULL;
 	list = uri_list_extract_filenames(data);
@@ -2339,7 +2337,6 @@ void folderview_finish_dnd(const gchar *data, GdkDragContext *drag_context,
 		gtk_drag_finish(drag_context, FALSE, FALSE, time);
 	}
 	list_free_strings_full(list);
-#endif
 }
 
 /* called for dragged treeview nodes and summaryview items */
@@ -2445,19 +2442,6 @@ static void folderview_drag_received_cb(GtkWidget        *widget,
 			folderview->paths_to_recollapse = NULL;
 		}
 	} else if (info == TARGET_MAIL_URI_LIST) {
-		debug_print("========STUB======== folderview_drag_received_cb:TARGET_MAIL_URI_LIST\n");
-#if 0
-		if (gtk_cmclist_get_selection_info
-			(GTK_CMCLIST(widget), x - offset, y - offset, &row, &column) == 0)
-			return;
-
-		node = gtk_cmctree_node_nth(GTK_CMCTREE(widget), row);
-		if (!node) {
-			gtk_drag_finish(drag_context, FALSE, FALSE, time);
-			debug_print("no node\n");
-			return;
-		}
-		item = gtk_cmctree_node_get_row_data(GTK_CMCTREE(widget), node);
 		if (!item) {
 			gtk_drag_finish(drag_context, FALSE, FALSE, time);
 			debug_print("no item\n");
@@ -2465,7 +2449,6 @@ static void folderview_drag_received_cb(GtkWidget        *widget,
 		}
 		folderview_finish_dnd(gtk_selection_data_get_data(data),
 			drag_context, time, item);
-#endif /* 0 - TARGET_MAIL_URI_LIST */
 	}
 }
 
