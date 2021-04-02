@@ -373,7 +373,7 @@ FolderColumnState *prefs_folder_column_get_config(void)
 	for (pos = 0; pos < N_FOLDER_COLS; pos++)
 		state[pos].type = -1;
 
-	for (type = 0; type < N_FOLDER_COLS; type++) {
+	for (type = F_COL_FOLDER; type <= F_COL_TOTAL; type++) {
 		pos = prefs_common.folder_col_pos[type];
 		if (pos < 0 || pos >= N_FOLDER_COLS ||
 		    state[pos].type != -1) {
@@ -394,7 +394,7 @@ static void prefs_folder_column_set_config(FolderColumnState *state)
 	FolderColumnType type;
 	gint pos;
 
-	for (pos = 0; pos < N_FOLDER_COLS; pos++) {
+	for (pos = F_COL_FOLDER; pos <= F_COL_TOTAL; pos++) {
 		type = state[pos].type;
 		prefs_common.folder_col_visible[type] = state[pos].visible;
 		prefs_common.folder_col_pos[type] = pos;
@@ -421,16 +421,18 @@ static void prefs_folder_column_set_dialog(FolderColumnState *state)
 
 	for (pos = 0; pos < N_FOLDER_COLS; pos++) {
 		type = state[pos].type;
-		name = gettext(col_name[type]);
+		if ((type >= F_COL_FOLDER) && (type <= F_COL_TOTAL)) {
+			name = gettext(col_name[type - F_COL_FOLDER]);
 
-		if (state[pos].visible)
-			prefs_folder_column_insert_column(shown_store,
-							   -1, name,
-							   type);
-		else
-			prefs_folder_column_insert_column(stock_store,
-							    -1, name,
-							    type);
+			if (state[pos].visible)
+				prefs_folder_column_insert_column(shown_store,
+								   -1, name,
+								   type);
+			else
+				prefs_folder_column_insert_column(stock_store,
+								    -1, name,
+								    type);
+		}
 	}
 }
 
@@ -449,21 +451,21 @@ static void prefs_folder_column_set_view(void)
 			(folder_col.shown_list_view)), NULL);
 
 	cm_return_if_fail
-		(stock_n_rows + shown_n_rows == N_FOLDER_COLS);
+		(stock_n_rows + shown_n_rows < N_FOLDER_COLS);
 
 	for (row = 0; row < stock_n_rows; row++) {
 		type = prefs_folder_column_get_column
 			(folder_col.stock_list_view, row);
-		state[row].type = type;
-		state[row].visible = FALSE;
+		state[F_COL_FOLDER + row].type = type;
+		state[F_COL_FOLDER + row].visible = FALSE;
 	}
 
 	pos = row;
 	for (row = 0; row < shown_n_rows; row++) {
 		type = prefs_folder_column_get_column
 			(folder_col.shown_list_view, row);
-		state[pos + row].type = type;
-		state[pos + row].visible = TRUE;
+		state[F_COL_FOLDER + pos + row].type = type;
+		state[F_COL_FOLDER + pos + row].visible = TRUE;
 	}
 
 	prefs_folder_column_set_config(state);
@@ -505,7 +507,7 @@ static void prefs_folder_column_add(void)
 	gtk_list_store_insert_after(shown_store, &shown_add, 
 				    shown_sel_valid ? &shown_sel : NULL);
 
-	name = gettext(col_name[type]);				    
+	name = gettext(col_name[type - F_COL_FOLDER]);
 				    
 	gtk_list_store_set(shown_store, &shown_add,
 			   SUMCOL_NAME, name,
@@ -554,7 +556,7 @@ static void prefs_folder_column_remove(void)
 	gtk_list_store_insert_after(stock_store, &stock_add, 
 				    stock_sel_valid ? &stock_sel : NULL);
 
-	name = gettext(col_name[type]);				    
+	name = gettext(col_name[type - F_COL_FOLDER ]);
 				    
 	gtk_list_store_set(stock_store, &stock_add,
 			   SUMCOL_NAME, name,
@@ -867,7 +869,7 @@ static void drag_data_received(GtkTreeView *tree_view, GdkDragContext *context,
 						GTK_TREE_VIEW(source)),
 						&sel_model, &isel)) {
 			type = *((gint *) gtk_selection_data_get_data(data));
-			name = gettext(col_name[type]);
+			name = gettext(col_name[type - F_COL_FOLDER]);
 			gtk_list_store_remove(GTK_LIST_STORE(sel_model), &isel);
 
 			/* get insertion position */

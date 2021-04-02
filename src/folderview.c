@@ -181,6 +181,8 @@ static void folderview_drag_end_cb	 (GtkWidget	   *widget,
 
 GHashTable *folderview_popups;
 
+GList *treeview_default_columns_ordered;
+
 static void create_action_groups		(gpointer key,
 						 gpointer value,
 						 gpointer data);
@@ -630,6 +632,8 @@ static GtkWidget *treeview_create_unconnected()
 	gtk_tree_view_column_set_title(column, _("Folder"));
 
 	gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
+	treeview_default_columns_ordered = g_list_append
+			(treeview_default_columns_ordered, column);
 
 	/* New */
 	column = gtk_tree_view_column_new();
@@ -651,6 +655,8 @@ static GtkWidget *treeview_create_unconnected()
 	gtk_tree_view_column_set_widget(column, image);
 
 	gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
+	treeview_default_columns_ordered = g_list_append
+			(treeview_default_columns_ordered, column);
 
 	/* Unread */
 	column = gtk_tree_view_column_new();
@@ -670,6 +676,8 @@ static GtkWidget *treeview_create_unconnected()
 	gtk_tree_view_column_set_widget(column, image);
 
 	gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
+	treeview_default_columns_ordered = g_list_append
+			(treeview_default_columns_ordered, column);
 
 	/* Total */
 	column = gtk_tree_view_column_new();
@@ -689,6 +697,8 @@ static GtkWidget *treeview_create_unconnected()
 	gtk_tree_view_column_set_widget(column, image);
 
 	gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
+	treeview_default_columns_ordered = g_list_append
+			(treeview_default_columns_ordered, column);
 
 	return treeview;
 }
@@ -818,6 +828,8 @@ FolderView *folderview_create(MainWindow *mainwin)
 			hook_folder_update, (gpointer)folderview);
 
 	folderview_list = g_list_append(folderview_list, folderview);
+
+	folderview_set_column_order(folderview);
 
 	return folderview;
 }
@@ -2614,7 +2626,56 @@ void folderview_update_search_icon(FolderItem *item, gboolean matches)
 
 void folderview_set_column_order(FolderView *folderview)
 {
-	debug_print("========STUB======== folderview_set_column_order\n");
+	gint i;
+	GtkTreeViewColumn *default_column;
+	GtkTreeViewColumn *tree_column = NULL;
+	GtkTreeViewColumn *prev = NULL;
+	FolderColumnState *col_state;
+	GList *tree_columns = gtk_tree_view_get_columns
+			(GTK_TREE_VIEW(folderview->treeview));
+
+	/* recreate old order (as saved in treeview_default_columns_ordered) */
+	for (i = F_COL_FOLDER; i <= F_COL_TOTAL; i++) {
+		GList *listentry;
+		default_column = (GtkTreeViewColumn*)g_list_nth_data
+				(treeview_default_columns_ordered,
+				 i - F_COL_FOLDER);
+		listentry = g_list_find(tree_columns, default_column);
+		if (!listentry) {
+			debug_print("Error: default_column not found!\n");
+			g_list_free(tree_columns);
+			return;
+		}
+
+		tree_column = listentry->data;
+		if (prev)
+			gtk_tree_view_move_column_after
+				(GTK_TREE_VIEW(folderview->treeview),
+				 tree_column, prev);
+		prev = tree_column;
+	}
+
+	/* apply new order
+	 * col_state[i].type, when used as an index to the default_columns,
+	 * points to the column, that should be displayed at position "i"
+	 */
+	col_state = prefs_folder_column_get_config();
+	prev = NULL;
+	for (i = F_COL_FOLDER; i <= F_COL_TOTAL; i++) {
+		gint newtype = col_state[i].type;
+		default_column = (GtkTreeViewColumn*)g_list_nth_data
+				(treeview_default_columns_ordered,
+				 newtype - F_COL_FOLDER);
+		gtk_tree_view_column_set_visible(default_column,
+						 col_state[i].visible);
+		if (prev)
+			gtk_tree_view_move_column_after
+				(GTK_TREE_VIEW(folderview->treeview),
+				 default_column, prev);
+		prev = default_column;
+	}
+
+	g_list_free(tree_columns);
 }
 
 void folderview_close_opened(FolderView *folderview, gboolean dirty)
