@@ -132,6 +132,15 @@ void gtkut_ctree_set_focus_row		(GtkCMCTree	*ctree,
 void gtkut_clist_set_focus_row		(GtkCMCList	*clist,
 					 gint		 row);
 
+GtkTreePath *gtkut_tree_path_get_children	(GtkTreeView *treeview,
+						 GtkTreePath *path);
+GtkTreePath *gtkut_tree_path_get_sibling	(GtkTreeView *treeview,
+						 GtkTreePath *path);
+GtkTreePath *gtkut_tree_path_get_parent		(GtkTreeView *treeview,
+						 GtkTreePath *path);
+GtkTreePath *gtkut_tree_path_next		(GtkTreeView *treeview,
+						 GtkTreePath *path);
+
 gchar *gtkut_text_view_get_selection	(GtkTextView	*textview);
 void gtkut_text_view_set_position		(GtkTextView *text, gint pos);
 gboolean gtkut_text_view_search_string	(GtkTextView *text, const gchar *str,

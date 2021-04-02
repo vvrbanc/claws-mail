@@ -403,6 +403,110 @@ void gtkut_clist_set_focus_row(GtkCMCList *clist, gint row)
 	GTKUT_CTREE_REFRESH(clist);
 }
 
+/* children: one level below
+ * returns newly allocated path (or NULL), needs gtk_tree_path_free() */
+GtkTreePath *gtkut_tree_path_get_children(GtkTreeView *treeview,
+					  GtkTreePath *path)
+{
+	GtkTreeModel *model = gtk_tree_view_get_model(treeview);
+	if (!model)
+		return NULL;
+
+	GtkTreeIter parent;
+	if (!(gtk_tree_model_get_iter(model, &parent, path)))
+		return NULL;
+
+	GtkTreeIter iter;
+	if (!(gtk_tree_model_iter_children(model, &iter, &parent)))
+		return NULL;
+	else {
+		path = gtk_tree_model_get_path(model, &iter);
+		return path;
+	}
+}
+
+/* sibling: on same level
+ * returns newly allocated path (or NULL), needs gtk_tree_path_free() */
+GtkTreePath *gtkut_tree_path_get_sibling(GtkTreeView *treeview,
+					 GtkTreePath *path)
+{
+	GtkTreeModel *model = gtk_tree_view_get_model(treeview);
+	if (!model)
+		return NULL;
+
+	GtkTreeIter iter;
+	if (!(gtk_tree_model_get_iter(model, &iter, path)))
+		return NULL;
+
+	if (!(gtk_tree_model_iter_next(model, &iter)))
+		return NULL;
+	else {
+		path = gtk_tree_model_get_path(model, &iter);
+		return path;
+	}
+}
+
+/* parent: one level above
+ * returns newly allocated path (or NULL), needs gtk_tree_path_free() */
+GtkTreePath *gtkut_tree_path_get_parent(GtkTreeView *treeview,
+					GtkTreePath *path)
+{
+	GtkTreeModel *model = gtk_tree_view_get_model(treeview);
+	if (!model)
+		return NULL;
+
+	GtkTreeIter child;
+	if (!(gtk_tree_model_get_iter(model, &child, path)))
+		return NULL;
+
+	GtkTreeIter iter;
+	if (!(gtk_tree_model_iter_parent(model, &iter, &child)))
+		return NULL;
+	else {
+		path = gtk_tree_model_get_path(model, &iter);
+		return path;
+	}
+}
+
+/* selects the next visible row below
+ * returns newly allocated path (or NULL), needs gtk_tree_path_free() */
+GtkTreePath *gtkut_tree_path_next(GtkTreeView *treeview, GtkTreePath *path)
+{
+	GtkTreePath *parent;
+	GtkTreePath *parent_old = NULL;
+	GtkTreePath *tmp;
+
+	if (!path) return NULL;
+
+	tmp = gtkut_tree_path_get_children(treeview, path);
+	if (tmp)
+		return tmp;
+
+	tmp = gtkut_tree_path_get_sibling(treeview, path);
+	if (tmp)
+		return tmp;
+
+	for (parent = gtkut_tree_path_get_parent(treeview, path); parent != NULL;
+	     parent = gtkut_tree_path_get_parent(treeview, parent)) {
+		if (parent_old) {
+			gtk_tree_path_free(parent_old);
+			parent_old = NULL;
+		}
+
+		tmp = gtkut_tree_path_get_sibling(treeview, parent);
+		if (tmp) {
+			gtk_tree_path_free(parent);
+			return tmp;
+		}
+
+		parent_old = parent;
+	}
+
+	if (parent_old)
+		gtk_tree_path_free(parent_old);
+	return NULL;
+}
+
 static gboolean gtkut_text_buffer_match_string(GtkTextBuffer *textbuf,
 					const GtkTextIter *iter,
 					gunichar *wcs, gint len,
