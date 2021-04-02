@@ -1236,10 +1236,123 @@ void folderview_unselect(FolderView *folderview)
 	folderview->open_item = NULL;
 }
 
+static GtkTreePath *folderview_find_next_with_flag(GtkTreeView *treeview,
+						   GtkTreePath *path,
+						   MsgPermFlags flag)
+{
+	FolderItem *item;
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+	GtkTreePath *path_old = NULL;
+
+	model = gtk_tree_view_get_model(treeview);
+	if (!model)
+		return NULL;
+
+	if (path)
+		path = gtkut_tree_path_next(treeview, path);
+	else
+		path = gtk_tree_path_new_from_string("0"); /* top node */
+
+	for (; path && gtk_tree_model_get_iter(model, &iter, path);
+	       path = gtkut_tree_path_next(treeview, path)) {
+		if (path_old) {
+			gtk_tree_path_free(path_old);
+			path_old = NULL;
+		}
+		gtk_tree_model_get(model, &iter, F_COL_FOLDERITEM, &item, -1);
+		if (!item)
+			continue;
+		if (item->stype == F_TRASH || item->stype == F_DRAFT)
+			continue;
+		switch (flag) {
+		case MSG_UNREAD:
+			if(item->unread_msgs > 0)
+				goto out;
+			break;
+		case MSG_NEW:
+			if(item->new_msgs > 0)
+				goto out;
+			break;
+		case MSG_MARKED:
+			if(item->marked_msgs > 0)
+				goto out;
+			break;
+		default:
+			if(item->total_msgs > 0)
+				goto out;
+			break;
+		}
+		path_old = path;
+	}
+
+	if (path_old)
+		gtk_tree_path_free(path_old);
+	return NULL;
+
+out:
+	if (path_old)
+		gtk_tree_path_free(path_old);
+	return path;
+}
+
 void folderview_select_next_with_flag(FolderView *folderview,
 				      MsgPermFlags flag)
 {
-	debug_print("========STUB======== folderview_select_next_with_flag\n");
+	GtkTreeView *treeview = GTK_TREE_VIEW(folderview->treeview);
+	GtkTreePath *path = NULL, *startpath = NULL;
+	EntryAction last_summary_select_prio = prefs_common.summary_select_prio[0];
+	gboolean update_cursor = FALSE;
+
+	switch (flag) {
+	case MSG_UNREAD:
+		prefs_common.summary_select_prio[0] = ACTION_OLDEST_UNREAD;
+		break;
+	case MSG_NEW:
+		prefs_common.summary_select_prio[0] = ACTION_OLDEST_NEW;
+		break;
+	case MSG_MARKED:
+		prefs_common.summary_select_prio[0] = ACTION_OLDEST_MARKED;
+		break;
+	default:
+		prefs_common.summary_select_prio[0] = ACTION_OLDEST_LIST;
+		break;
+	}
+
+	gtk_tree_view_get_cursor(treeview, &startpath, NULL);
+	if (!startpath)
+		return;
+
+	path = folderview_find_next_with_flag(treeview, startpath, flag);
+	if (path != NULL) {
+		update_cursor = TRUE;
+		goto out;
+	}
+
+/* TM: - this inhibits search from top - what was this used for?
+	if (!folderview->open_item ||
+	    folderview->open_item == folderview_get_selected_item(folderview)) {
+		goto out;
+	}
+*/
+
+	/* search again from the first node */
+	path = folderview_find_next_with_flag(treeview, NULL, flag);
+	update_cursor = (path != NULL);
+
+out:
+	if (update_cursor) {
+		gtk_tree_view_set_cursor(treeview, path, NULL, FALSE);
+		/* TM: Workaround "row-activated" not fired on single click */
+		row_activated_cb(treeview, path,
+				 gtk_tree_view_get_column(treeview,0),
+				 folderview);
+	}
+	if (startpath)
+		gtk_tree_path_free(startpath);
+	if (path)
+		gtk_tree_path_free(path);
+	prefs_common.summary_select_prio[0] = last_summary_select_prio;
 }
 
 FolderItem *folderview_get_selected_item(FolderView *folderview)
