@@ -2583,7 +2583,33 @@ static void folderview_drag_end_cb(GtkWidget	    *widget,
 
 void folderview_update_search_icon(FolderItem *item, gboolean matches)
 {
-	debug_print("========STUB======== folderview_update_search_icon\n");
+	GList *list;
+	FolderView *folderview;
+	GtkTreeView *treeview;
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+
+	struct finditer_ctx *ctx = g_new0(struct finditer_ctx, 1);
+	ctx->item = item;
+	ctx->iter = NULL;
+
+	g_return_if_fail(item != NULL);
+
+	for (list = folderview_list; list != NULL; list = list->next) {
+		folderview = (FolderView *)list->data;
+		treeview = GTK_TREE_VIEW(folderview->treeview);
+		model = gtk_tree_view_get_model(treeview);
+		if (!model)
+			continue;
+
+		gtk_tree_model_foreach(model, folderview_find_iter_foreach_func, ctx);
+		if (ctx->item) {
+			ctx->item->search_match = matches;
+			folderview_update_row(folderview, ctx->item);
+			gtk_tree_iter_free(ctx->iter);
+		}
+	}
+	g_free(ctx);
 }
 
 void folderview_set_column_order(FolderView *folderview)
