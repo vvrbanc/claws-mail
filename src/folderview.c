@@ -2402,10 +2402,7 @@ static void folderview_drag_leave_cb(GtkWidget      *widget,
 
 static void free_info (gpointer stuff, gpointer data)
 {
-	debug_print("========STUB======== free_info\n");
-#if 0
 	g_free(stuff);
-#endif
 }
 
 /* only for TARGET_MAIL_URI_LIST */
