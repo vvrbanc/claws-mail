@@ -2653,7 +2653,6 @@ void folderview_grab_focus(FolderView *folderview)
 gboolean folderview_is_drag_source(FolderView *folderview,
 				   GdkDragContext *context)
 {
-	debug_print("========STUB======== folderview_is_drag_source\n");
 	g_return_val_if_fail(context != NULL, FALSE);
 
 	if (gtk_drag_get_source_widget(context) == folderview->treeview)
