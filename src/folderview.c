@@ -224,6 +224,9 @@ static gint folderview_compare_func(GtkTreeModel *model, GtkTreeIter *a,
 				    GtkTreeIter *b, gpointer context)
 {
 	gchar *str_a = NULL, *str_b = NULL;
+#ifdef G_OS_WIN32
+	gchar *str_a_dn = NULL, *str_b_dn = NULL;
+#endif /* G_OS_WIN32 */
 	gint val = 0;
 	FolderItem *item_a = NULL, *item_b = NULL;
 	GtkTreeIter parent;
@@ -257,6 +260,14 @@ static gint folderview_compare_func(GtkTreeModel *model, GtkTreeIter *a,
 	gtk_tree_model_get(model, b, F_COL_FOLDER, &str_b, -1);
 
 	/* otherwise just compare the folder names */
+#ifdef G_OS_WIN32
+	str_a_dn = g_utf8_casefold(str_a, -1);
+	str_b_dn = g_utf8_casefold(str_b, -1);
+	g_free(str_a);
+	g_free(str_b);
+	str_a = str_a_dn;
+	str_b = str_b_dn;
+#endif /* G_OS_WIN32 */
 	val = g_utf8_collate(str_a, str_b);
 
 	g_free(str_a);
