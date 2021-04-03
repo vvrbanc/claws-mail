@@ -2008,7 +2008,6 @@ static gboolean update_prefs_func(GtkTreeModel *model, GtkTreePath *path,
 void folderview_reflect_prefs(FolderView *folderview)
 {
 	gboolean update_font = FALSE;
-	gboolean update_color = FALSE;
 
 	debug_print("folderview_reflect_prefs\n");
 
@@ -2475,12 +2474,10 @@ static void folderview_drag_received_cb(GtkWidget        *widget,
 					guint             time,
 					FolderView       *folderview)
 {
-	gint row, column;
 	FolderItem *item = NULL, *src_item;
 	GtkTreePath *path;
 	GtkTreeModel *model;
 	GtkTreeIter iter;
-	int offset = prefs_common.show_col_headers ? 24:0;
 
 	folderview->scroll_value = 0;
 
@@ -2603,7 +2600,6 @@ void folderview_update_search_icon(FolderItem *item, gboolean matches)
 	FolderView *folderview;
 	GtkTreeView *treeview;
 	GtkTreeModel *model;
-	GtkTreeIter iter;
 
 	struct finditer_ctx *ctx = g_new0(struct finditer_ctx, 1);
 	ctx->item = item;
