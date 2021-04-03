@@ -2683,7 +2683,25 @@ void folderview_close_opened(FolderView *folderview, gboolean dirty)
 
 void folderview_remove_item(FolderView *folderview, FolderItem *item)
 {
-	debug_print("========STUB======== folderview_remove_item\n");
+	struct finditer_ctx *ctx = g_new0(struct finditer_ctx, 1);
+	ctx->item = item;
+	ctx->iter = NULL;
+	GtkTreeModel *model =
+		gtk_tree_view_get_model(GTK_TREE_VIEW(folderview->treeview));
+
+	if (!model)
+		return;
+
+	gtk_tree_model_foreach(model, folderview_find_iter_foreach_func, ctx);
+
+	if (ctx->iter == NULL) {
+		g_free(ctx);
+		return;
+	}
+
+	gtk_tree_store_remove(GTK_TREE_STORE(model), ctx->iter);
+	gtk_tree_iter_free(ctx->iter);
+	g_free(ctx);
 }
 
 /* TM: There is no freeze/thaw. Detaching the model can be a workaround,

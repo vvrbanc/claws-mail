@@ -232,7 +232,7 @@ static void unsubscribe_newsgroup_cb(GtkAction *action, gpointer data)
 	AlertValue avalue;
 	MainWindow *mainwin = mainwindow_get_mainwindow();
 	
-	if ((item = folderview_get_selected_item(folderview)) != NULL)
+	if ((item = folderview_get_selected_item(folderview)) == NULL)
 		return;
 
 	if (mainwin->lock_count || news_folder_locked(item->folder))
