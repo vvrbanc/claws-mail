@@ -2628,32 +2628,8 @@ void folderview_set_column_order(FolderView *folderview)
 {
 	gint i;
 	GtkTreeViewColumn *default_column;
-	GtkTreeViewColumn *tree_column = NULL;
 	GtkTreeViewColumn *prev = NULL;
 	FolderColumnState *col_state;
-	GList *tree_columns = gtk_tree_view_get_columns
-			(GTK_TREE_VIEW(folderview->treeview));
-
-	/* recreate old order (as saved in treeview_default_columns_ordered) */
-	for (i = F_COL_FOLDER; i <= F_COL_TOTAL; i++) {
-		GList *listentry;
-		default_column = (GtkTreeViewColumn*)g_list_nth_data
-				(treeview_default_columns_ordered,
-				 i - F_COL_FOLDER);
-		listentry = g_list_find(tree_columns, default_column);
-		if (!listentry) {
-			debug_print("Error: default_column not found!\n");
-			g_list_free(tree_columns);
-			return;
-		}
-
-		tree_column = listentry->data;
-		if (prev)
-			gtk_tree_view_move_column_after
-				(GTK_TREE_VIEW(folderview->treeview),
-				 tree_column, prev);
-		prev = tree_column;
-	}
 
 	/* apply new order
 	 * col_state[i].type, when used as an index to the default_columns,
@@ -2674,8 +2650,6 @@ void folderview_set_column_order(FolderView *folderview)
 				 default_column, prev);
 		prev = default_column;
 	}
-
-	g_list_free(tree_columns);
 }
 
 void folderview_close_opened(FolderView *folderview, gboolean dirty)
