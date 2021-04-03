@@ -2411,7 +2411,9 @@ static void folderview_drag_leave_cb(GtkWidget      *widget,
 				     guint           time,
 				     FolderView     *folderview)
 {
+/* TM: unnecessary
 	debug_print("========STUB======== folderview_drag_leave_cb\n");
+*/
 }
 
 static void free_info (gpointer stuff, gpointer data)
