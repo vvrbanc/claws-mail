@@ -1985,7 +1985,9 @@ void folderview_set_target_folder_color(GdkRGBA color_op)
 
 void folderview_reinit_fonts(FolderView *folderview)
 {
+/* TM: not necessary (and useless, unless folderview_reflect_prefs() is called)
 	debug_print("========STUB======== folderview_reinit_fonts\n");
+*/
 }
 
 /* TODO: this function will eventually set normal or bold fonts,
@@ -2038,7 +2040,7 @@ void folderview_reflect_prefs(FolderView *folderview)
 		pango_font_description_free(folderview->normal_font);
 		pango_font_description_free(folderview->bold_font);
 		folderview->normal_font = pango_font_description_from_string(NORMAL_FONT);
-		folderview->normal_font = pango_font_description_from_string(BOLD_FONT);
+		folderview->bold_font = pango_font_description_from_string(BOLD_FONT);
 	}
 
 // 	if (update_color) {
