@@ -309,6 +309,7 @@ static gboolean button_press_cb(GtkWidget *widget, GdkEventButton *event,
 	} else if (event->button == 3) { /* Right click */
 		debug_print("will show popup menu\n");
 
+		gtk_tree_view_set_cursor(GTK_TREE_VIEW(widget), path, NULL, FALSE);
 		/* Find out which item the click was on */
 		GtkTreeModel *model = gtk_tree_view_get_model(GTK_TREE_VIEW(widget));
 		gtk_tree_model_get_iter(model, &iter, path);
@@ -452,6 +453,9 @@ static void row_activated_cb(GtkTreeView *treeview, GtkTreePath *path,
 
 	debug_print("row-activated\n");
 
+	if (folderview->open_path)
+		gtk_tree_path_free(folderview->open_path);
+	folderview->open_path = gtk_tree_path_copy(path);
 	gtk_tree_model_get_iter(model, &iter, path);
 	gtk_tree_model_get(model, &iter,
 			F_COL_FOLDERITEM, &item, -1);
@@ -722,6 +726,7 @@ FolderView *folderview_create(MainWindow *mainwin)
 	folderview->will_open_selected = FALSE;
 	folderview->open_item = NULL;
 	folderview->menu_item = NULL;
+	folderview->open_path = gtk_tree_path_new_from_string("0");
 
 	folderview->popups = g_hash_table_new(g_str_hash, g_str_equal);
 	g_hash_table_foreach(folderview_popups, create_action_groups, folderview);
@@ -2230,8 +2235,6 @@ static void drag_state_start(FolderView *folderview, GtkTreePath *path, FolderIt
 static void folderview_drag_begin(GtkWidget *widget, GdkDragContext *context,
 			          FolderView *folderview)
 {
-	gtk_tree_view_get_cursor(GTK_TREE_VIEW(folderview->treeview),
-				 &folderview->drag_src_path, NULL);
 	free_paths_to_recollapse(folderview->paths_to_recollapse);
 	if (folderview->paths_to_recollapse)
 		g_slist_free(folderview->paths_to_recollapse);
@@ -2252,14 +2255,14 @@ static void folderview_drag_data_get(GtkWidget        *widget,
 	FolderItem *item;
 	gchar *source = NULL;
 	if (info == TARGET_DUMMY) {
-		if (!folderview->drag_src_path)
+		if (!folderview->open_path)
 			return;
 
 		model = gtk_tree_view_get_model(GTK_TREE_VIEW(folderview->treeview));
 		if (!model)
 			return;
 
-		gtk_tree_model_get_iter(model, &iter, folderview->drag_src_path);
+		gtk_tree_model_get_iter(model, &iter, folderview->open_path);
 		gtk_tree_model_get(model, &iter, F_COL_FOLDERITEM, &item, -1);
 		if (item) {
 			source = g_strdup_printf ("FROM_OTHER_FOLDER%s", folder_item_get_identifier(item));
@@ -2351,11 +2354,6 @@ static gboolean folderview_drag_motion_cb(GtkWidget      *widget,
 			    src_item != item && FOLDER_CLASS(item->folder)->copy_msg != NULL &&
 			    FOLDER_TYPE(item->folder) != F_UNKNOWN)
 				acceptable = TRUE;
-			/* TM: remember current selection, to restore it afterwards */
-			if (!folderview->drag_src_path) {
-				gtk_tree_view_get_cursor(GTK_TREE_VIEW(folderview->treeview),
-						   &folderview->drag_src_path, NULL);
-			}
 		} else if (srcwidget == folderview->treeview) {
 			/* comes from folderview */
 			/* we are moving folder items, only accept folders that are not
@@ -2526,12 +2524,10 @@ static void folderview_drag_received_cb(GtkWidget        *widget,
 			/* TM: drop done - cleanup */
 			drag_state_stop(folderview);
 			folderview->scroll_value = 0;
-			if (folderview->drag_src_path) {
+			if (folderview->open_path) {
 				gtk_tree_view_set_cursor
 					(GTK_TREE_VIEW(folderview->treeview),
-					 folderview->drag_src_path, NULL, FALSE);
-				gtk_tree_path_free(folderview->drag_src_path);
-				folderview->drag_src_path = NULL;
+					 folderview->open_path, NULL, FALSE);
 				summary_grab_focus(folderview->summaryview);
 			}
 		} else {
@@ -2586,10 +2582,6 @@ static void folderview_drag_end_cb(GtkWidget	    *widget,
 		free_paths_to_recollapse(folderview->paths_to_recollapse);
 		g_slist_free(folderview->paths_to_recollapse);
 		folderview->paths_to_recollapse = NULL;
-	}
-	if (folderview->drag_src_path) {
-		gtk_tree_path_free(folderview->drag_src_path);
-		folderview->drag_src_path = NULL;
 	}
 }
 
@@ -2954,6 +2946,8 @@ static void folderview_popup_close(GtkMenuShell *menu_shell,
 {
 	debug_print("folderview_popup_close\n");
 	folderview->menu_item = NULL;
+	if (folderview->open_path)
+		gtk_tree_view_set_cursor(GTK_TREE_VIEW(folderview->treeview), folderview->open_path, NULL, FALSE);
 }
 
 static void set_sens_and_popup_menu(FolderView *folderview, FolderItem *item,

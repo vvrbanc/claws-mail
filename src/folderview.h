@@ -60,6 +60,7 @@ struct _FolderView
 	gboolean will_toggle_expand_selected;
 	FolderItem *open_item; /* Pointer to currently open item */
 	FolderItem *menu_item; /* Pointer to item the popup menu is open for */
+	GtkTreePath *open_path; /* Pointer to currently open item */
 
 	GHashTable *popups;
 
@@ -68,7 +69,6 @@ struct _FolderView
 	guint   drag_timer_id;		/* timer id */
 	FolderItem *drag_dst_item;	/* dragged item (destination) */
 	GtkTreePath *drag_dst_path;	/* drag path (destination) */
-	GtkTreePath *drag_src_path;	/* drag path (source: either dragged folder, or folder, that contained the dragged message) */
 
 	gint scroll_value;
 	guint scroll_timeout_id;
