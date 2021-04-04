@@ -1628,8 +1628,9 @@ static void folderview_update_row_iter(FolderView *folderview,
 			F_COL_NEW, has_parent ? n : "-",
 			F_COL_UNREAD, has_parent ? u : "-",
 			F_COL_TOTAL, has_parent ? t : "-",
-			F_COL_ICON, folderview->open_item == item ?
-				pixbuf_open : pixbuf_closed,
+			F_COL_ICON, (expanded || 
+				(folderview->open_item == item))
+				? pixbuf_open : pixbuf_closed,
 			F_COL_FONT, use_bold ?
 				folderview->bold_font : folderview->normal_font,
 			F_COL_COLOR, color,
