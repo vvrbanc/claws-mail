@@ -141,6 +141,11 @@ GtkTreePath *gtkut_tree_path_get_parent		(GtkTreeView *treeview,
 GtkTreePath *gtkut_tree_path_next		(GtkTreeView *treeview,
 						 GtkTreePath *path);
 
+gboolean gtkut_tree_is_expander_clicked	(GtkTreeView *treeview,
+					 GtkTreePath *path,
+					 GtkTreeViewColumn *column,
+					 gdouble event_x, gdouble event_y);
+
 gchar *gtkut_text_view_get_selection	(GtkTextView	*textview);
 void gtkut_text_view_set_position		(GtkTextView *text, gint pos);
 gboolean gtkut_text_view_search_string	(GtkTextView *text, const gchar *str,

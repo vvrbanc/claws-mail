@@ -284,9 +284,11 @@ static gboolean button_press_cb(GtkWidget *widget, GdkEventButton *event,
 {
 	FolderView *folderview = (FolderView *)user_data;
 	GtkTreePath *path;
+	GtkTreeViewColumn *column;
 	GtkTreeIter iter;
 	gboolean ret;
 	FolderItem *item;
+	gboolean is_expander;
 
 	debug_print("button-press: button %d\n", event->button);
 
@@ -297,17 +299,28 @@ static gboolean button_press_cb(GtkWidget *widget, GdkEventButton *event,
 
 	ret = gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(widget),
 			event->x, event->y,
-			&path, NULL, NULL, NULL);
-
+			&path, &column, NULL, NULL);
 	if (!ret) {
 		debug_print("clicked empty space, ignoring\n");
 		gtk_tree_path_free(path);
 		return FALSE;
 	}
 
+	is_expander = gtkut_tree_is_expander_clicked(GTK_TREE_VIEW(widget),
+			path, column, event->x, event->y);
+
 	if (event->button == 1) { /* Left click */
-	        if (event->type == GDK_2BUTTON_PRESS)
+		if (is_expander) {
+			gtk_tree_path_free(path);
+			return FALSE;
+		}
+
+		if (event->type == GDK_2BUTTON_PRESS) {
 			folderview->will_toggle_expand_selected = TRUE;
+			gtk_tree_path_free(path);
+			return FALSE;
+		}
+
 		/* Indicate to cursor-changed handler that it should open the
 		 * folder on selected row. */
 		debug_print("will open selected\n");

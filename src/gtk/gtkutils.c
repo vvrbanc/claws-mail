@@ -507,6 +507,38 @@ GtkTreePath *gtkut_tree_path_next(GtkTreeView *treeview, GtkTreePath *path)
 	return NULL;
 }
 
+gboolean gtkut_tree_is_expander_clicked(GtkTreeView *treeview,
+		GtkTreePath *path, GtkTreeViewColumn *column,
+		gdouble event_x, gdouble event_y)
+{
+	GtkTreeModel *model = gtk_tree_view_get_model(treeview);
+	GtkTreeIter iter;
+	GdkRectangle inner_rect;
+	gint x, x_start;
+
+	/* no expander shown */
+	if (!gtk_tree_view_get_show_expanders(treeview))
+		return FALSE;
+	/* no child? no expander! */
+	if (!model)
+		return FALSE;
+	if (!gtk_tree_model_get_iter(model, &iter, path))
+		return FALSE;
+	if (!gtk_tree_model_iter_has_child(model, &iter))
+		return FALSE;
+
+	/* excluding surrounding borders and the tree expander area */
+	gtk_tree_view_get_cell_area(treeview, path, column, &inner_rect);
+	x = (gint)(event_x + 0.5);
+	/* TM:TODO:
+	 * - add inner_rect.width to x_start, if detected right-to-left
+	 * - eliminate constants (probably line-width)
+	 */
+	x_start = inner_rect.x;
+	return (x >= x_start - inner_rect.height - 1)
+	    && (x <= x_start - 3);
+}
+
 static gboolean gtkut_text_buffer_match_string(GtkTextBuffer *textbuf,
 					const GtkTextIter *iter,
 					gunichar *wcs, gint len,
