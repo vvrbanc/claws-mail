@@ -179,6 +179,8 @@ static void folderview_drag_end_cb	 (GtkWidget	   *widget,
 					  GdkDragContext   *drag_context,
 					  FolderView	   *folderview);
 
+static void folderview_toggle_expansion	(GtkTreeView *treeview);
+
 GHashTable *folderview_popups;
 
 GList *treeview_default_columns_ordered;
@@ -310,26 +312,14 @@ static gboolean button_press_cb(GtkWidget *widget, GdkEventButton *event,
 			path, column, event->x, event->y);
 
 	if (event->button == 1) { /* Left click */
-		if (is_expander) {
-			gtk_tree_path_free(path);
+		gtk_tree_path_free(path);
+		if (is_expander)
 			return FALSE;
-		}
 
 		if (event->type == GDK_2BUTTON_PRESS) {
-			folderview->will_toggle_expand_selected = TRUE;
-			gtk_tree_path_free(path);
+			folderview_toggle_expansion(GTK_TREE_VIEW(widget));
 			return FALSE;
 		}
-
-		/* Indicate to cursor-changed handler that it should open the
-		 * folder on selected row. */
-		debug_print("will open selected\n");
-		folderview->will_open_selected = TRUE;
-		/* TM: Workaround "row-activated" not fired on single click */
-		row_activated_cb(GTK_TREE_VIEW(widget), path,
-				 gtk_tree_view_get_column(GTK_TREE_VIEW(widget),0),
-				 folderview);
-		gtk_tree_path_free(path);
 	} else if (event->button == 3) { /* Right click */
 		debug_print("will show popup menu\n");
 
@@ -366,60 +356,17 @@ static void folderview_toggle_expansion(GtkTreeView *treeview)
 	}
 }
 
-static gboolean button_release_cb(GtkWidget *widget, GdkEventButton *event,
-				  gpointer user_data)
-{
-	FolderView *folderview = (FolderView *)user_data;
-
-	debug_print("button-release\n");
-
-	if (folderview->will_open_selected
-	    || folderview->will_toggle_expand_selected) {
-		if (folderview->will_toggle_expand_selected) {
-			folderview_toggle_expansion
-			    (GTK_TREE_VIEW(folderview->treeview));
-			folderview->will_toggle_expand_selected = FALSE;
-		}
-		debug_print("button release: focusing summaryview\n");
-		folderview->will_open_selected = FALSE;
-		summary_grab_focus(folderview->summaryview);
-		return TRUE;
-	}
-	return FALSE;
-}
-
-static gboolean focus_in_cb(GtkWidget *widget, GdkEvent *event,
-			    gpointer user_data)
-{
-	FolderView *folderview = (FolderView *)user_data;
-
-	if (!folderview->will_open_selected)
-		return FALSE;
-	
-	debug_print("focus in: focusing summaryview\n");
-	folderview->will_open_selected = FALSE;
-	summary_grab_focus(folderview->summaryview);
-
-	return TRUE;
-}
-
 static gboolean cursor_changed_cb(GtkTreeView *treeview, gpointer user_data)
 {
 	FolderView *folderview = (FolderView *)user_data;
-	FolderItem *item;
 
 	debug_print("cursor-changed\n");
 
 	/* Only do something if some other signal handler has indicated that
 	 * a selected folder should be opened. */
-	if(!folderview->will_open_selected)
-		return FALSE;
 
 	if (folderview->open_item != NULL)
 		folderview_unselect(folderview);
-
-	if ((item = folderview_get_selected_item(folderview)) != NULL)
-		folderview_open(folderview, item);
 
 	return FALSE;
 }
@@ -526,9 +473,6 @@ static void row_activated_cb(GtkTreeView *treeview, GtkTreePath *path,
 		if (gdk_pointer_is_grabbed())
 			gdk_pointer_ungrab(GDK_CURRENT_TIME);
 	} */
-
-	/* TM: ensure focus-change in button-release handler */
-	folderview->will_open_selected = TRUE;
 }
 
 /***********************************
@@ -747,7 +691,6 @@ FolderView *folderview_create(MainWindow *mainwin)
 	folderview->normal_font = NULL;
 	folderview->bold_font = NULL;
 
-	folderview->will_open_selected = FALSE;
 	folderview->open_item = NULL;
 	folderview->menu_item = NULL;
 	folderview->open_path = gtk_tree_path_new_from_string("0");
@@ -793,14 +736,6 @@ FolderView *folderview_create(MainWindow *mainwin)
 	g_signal_connect(G_OBJECT(folderview->treeview), "row-collapsed",
 			G_CALLBACK(row_expanded_collapsed_cb), folderview);
 
-	/* Following two handlers (button-release and focus-in) are a hack
-	 * to work around the GtkTreeView delayed focus hack from GTK.
-	 * Yes, we're working around a workaround. Isn't GTK awesome? */
-	g_signal_connect(G_OBJECT(folderview->treeview), "button-release-event",
-			G_CALLBACK(button_release_cb), folderview);
-	g_signal_connect(G_OBJECT(folderview->treeview), "focus-in-event",
-			G_CALLBACK(focus_in_cb), folderview);
-
         /* drag and drop callbacks */
 #ifndef GENERIC_UMPC
 	/* drag-n-dropping folders on maemo is impractical as this
@@ -831,8 +766,8 @@ FolderView *folderview_create(MainWindow *mainwin)
 			  GTK_DEST_DEFAULT_ALL & ~GTK_DEST_DEFAULT_HIGHLIGHT,
 			  folderview_drag_types, 2,
 			  GDK_ACTION_MOVE | GDK_ACTION_COPY | GDK_ACTION_DEFAULT);
-	//TM: the "row-activated" signal still doesn't fire
-	//gtk_tree_view_set_activate_on_single_click(GTK_TREE_VIEW(folderview->treeview), TRUE);
+	gtk_tree_view_set_activate_on_single_click
+			(GTK_TREE_VIEW(folderview->treeview), TRUE);
 	//TM:TODO: Is there a "resize_column"-like signal?
 
 	gtk_container_add(GTK_CONTAINER(scrolledwin), folderview->treeview);
@@ -1132,6 +1067,7 @@ static gboolean folderview_open(FolderView *folderview, FolderItem *item)
 	STATUSBAR_POP(folderview->mainwin);
 	END_TIMING();
 
+	/* TM:TODO: there shouldn't be UI updates here */
 	if (summary_opened) {
 		folderview->open_item = item;
 		folderview_update_row(folderview, item);
@@ -1274,6 +1210,7 @@ void folderview_select(FolderView *folderview, FolderItem *item)
 void folderview_unselect(FolderView *folderview)
 {
 	debug_print("folderview_unselect\n");
+	folderview->open_item_prev = folderview->open_item;
 	folderview->open_item = NULL;
 }
 
@@ -1384,7 +1321,6 @@ void folderview_select_next_with_flag(FolderView *folderview,
 out:
 	if (update_cursor) {
 		gtk_tree_view_set_cursor(treeview, path, NULL, FALSE);
-		/* TM: Workaround "row-activated" not fired on single click */
 		row_activated_cb(treeview, path,
 				 gtk_tree_view_get_column(treeview,0),
 				 folderview);

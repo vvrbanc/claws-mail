@@ -56,8 +56,6 @@ struct _FolderView
 	PangoFontDescription *normal_font;
 	PangoFontDescription *bold_font;
 
-	gboolean will_open_selected;
-	gboolean will_toggle_expand_selected;
 	FolderItem *open_item; /* Pointer to currently open item */
 	FolderItem *menu_item; /* Pointer to item the popup menu is open for */
 	GtkTreePath *open_path; /* Pointer to currently open item */
