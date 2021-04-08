@@ -449,6 +449,8 @@ static void row_activated_cb(GtkTreeView *treeview, GtkTreePath *path,
 		main_window_cursor_normal(folderview->mainwin);
 		STATUSBAR_POP(folderview->mainwin);
 	}
+	/* show closed folder icon */
+	folderview_update_row(folderview, folderview->open_item_prev);
 
 	/* CLAWS: set compose button type: news folder items
 	 * always have a news folder as parent */
