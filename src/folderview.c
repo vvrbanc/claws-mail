@@ -356,6 +356,80 @@ static void folderview_toggle_expansion(GtkTreeView *treeview)
 	}
 }
 
+void folderview_open_or_expand_selected(FolderView *folderview)
+{
+	GtkTreeView *treeview = GTK_TREE_VIEW(folderview->treeview);
+	GtkTreePath *path;
+	GtkTreeViewColumn *column;
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+
+	gtk_tree_view_get_cursor(treeview, &path, &column);
+
+	model = gtk_tree_view_get_model(treeview);
+	if (!gtk_tree_model_get_iter(model, &iter, path)) {
+		gtk_tree_path_free(path);
+		return;
+	}
+
+	if (gtk_tree_model_iter_has_child(model, &iter)
+		&& !gtk_tree_view_row_expanded(treeview, path))
+			gtk_tree_view_expand_row(treeview, path, FALSE);
+	else
+		row_activated_cb(treeview, path, column, (gpointer)folderview);
+
+	gtk_tree_path_free(path);
+}
+
+void folderview_collape_or_open_parent(FolderView *folderview)
+{
+	GtkTreeView *treeview = GTK_TREE_VIEW(folderview->treeview);
+	GtkTreePath *path, *parent_path;
+
+	gtk_tree_view_get_cursor(treeview, &path, NULL);
+
+	/* if expanded: collapse current row */
+	if (gtk_tree_view_row_expanded(treeview, path)) {
+		gtk_tree_view_collapse_row(treeview, path);
+		gtk_tree_path_free(path);
+		return;
+	}
+
+	/* otherwise: open parent */
+	parent_path = gtkut_tree_path_get_parent(treeview, path);
+	if (parent_path) {
+		row_activated_cb(treeview, parent_path, NULL, (gpointer)folderview);
+		gtk_tree_path_free(parent_path);
+		gtk_tree_path_free(path);
+		return;
+	}
+
+}
+
+static gboolean folderview_key_pressed(GtkWidget *widget, GdkEventKey *event,
+				       FolderView *folderview)
+{
+	if (!event) return FALSE;
+
+	if (quicksearch_has_focus(folderview->summaryview->quicksearch))
+		return FALSE;
+
+	switch (event->keyval) {
+	case GDK_KEY_Right:
+		/* expand, if collapsed. otherwise open selected folder */
+		folderview_open_or_expand_selected(folderview);
+		break;
+	case GDK_KEY_Left:
+		/* collapse, if expanded. otherwise open parent folder */
+		folderview_collape_or_open_parent(folderview);
+		break;
+	default:
+		break;
+	}
+
+	return FALSE;
+}
+
 static gboolean cursor_changed_cb(GtkTreeView *treeview, gpointer user_data)
 {
 	FolderView *folderview = (FolderView *)user_data;
@@ -726,6 +800,8 @@ FolderView *folderview_create(MainWindow *mainwin)
 			}
 		}
 	}
+	g_signal_connect(G_OBJECT(folderview->treeview), "key_press_event",
+			 G_CALLBACK(folderview_key_pressed), folderview);
 	g_signal_connect(G_OBJECT(folderview->treeview), "button-press-event",
 			G_CALLBACK(button_press_cb), folderview);
 	g_signal_connect(G_OBJECT(folderview->treeview), "cursor-changed",
