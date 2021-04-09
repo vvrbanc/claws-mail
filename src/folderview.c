@@ -507,6 +507,7 @@ static void row_activated_cb(GtkTreeView *treeview, GtkTreePath *path,
 
 	olditem = folderview->open_item;
 	folderview_open(folderview, item);
+	folderview_update_row(folderview, item);
 
 	/* Save cache for old folder */
 	/* We don't want to lose all caches if sylpheed crashed */
@@ -1145,12 +1146,8 @@ static gboolean folderview_open(FolderView *folderview, FolderItem *item)
 	STATUSBAR_POP(folderview->mainwin);
 	END_TIMING();
 
-	/* TM:TODO: there shouldn't be UI updates here */
-	if (summary_opened) {
+	if (summary_opened)
 		folderview->open_item = item;
-		folderview_update_row(folderview, item);
-		summary_grab_focus(folderview->summaryview);
-	}
 
 	return summary_opened;
 }
