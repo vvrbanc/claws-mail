@@ -23,14 +23,6 @@ GtkTreeView based folderview
 
 * File-not-found messages after moving folders (drag&drop)
 
-* The "row-activated" signal is not emitted on single-clicks, even though
-  gtk_tree_view_set_activate_on_single_click() was called.
-  (worked around by a direct call in button_press_cb())
-
-* gtk_tree_view_set_cursor() doesn't open the summaryview
-  workaround: call row_activated_cb() (in folderview_select_next_with_flag())
-  Maybe same effect as missing "row-activated" signal
-
 * Resizing the column headers needs to be detected (to updated
   prefs_common.folder_col_size).
   (The "resize_column" signal doesn't exist any longer)
@@ -38,6 +30,4 @@ GtkTreeView based folderview
 * The column headers will always steal the focus. Once they are set clickable,
   gtk_widget_set_can_focus() has no effect.
 
-* Sort-order in summaryview sometimes flips (folderview_select_next_with_flag()
-  might be a cause)
-
+* Folder colors shown wrong
