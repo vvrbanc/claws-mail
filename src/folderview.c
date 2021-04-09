@@ -494,7 +494,7 @@ static void row_activated_cb(GtkTreeView *treeview, GtkTreePath *path,
 	FolderView *folderview = (FolderView *)user_data;
 	GtkTreeIter iter;
 	GtkTreeModel *model = gtk_tree_view_get_model(treeview);
-	FolderItem *item, *olditem;
+	FolderItem *item;
 
 	debug_print("row-activated\n");
 
@@ -505,27 +505,8 @@ static void row_activated_cb(GtkTreeView *treeview, GtkTreePath *path,
 	gtk_tree_model_get(model, &iter,
 			F_COL_FOLDERITEM, &item, -1);
 
-	olditem = folderview->open_item;
 	folderview_open(folderview, item);
 	folderview_update_row(folderview, item);
-
-	/* Save cache for old folder */
-	/* We don't want to lose all caches if sylpheed crashed */
-	if (olditem && olditem != item) {
-		gchar *buf;
-		buf = g_strdup_printf(_("Closing Folder %s..."),
-			olditem->path ? olditem->path:olditem->name);
-		/* will be null if we just moved the previously opened folder */
-		STATUSBAR_PUSH(folderview->mainwin, buf);
-		main_window_cursor_wait(folderview->mainwin);
-		g_free(buf);
-		summary_save_prefs_to_folderitem(folderview->summaryview, olditem);
-		folder_item_close(olditem);
-		main_window_cursor_normal(folderview->mainwin);
-		STATUSBAR_POP(folderview->mainwin);
-	}
-	/* show closed folder icon */
-	folderview_update_row(folderview, folderview->open_item_prev);
 
 	/* CLAWS: set compose button type: news folder items
 	 * always have a news folder as parent */
@@ -1285,8 +1266,29 @@ void folderview_select(FolderView *folderview, FolderItem *item)
 void folderview_unselect(FolderView *folderview)
 {
 	debug_print("folderview_unselect\n");
-	folderview->open_item_prev = folderview->open_item;
+	FolderItem *olditem = folderview->open_item;
+
+	/* Save cache for old folder */
+	/* We don't want to lose all caches if sylpheed crashed */
+	if (olditem) {
+		gchar *buf;
+		buf = g_strdup_printf(_("Closing Folder %s..."),
+			olditem->path ? olditem->path : olditem->name);
+		/* will be null if we just moved the previously opened folder */
+		STATUSBAR_PUSH(folderview->mainwin, buf);
+		main_window_cursor_wait(folderview->mainwin);
+		g_free(buf);
+		summary_save_prefs_to_folderitem(folderview->summaryview,
+						 olditem);
+		folder_item_close(olditem);
+		main_window_cursor_normal(folderview->mainwin);
+		STATUSBAR_POP(folderview->mainwin);
+	}
+
 	folderview->open_item = NULL;
+
+	/* show closed folder icon */
+	folderview_update_row(folderview, olditem);
 }
 
 static GtkTreePath *folderview_find_next_with_flag(GtkTreeView *treeview,
