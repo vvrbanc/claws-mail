@@ -618,7 +618,7 @@ static GtkWidget *treeview_create_unconnected()
 	GtkTreeStore *store = gtk_tree_store_new(N_FOLDER_COLS,
 			G_TYPE_POINTER, /* pointer to FolderItem */
 			PANGO_TYPE_FONT_DESCRIPTION, /* font */
-			GDK_TYPE_COLOR, /* text color */
+			GDK_TYPE_RGBA, /* text color */
 			GDK_TYPE_PIXBUF, /* icon */
 			G_TYPE_STRING, /* folder name */
 			G_TYPE_STRING, /* new */
@@ -653,7 +653,7 @@ static GtkWidget *treeview_create_unconnected()
 	gtk_tree_view_column_set_attributes(column, renderer,
 			"text", F_COL_FOLDER,
 			"font-desc", F_COL_FONT,
-			"foreground-gdk", F_COL_COLOR,
+			"foreground-rgba", F_COL_COLOR,
 			NULL);
 	gtk_tree_view_column_set_sizing(column, GTK_TREE_VIEW_COLUMN_AUTOSIZE);
 	gtk_tree_view_column_set_fixed_width(column, prefs_common.folder_col_size[F_COL_FOLDER]);
@@ -1633,13 +1633,13 @@ static void folderview_update_row_iter(FolderView *folderview,
 			(add_unread_mark && folder_has_new_children(item));
 	}
 
-	GdkRGBA folder_color, *color = NULL;
+	GdkRGBA *color = NULL;
 	if (use_color) {
 		color = &folderview->color_new;
 	} else if (item->op_count > 0) {
 		color = &folderview->color_op;
 	} else if (!gdk_rgba_equal(&item->prefs->color, &black)) {
-		color = &folder_color;
+		color = &item->prefs->color;
 	}
 
 	gchar n[32], u[32], t[32];

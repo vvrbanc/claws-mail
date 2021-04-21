@@ -29,5 +29,3 @@ GtkTreeView based folderview
 
 * The column headers will always steal the focus. Once they are set clickable,
   gtk_widget_set_can_focus() has no effect.
-
-* Folder colors shown wrong
