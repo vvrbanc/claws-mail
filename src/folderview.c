@@ -674,7 +674,7 @@ static GtkWidget *treeview_create_unconnected()
 	gtk_tree_view_column_set_attributes(column, renderer,
 			"text", F_COL_NEW,
 			"font-desc", F_COL_FONT,
-			"foreground-gdk", F_COL_COLOR,
+			"foreground-rgba", F_COL_COLOR,
 			NULL);
 	gtk_tree_view_column_set_sizing(column, GTK_TREE_VIEW_COLUMN_AUTOSIZE);
 	gtk_tree_view_column_set_fixed_width(column, prefs_common.folder_col_size[F_COL_NEW]);
@@ -695,7 +695,7 @@ static GtkWidget *treeview_create_unconnected()
 	gtk_tree_view_column_set_attributes(column, renderer,
 			"text", F_COL_UNREAD,
 			"font-desc", F_COL_FONT,
-			"foreground-gdk", F_COL_COLOR,
+			"foreground-rgba", F_COL_COLOR,
 			NULL);
 	gtk_tree_view_column_set_sizing(column, GTK_TREE_VIEW_COLUMN_AUTOSIZE);
 	gtk_tree_view_column_set_fixed_width(column, prefs_common.folder_col_size[F_COL_UNREAD]);
@@ -716,7 +716,7 @@ static GtkWidget *treeview_create_unconnected()
 	gtk_tree_view_column_set_attributes(column, renderer,
 			"text", F_COL_TOTAL,
 			"font-desc", F_COL_FONT,
-			"foreground-gdk", F_COL_COLOR,
+			"foreground-rgba", F_COL_COLOR,
 			NULL);
 	gtk_tree_view_column_set_sizing(column, GTK_TREE_VIEW_COLUMN_AUTOSIZE);
 	gtk_tree_view_column_set_fixed_width(column, prefs_common.folder_col_size[F_COL_TOTAL]);
