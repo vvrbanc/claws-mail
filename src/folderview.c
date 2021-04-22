@@ -853,8 +853,6 @@ FolderView *folderview_create(MainWindow *mainwin)
 
 	folderview_list = g_list_append(folderview_list, folderview);
 
-	folderview_set_column_order(folderview);
-
 	return folderview;
 }
 /*
