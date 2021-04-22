@@ -60,6 +60,8 @@ struct _FolderView
 	FolderItem *menu_item; /* Pointer to item the popup menu is open for */
 	GtkTreePath *open_path; /* Pointer to currently open item */
 
+	gboolean data_row_clicked; /* helper for saving column-widths */
+
 	GHashTable *popups;
 
 	/* DND states */

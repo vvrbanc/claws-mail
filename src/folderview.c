@@ -308,6 +308,7 @@ static gboolean button_press_cb(GtkWidget *widget, GdkEventButton *event,
 		return FALSE;
 	}
 
+	folderview->data_row_clicked = TRUE; /* don't save column-widths on button-release */
 	is_expander = gtkut_tree_is_expander_clicked(GTK_TREE_VIEW(widget),
 			path, column, event->x, event->y);
 
@@ -341,6 +342,40 @@ static gboolean button_press_cb(GtkWidget *widget, GdkEventButton *event,
 
 	return FALSE;
 }
+
+static gboolean button_release_cb(GtkWidget *widget, GdkEventButton *event,
+				  gpointer user_data)
+{
+	FolderView *folderview = (FolderView *)user_data;
+	gboolean data_row_clicked = folderview->data_row_clicked;
+	GtkTreePath *path;
+	GtkTreeViewColumn *column;
+	gint i;
+
+	/* TM: Workaround for missing "resize_column" signal
+	 * Opposed to button-press, the button-release signal is fired for
+	 * headers as well, but event->y gets the SAME values, when clicked on
+	 * the headers, as if clicked on the first data row. To distiguish
+	 * them, data_row_clicked is set in the button-press handler.
+	 */
+	folderview->data_row_clicked = FALSE;
+	/* ignore clicks on and below data rows */
+	if (data_row_clicked || !gtk_tree_view_get_path_at_pos
+			(GTK_TREE_VIEW(widget),
+			 event->x, event->y, &path, NULL, NULL, NULL))
+		return FALSE;
+
+	/* button released on header row: save column widths */
+	for (i = F_COL_FOLDER; i <= F_COL_TOTAL; i++) {
+		column = (GtkTreeViewColumn*)g_list_nth_data
+				(treeview_default_columns_ordered,
+				 i - F_COL_FOLDER);
+		prefs_common.folder_col_size[i] =
+			 gtk_tree_view_column_get_width(column);
+	}
+	return FALSE;
+}
+
 
 static void folderview_toggle_expansion(GtkTreeView *treeview)
 {
@@ -753,6 +788,8 @@ FolderView *folderview_create(MainWindow *mainwin)
 	folderview->menu_item = NULL;
 	folderview->open_path = gtk_tree_path_new_from_string("0");
 
+	folderview->data_row_clicked = FALSE;
+
 	folderview->popups = g_hash_table_new(g_str_hash, g_str_equal);
 	g_hash_table_foreach(folderview_popups, create_action_groups, folderview);
 
@@ -786,6 +823,8 @@ FolderView *folderview_create(MainWindow *mainwin)
 			 G_CALLBACK(folderview_key_pressed), folderview);
 	g_signal_connect(G_OBJECT(folderview->treeview), "button-press-event",
 			G_CALLBACK(button_press_cb), folderview);
+	g_signal_connect(G_OBJECT(folderview->treeview), "button-release-event",
+			G_CALLBACK(button_release_cb), folderview);
 	g_signal_connect(G_OBJECT(folderview->treeview), "cursor-changed",
 			G_CALLBACK(cursor_changed_cb), folderview);
 	g_signal_connect(G_OBJECT(folderview->treeview), "row-activated",
