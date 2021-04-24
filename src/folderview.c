@@ -1607,6 +1607,8 @@ static void folderview_update_row_iter(FolderView *folderview,
 	gboolean add_unread_mark, add_sub_match_mark;
 	GdkPixbuf *pixbuf_closed = NULL, *pixbuf_open = NULL;
 	GdkRGBA black = { 0, 0, 0, 1 };
+	gchar *name_org;
+	gchar *name;
 
 	cm_return_if_fail(iter != NULL);
 
@@ -1679,6 +1681,67 @@ static void folderview_update_row_iter(FolderView *folderview,
 		color = &item->prefs->color;
 	}
 
+	/* Add suffixes to folder name:
+	 * (unread#)	(if set in prefs)
+	 * "+"		(if collapsed subfolders contain search matches)
+	 * "!"		(if marked message has unread replies) */
+	name = NULL;
+	name_org = folder_item_get_name(item);
+	if (prefs_common.display_folder_unread) {
+		if (folder_has_parent_of_type(item, F_QUEUE)) {
+			/* only total_msgs matters here */
+			if (item->total_msgs > 0) {
+				/* show total number (should be equal to the unread number)
+				   and signs if any */
+				name = g_strdup_printf("%s (%d%s%s)",
+							name_org, item->total_msgs,
+							(add_unread_mark || add_sub_match_mark) ? "+" : "",
+							(item->unreadmarked_msgs > 0) ? "!" : "");
+			}
+		} else {
+			if (prefs_common.display_folder_unread == 1) {
+				if (item->unread_msgs > 0) {
+					/* show unread number and signs */
+					name = g_strdup_printf("%s (%d%s%s)",
+								name_org, item->unread_msgs,
+								(add_unread_mark || add_sub_match_mark) ? "+" : "",
+								(item->unreadmarked_msgs > 0) ? "!" : "");
+				}
+			} else {
+				if (item->total_msgs > 0) {
+					/* show unread number, total number and signs if any */
+					name = g_strdup_printf("%s (%d/%d%s%s)",
+								name_org, item->unread_msgs, item->total_msgs,
+								(add_unread_mark || add_sub_match_mark) ? "+" : "",
+								(item->unreadmarked_msgs > 0) ? "!" : "");
+				}
+			}
+		}
+		if ((name == NULL) &&
+			(add_unread_mark || add_sub_match_mark || (item->unreadmarked_msgs > 0))) {
+			/* no unread/total numbers, but at least one sign */
+			name = g_strdup_printf("%s (%s%s)",
+						name_org,
+						(add_unread_mark || add_sub_match_mark) ? "+" : "",
+						(item->unreadmarked_msgs > 0) ? "!" : "");
+		}
+	}
+	if (name == NULL) {
+		/* last fallback, folder name_org only or with +! sign */
+		if (item->unreadmarked_msgs > 0 && add_sub_match_mark) {
+			name = g_strdup_printf("%s%s",
+						name_org, " (+!)");
+		} else if (item->unreadmarked_msgs > 0) {
+			name = g_strdup_printf("%s%s",
+						name_org, " (!)");
+		} else if (add_sub_match_mark) {
+			name = g_strdup_printf("%s%s",
+						name_org, " (+)");
+		} else {
+			name = g_strdup_printf("%s", name_org);
+		}
+	}
+
 	gchar n[32], u[32], t[32];
 	g_snprintf(n, 32, "%d", item->new_msgs);
 	g_snprintf(u, 32, "%d", item->unread_msgs);
@@ -1687,7 +1750,7 @@ static void folderview_update_row_iter(FolderView *folderview,
 	gboolean has_parent = !!folder_item_parent(item);
 
 	gtk_tree_store_set(GTK_TREE_STORE(model), iter,
-			F_COL_FOLDER, item->name,
+			F_COL_FOLDER, name,
 			F_COL_NEW, has_parent ? n : "-",
 			F_COL_UNREAD, has_parent ? u : "-",
 			F_COL_TOTAL, has_parent ? t : "-",
@@ -1698,6 +1761,8 @@ static void folderview_update_row_iter(FolderView *folderview,
 				folderview->bold_font : folderview->normal_font,
 			F_COL_COLOR, color,
 			-1);
+	g_free(name);
+	g_free(name_org);
 }
 
 void folderview_update_row(FolderView *folderview,
