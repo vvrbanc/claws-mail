@@ -1288,6 +1288,11 @@ void folderview_select(FolderView *folderview, FolderItem *item)
 
 	/* Place cursor on our row */
 	if (ctx->iter != NULL) {
+		/* Expand row first (can't be selected otherwise) */
+		GtkTreePath *path = gtk_tree_model_get_path(model, ctx->iter);
+		gtk_tree_view_expand_to_path(GTK_TREE_VIEW(folderview->treeview),path);
+		gtk_tree_path_free(path);
+
 		GtkTreeSelection *selection =
 			gtk_tree_view_get_selection(GTK_TREE_VIEW(folderview->treeview));
 		gtk_tree_selection_select_iter(selection, ctx->iter);
