@@ -4986,18 +4986,18 @@ void summary_save_as(SummaryView *summaryview)
 	manage_window_focus_in(summaryview->window, NULL, NULL);
 
 	if (filename && !g_utf8_validate(filename, -1, NULL)) {
-		gchar *oldstr = filename;
-		filename = conv_codeset_strdup(filename,
+		gchar *converted_filename = conv_codeset_strdup(filename,
 					       conv_get_locale_charset_str(),
 					       CS_UTF_8);
-		if (!filename) {
+		if (!converted_filename) {
 			g_warning("summary_save_as(): failed to convert character set.");
-			filename = g_strdup(oldstr);
+		} else {
+			g_free(filename);
+			filename = converted_filename;
 		}
-		dest = filename;
-		g_free(filename);
-	} else
-		dest = filename;
+	}
+
+	dest = filename;
 	filename = NULL;
 	if (!dest) return;
 	if (prefs_common.attach_save_dir && *prefs_common.attach_save_dir)
@@ -5037,10 +5037,11 @@ void summary_save_as(SummaryView *summaryview)
 			msginfo = gtk_cmctree_node_get_row_data(ctree, GTK_CMCTREE_NODE(item->data));
 			if (!msginfo) break;
 			src = procmsg_get_message_file(msginfo);
-			if (append_file(src, dest, TRUE) < 0)
+			if (append_file(src, dest, TRUE) < 0) {
 				alertpanel_error(_("Couldn't save the file '%s'."), tmp);
+			}
+			g_free(src);
 		}
-		g_free(src);
 	}
 
 	filedir = g_path_get_dirname(dest);
