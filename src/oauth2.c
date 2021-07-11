@@ -45,8 +45,8 @@
 
 static gchar *OAUTH2info[4][17]={
   {"accounts.google.com",
-   "G/jjil7/XHfv4mw90hhhFy5hRci8NeOF3w7QtX8hb9yljE+mU0/MvGk3G4RoUWK13phSIZ7+JSSg4R2f1RV2NbaT5DODMMt5",
-   "cABm8Lx5PgnrUOOwNJSamcG8Nlj8g8go",
+   "",
+   ".",
    "urn:ietf:wg:oauth:2.0:oob",
    "/o/oauth2/auth",
    "/o/oauth2/token",
@@ -62,7 +62,7 @@ static gchar *OAUTH2info[4][17]={
    "",
    ""},
   {"login.microsoftonline.com",
-   "Srm4tajDIHKiu25KIxOlaqei+AJ8q/DPT7PNOhskKrzIjlGT",
+   "",
    "",
    "https://login.microsoftonline.com/common/oauth2/nativeclient",
    "/common/oauth2/v2.0/authorize",
@@ -79,7 +79,7 @@ static gchar *OAUTH2info[4][17]={
    "fragment",
    ""},
   {"login.microsoftonline.com",
-   "Srm4tajDIHKiu25KIxOlaqei+AJ8q/DPT7PNOhskKrzIjlGT",
+   "",
    "",
    "https://login.microsoftonline.com/common/oauth2/nativeclient",
    "/common/oauth2/v2.0/authorize",
@@ -96,8 +96,8 @@ static gchar *OAUTH2info[4][17]={
    "fragment",
    ""},
   {"api.login.yahoo.com",
-   "TTzJciHB9+id6C5eZ1lhRQJVGy8GNYh+iXh8nhiD3cofx5zi4xHLN7Y/IWASKh4Oy7cghOQCs8Q1kmKB2xRWlKP8/fFNXSBFNYpni83PHGUUKgbTYJUz+3/nLLOJASYf",
-   "T/PyRkrw/ByaZ8mkn6aISpsXhci/fieo+ibj1aRkkqhUKqPKeeH7Xg==",
+   "",
+   ".",
    "oob",
    "/oauth2/request_auth",
    "/oauth2/get_token",
@@ -235,13 +235,13 @@ int oauth2_obtain_tokens (Oauth2Service provider, OAUTH2Data *OAUTH2Data, const 
         token = oauth2_get_token_from_response(provider, authcode);
         debug_print("Auth token: %s\n", token);
         if (token == NULL) {
-                log_message(LOG_PROTOCOL, "OAuth2 missing authentication code\n");
+                log_message(LOG_PROTOCOL, _("OAuth2 missing authentication code\n"));
                 return (1);
         }
 
 	sock = sock_connect(OAUTH2info[i][OA2_BASE_URL], 443);
 	if (sock == NULL) {
-                log_message(LOG_PROTOCOL, "OAuth2 connecion error\n");
+                log_message(LOG_PROTOCOL, _("OAuth2 connection error\n"));
                 g_free(token);
                 return (1);
         }
@@ -250,7 +250,7 @@ int oauth2_obtain_tokens (Oauth2Service provider, OAUTH2Data *OAUTH2Data, const 
 	sock_set_io_timeout(10);
 	sock->gnutls_priority = "NORMAL:!VERS-SSL3.0:!VERS-TLS1.0:!VERS-TLS1.1";
         if (ssl_init_socket(sock) == FALSE) {
-                log_message(LOG_PROTOCOL, "OAuth2 SSL connecion error\n");
+                log_message(LOG_PROTOCOL, _("OAuth2 SSL connection error\n"));
                 g_free(token);
                 return (1);
         }
@@ -308,18 +308,18 @@ int oauth2_obtain_tokens (Oauth2Service provider, OAUTH2Data *OAUTH2Data, const 
 	  OAUTH2Data->expiry = expiry;
 	  OAUTH2Data->expiry_str = g_strdup_printf ("%i", expiry);
 	  ret = 0;
-	  log_message(LOG_PROTOCOL, "OAuth2 access token obtained\n");
+	  log_message(LOG_PROTOCOL, _("OAuth2 access token obtained\n"));
 	}else{
-	  log_message(LOG_PROTOCOL, "OAuth2 access token not obtained\n");
+	  log_message(LOG_PROTOCOL, _("OAuth2 access token not obtained\n"));
 	  debug_print("OAuth2 - request: %s\n Response: %s", request, response);
 	  ret = 1;
 	}
 
 	if(oauth2_filter_refresh (response, refresh_token) == 0){
 	  OAUTH2Data->refresh_token = refresh_token;
-	  log_message(LOG_PROTOCOL, "OAuth2 refresh token obtained\n");
+	  log_message(LOG_PROTOCOL, _("OAuth2 refresh token obtained\n"));
 	}else{
-	  log_message(LOG_PROTOCOL, "OAuth2 refresh token not obtained\n");
+	  log_message(LOG_PROTOCOL, _("OAuth2 refresh token not obtained\n"));
 	}
 
 	sock_close(sock, TRUE);
@@ -356,7 +356,7 @@ gint oauth2_use_refresh_token (Oauth2Service provider, OAUTH2Data *OAUTH2Data)
 
 	sock = sock_connect(OAUTH2info[i][OA2_BASE_URL], 443);
 	if (sock == NULL) {
-                log_message(LOG_PROTOCOL, "OAuth2 connecion error\n");
+                log_message(LOG_PROTOCOL, _("OAuth2 connection error\n"));
                 return (1);
         }
         sock->ssl_cert_auto_accept = TRUE;
@@ -364,7 +364,7 @@ gint oauth2_use_refresh_token (Oauth2Service provider, OAUTH2Data *OAUTH2Data)
 	sock_set_io_timeout(10);
 	sock->gnutls_priority = "NORMAL:!VERS-SSL3.0:!VERS-TLS1.0:!VERS-TLS1.1";
         if (ssl_init_socket(sock) == FALSE) {
-                log_message(LOG_PROTOCOL, "OAuth2 SSL connecion error\n");
+                log_message(LOG_PROTOCOL, _("OAuth2 SSL connection error\n"));
                 return (1);
         }
 
@@ -415,9 +415,9 @@ gint oauth2_use_refresh_token (Oauth2Service provider, OAUTH2Data *OAUTH2Data)
 	  OAUTH2Data->expiry = expiry;
 	  OAUTH2Data->expiry_str = g_strdup_printf ("%i", expiry);
 	  ret = 0;
-	  log_message(LOG_PROTOCOL, "OAuth2 access token obtained\n");
+	  log_message(LOG_PROTOCOL, _("OAuth2 access token obtained\n"));
 	}else{
-	  log_message(LOG_PROTOCOL, "OAuth2 access token not obtained\n");
+	  log_message(LOG_PROTOCOL, _("OAuth2 access token not obtained\n"));
 	  debug_print("OAuth2 - request: %s\n Response: %s", request, response);
 	  ret = 1;
 	}
@@ -449,7 +449,7 @@ static gint oauth2_contact_server (SockInfo *sock, gchar *request, gchar *respon
 	startplus += 10;
 	
 	if (sock_write (sock, request, len+1) < 0) {
-	  log_message(LOG_PROTOCOL, "OAuth2 socket write error\n");
+	  log_message(LOG_PROTOCOL, _("OAuth2 socket write error\n"));
 	  return (1);
 	}
 	
@@ -469,7 +469,7 @@ static gint oauth2_contact_server (SockInfo *sock, gchar *request, gchar *respon
 	} while ((toread > 0) && (time(NULL) < startplus)); 
 	
 	if(time(NULL) >= startplus)
-	  log_message(LOG_PROTOCOL, "OAuth2 socket timeout error \n");
+	  log_message(LOG_PROTOCOL, _("OAuth2 socket timeout error \n"));
 	
 	g_free(token);
 	
@@ -518,26 +518,24 @@ gint oauth2_check_passwds (PrefsAccount *ac_prefs)
 
 	oauth2_init (OAUTH2Data);
 
-	if (ac_prefs->oauth2_use_custom_id) {
-	  OAUTH2Data->custom_client_id = ac_prefs->oauth2_cust_client_id;
-	  OAUTH2Data->custom_client_secret = ac_prefs->oauth2_cust_client_secret;
-	}
+	OAUTH2Data->custom_client_id = ac_prefs->oauth2_client_id;
+	OAUTH2Data->custom_client_secret = ac_prefs->oauth2_client_secret;
 	
 	if(passwd_store_has_password(PWS_ACCOUNT, uid, PWS_ACCOUNT_OAUTH2_EXPIRY)) {
 	  expiry = atoi(passwd_store_get_account(ac_prefs->account_id, PWS_ACCOUNT_OAUTH2_EXPIRY));
 	  if (expiry >  (g_get_real_time () / G_USEC_PER_SEC)){
 	    g_free(OAUTH2Data);
-	    log_message(LOG_PROTOCOL, "OAuth2 access token still fresh\n");
+	    log_message(LOG_PROTOCOL, _("OAuth2 access token still fresh\n"));
 	    return (0);
 	  }
 	}
 	
 	if(passwd_store_has_password(PWS_ACCOUNT, uid, PWS_ACCOUNT_OAUTH2_REFRESH)) {
-	  log_message(LOG_PROTOCOL, "OAuth2 obtaining access token using refresh token\n");
+	  log_message(LOG_PROTOCOL, _("OAuth2 obtaining access token using refresh token\n"));
 	  OAUTH2Data->refresh_token = passwd_store_get_account(ac_prefs->account_id, PWS_ACCOUNT_OAUTH2_REFRESH);
 	  ret = oauth2_use_refresh_token (ac_prefs->oauth2_provider, OAUTH2Data);
 	}else if (passwd_store_has_password(PWS_ACCOUNT, uid, PWS_ACCOUNT_OAUTH2_AUTH)) {
-	  log_message(LOG_PROTOCOL, "OAuth2 trying for fresh access token with auth code\n");
+	  log_message(LOG_PROTOCOL, _("OAuth2 trying for fresh access token with auth code\n"));
 	  ret = oauth2_obtain_tokens (ac_prefs->oauth2_provider, OAUTH2Data, 
 				      passwd_store_get_account(ac_prefs->account_id, PWS_ACCOUNT_OAUTH2_AUTH));
 	}else{
@@ -545,13 +543,13 @@ gint oauth2_check_passwds (PrefsAccount *ac_prefs)
 	}
 	
 	if (ret){
-	  log_message(LOG_PROTOCOL, "OAuth2 access token not obtained\n");
+	  log_message(LOG_PROTOCOL, _("OAuth2 access token not obtained\n"));
 	}else{
 	  passwd_store_set_account(ac_prefs->account_id, PWS_ACCOUNT_RECV, OAUTH2Data->access_token, FALSE);
       if (ac_prefs->use_smtp_auth && ac_prefs->smtp_auth_type == SMTPAUTH_OAUTH2)
 	        passwd_store_set_account(ac_prefs->account_id, PWS_ACCOUNT_SEND, OAUTH2Data->access_token, FALSE);
 	  passwd_store_set_account(ac_prefs->account_id, PWS_ACCOUNT_OAUTH2_EXPIRY, OAUTH2Data->expiry_str, FALSE);
-	  log_message(LOG_PROTOCOL, "OAuth2 access token updated\n");
+	  log_message(LOG_PROTOCOL, _("OAuth2 access token updated\n"));
 	}
 
 	g_free(OAUTH2Data);
@@ -582,9 +580,9 @@ void oauth2_encode(const gchar *in)
 	 result = g_base64_encode(tmp, len); 
 	 tmp2 = oauth2_decode(result);
 	 
-	 log_message(LOG_PROTOCOL, "OAuth2 original: %s\n", in);
-	 log_message(LOG_PROTOCOL, "OAuth2 encoded: %s\n", result);
-	 log_message(LOG_PROTOCOL, "OAuth2 decoded: %s\n\n", tmp2);
+	 log_message(LOG_PROTOCOL, _("OAuth2 original: %s\n"), in);
+	 log_message(LOG_PROTOCOL, _("OAuth2 encoded: %s\n"), result);
+	 log_message(LOG_PROTOCOL, _("OAuth2 decoded: %s\n\n"), tmp2);
 	 
 	 g_free(tmp);  
 	 g_free(tmp2);
