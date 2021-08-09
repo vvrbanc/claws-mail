@@ -452,6 +452,14 @@ gint subject_compare_for_sort(const gchar *s1, const gchar *s2)
 	trim_subject_for_sort(str1);
 	trim_subject_for_sort(str2);
 
+	if (!g_utf8_validate(str1, -1, NULL)) {
+		g_warning("message subject \"%s\" failed UTF-8 validation", str1);
+		return 0;
+	} else if (!g_utf8_validate(str2, -1, NULL)) {
+		g_warning("message subject \"%s\" failed UTF-8 validation", str2);
+		return 0;
+	}
+
 	return g_utf8_collate(str1, str2);
 }
 
@@ -2945,6 +2953,24 @@ gboolean debug_get_mode(void)
 	return debug_mode;
 }
 
+#ifdef HAVE_VA_OPT
+void debug_print_real(const char *file, int line, const gchar *format, ...)
+{
+	va_list args;
+	gchar buf[BUFFSIZE];
+	gint prefix_len;
+
+	if (!debug_mode) return;
+
+	prefix_len = g_snprintf(buf, sizeof(buf), "%s:%d:", debug_srcname(file), line);
+
+	va_start(args, format);
+	g_vsnprintf(buf + prefix_len, sizeof(buf) - prefix_len, format, args);
+	va_end(args);
+
+	g_print("%s", buf);
+}
+#else
 void debug_print_real(const gchar *format, ...)
 {
 	va_list args;
@@ -2958,6 +2984,7 @@ void debug_print_real(const gchar *format, ...)
 
 	g_print("%s", buf);
 }
+#endif
 
 
 const char * debug_srcname(const char *file)

@@ -60,6 +60,9 @@ lh_widget::lh_widget()
 {
 	GtkWidget *item;
 
+	m_force_render = false;
+	m_blank = false;
+
 	/* scrolled window */
 	m_scrolled_window = gtk_scrolled_window_new(NULL, NULL);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(m_scrolled_window),
@@ -193,9 +196,15 @@ void lh_widget::open_html(const gchar *contents)
 		adj = gtk_scrolled_window_get_vadjustment(
 				GTK_SCROLLED_WINDOW(m_scrolled_window));
 		gtk_adjustment_set_value(adj, 0.0);
-		redraw(false);
+		m_blank = false;
 	}
 	lh_widget_statusbar_pop();
+}
+
+void lh_widget::rerender()
+{
+	m_force_render = true;
+	gtk_widget_queue_draw(m_drawing_area);
 }
 
 void lh_widget::draw(cairo_t *cr)
@@ -220,7 +229,7 @@ void lh_widget::draw(cairo_t *cr)
 	m_html->draw((litehtml::uint_ptr)cr, 0, 0, &pos);
 }
 
-void lh_widget::redraw(gboolean force_render)
+void lh_widget::redraw()
 {
 	GtkAllocation rect;
 	gint width;
@@ -229,18 +238,16 @@ void lh_widget::redraw(gboolean force_render)
 	cairo_region_t *creg;
 	GdkDrawingContext *gdkctx;
 
-	paint_white();
-
 	if (m_html == NULL)
 		return;
 
 	/* Get width of the viewport. */
-	gdkwin = gtk_viewport_get_view_window(GTK_VIEWPORT(m_viewport));
-	width = gdk_window_get_width(gdkwin);
-	m_height = gdk_window_get_height(gdkwin);
+	gtk_widget_get_allocation(GTK_WIDGET(m_viewport), &rect);
+	width = rect.width;
+	m_height = rect.height;
 
 	/* If the available width has changed, rerender the HTML content. */
-	if (m_rendered_width != width || force_render) {
+	if (m_rendered_width != width || std::atomic_exchange(&m_force_render, false)) {
 		debug_print("lh_widget::redraw: width changed: %d != %d\n",
 				m_rendered_width, width);
 
@@ -268,12 +275,18 @@ void lh_widget::redraw(gboolean force_render)
 			g_warning("lh_widget::redraw: No GdkWindow to draw on!");
 			return;
 		}
-		creg = gdk_window_get_clip_region(gdkwin);
+		creg = cairo_region_create_rectangle(&rect);
 		gdkctx = gdk_window_begin_draw_frame(gdkwin, creg);
 		cr = gdk_drawing_context_get_cairo_context(gdkctx);
 	}
 
-	draw(cr);
+	if(!std::atomic_exchange(&m_blank, false)) {
+		draw(cr);
+	} else {
+		cairo_rectangle(cr, rect.x, rect.y, rect.width, rect.height);
+		cairo_set_source_rgb(cr, 255, 255, 255);
+		cairo_fill(cr);
+	}
 
 	/* Only destroy the used cairo context if we created it earlier. */
 	if (m_cairo_context == NULL) {
@@ -282,40 +295,10 @@ void lh_widget::redraw(gboolean force_render)
 	}
 }
 
-void lh_widget::paint_white()
-{
-	GdkWindow *gdkwin = gtk_widget_get_window(m_drawing_area);
-	cairo_region_t *creg;
-	cairo_t *cr;
-	GdkDrawingContext *gdkctx;
-
-	if (gdkwin == NULL) {
-		g_warning("lh_widget::clear: No GdkWindow to draw on!");
-		return;
-	}
-
-	creg = gdk_window_get_clip_region(gdkwin);
-	gdkctx = gdk_window_begin_draw_frame(gdkwin, creg);
-	cr = gdk_drawing_context_get_cairo_context(gdkctx);
-
-	/* Paint white background. */
-	gint width, height;
-	width = gdk_window_get_width(gdkwin);
-	height = gdk_window_get_height(gdkwin);
-	cairo_rectangle(cr, 0, 0,
-			gdk_window_get_width(gdkwin),
-			gdk_window_get_height(gdkwin));
-	cairo_set_source_rgb(cr, 255, 255, 255);
-	cairo_fill(cr);
-
-	gdk_window_end_draw_frame(gdkwin, gdkctx);
-	cairo_region_destroy(creg);
-}
-
 void lh_widget::clear()
 {
 	m_html = nullptr;
-	paint_white();
+	m_blank = true;
 	m_rendered_width = 0;
 	m_base_url.clear();
 	m_clicked_url.clear();
@@ -324,7 +307,6 @@ void lh_widget::clear()
 void lh_widget::set_cursor(const litehtml::tchar_t* cursor)
 {
 	litehtml::element::ptr over_el = m_html->over_element();
-	gint x, y;
 
 	if (m_showing_url &&
 			(over_el == NULL || over_el != m_over_element)) {
@@ -508,7 +490,7 @@ static gboolean draw_cb(GtkWidget *widget, cairo_t *cr,
 {
 	lh_widget *w = (lh_widget *)user_data;
 	w->set_cairo_context(cr);
-	w->redraw(false);
+	w->redraw();
 	w->set_cairo_context(NULL);
 	return FALSE;
 }
@@ -520,13 +502,13 @@ static gboolean button_press_event(GtkWidget *widget, GdkEventButton *event,
 	lh_widget *w = (lh_widget *)user_data;
 
 	if (w->m_html == NULL)
-		return false;
+		return FALSE;
 
 	//debug_print("lh_widget on_button_press_event\n");
 
 	if (event->type == GDK_2BUTTON_PRESS ||
 			event->type == GDK_3BUTTON_PRESS)
-		return true;
+		return TRUE;
 
 	/* Right-click */
 	if (event->button == 3) {
@@ -535,7 +517,7 @@ static gboolean button_press_event(GtkWidget *widget, GdkEventButton *event,
 		if (url != NULL)
 			w->popup_context_menu(url, event);
 
-		return true;
+		return TRUE;
 	}
 
 	if(w->m_html->on_lbutton_down((int) event->x, (int) event->y,
@@ -546,7 +528,7 @@ static gboolean button_press_event(GtkWidget *widget, GdkEventButton *event,
 		}
 	}
 	
-	return true;
+	return TRUE;
 }
 
 static gboolean motion_notify_event(GtkWidget *widget, GdkEventButton *event,
@@ -569,7 +551,7 @@ static gboolean motion_notify_event(GtkWidget *widget, GdkEventButton *event,
         }
 	}
 	
-	return true;
+	return TRUE;
 }
 
 static gboolean button_release_event(GtkWidget *widget, GdkEventButton *event,
@@ -577,20 +559,19 @@ static gboolean button_release_event(GtkWidget *widget, GdkEventButton *event,
 {
     litehtml::position::vector redraw_boxes;
     lh_widget *w = (lh_widget *)user_data;
-    GError* error = NULL;
 
 	if (w->m_html == NULL)
-		return false;
+		return FALSE;
 
 	//debug_print("lh_widget on_button_release_event\n");
 
 	if (event->type == GDK_2BUTTON_PRESS ||
 			event->type == GDK_3BUTTON_PRESS)
-		return true;
+		return TRUE;
 
 	/* Right-click */
 	if (event->button == 3)
-		return true;
+		return TRUE;
 
 	w->m_clicked_url.clear();
 
@@ -609,7 +590,7 @@ static gboolean button_release_event(GtkWidget *widget, GdkEventButton *event,
             open_uri(w->m_clicked_url.c_str(), prefs_common_get_uri_cmd());
     }
 
-	return true;
+	return TRUE;
 }
 
 static void open_link_cb(GtkMenuItem *item, gpointer user_data)

@@ -22,7 +22,10 @@
 #include <string.h>
 #include "http.h"
 
+extern "C" {
+#include "ssl.h"
 #include "utils.h"
+}
 
 struct Data {
   GInputStream *memory;
@@ -30,15 +33,20 @@ struct Data {
 };
 
 static size_t write_data(char* ptr, size_t size, size_t nmemb, void* data_ptr) {
-    struct Data* data = (struct Data *) data_ptr;
-    size_t realsize = size * nmemb;
+	struct Data* data = (struct Data *) data_ptr;
+	size_t realsize = size * nmemb;
 
-		g_memory_input_stream_add_data((GMemoryInputStream *)data->memory,
-				g_memdup(ptr, realsize), realsize,
-				g_free);
-		data->size += realsize;
+	g_memory_input_stream_add_data((GMemoryInputStream *)data->memory,
+#if !GLIB_CHECK_VERSION (2, 68, 0)
+		g_memdup(ptr, realsize),
+#else
+		g_memdup2(ptr, realsize),
+#endif
+		realsize,
+		g_free);
+	data->size += realsize;
     
-    return realsize;
+	return realsize;
 }
 
 http::http()
@@ -51,6 +59,9 @@ http::http()
     curl_easy_setopt(curl, CURLOPT_TCP_KEEPIDLE, 120L);
     curl_easy_setopt(curl, CURLOPT_TCP_KEEPINTVL, 60L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
+#ifdef G_OS_WIN32
+    curl_easy_setopt(curl, CURLOPT_CAINFO, claws_ssl_get_cert_file());
+#endif
     stream = NULL;
 }
 

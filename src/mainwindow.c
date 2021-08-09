@@ -1,6 +1,6 @@
 /*
    Claws Mail -- a GTK+ based, lightweight, and fast e-mail client
-   Copyright (C) 1999-2020 the Claws Mail team and Hiroyuki Yamamoto
+   Copyright (C) 1999-2021 the Claws Mail team and Hiroyuki Yamamoto
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -776,7 +776,7 @@ static GtkActionEntry mainwin_entries[] =
 	{"Tools/Expunge",                            NULL, N_("Exp_unge"), "<control>E", NULL, G_CALLBACK(expunge_summary_cb) }, 
 #ifdef USE_GNUTLS
 	/* {"Tools/---",                             NULL, "---", NULL, NULL, NULL }, */
-	{"Tools/SSLCertificates",                    NULL, N_("SSL/TLS cer_tificates"), NULL, NULL, G_CALLBACK(ssl_manager_open_cb) }, 
+	{"Tools/TLSCertificates",                    NULL, N_("TLS cer_tificates"), NULL, NULL, G_CALLBACK(ssl_manager_open_cb) }, 
 #endif
 	/* {"Tools/---",                             NULL, "---", NULL, NULL, NULL }, */
 	{"Tools/FilteringLog",                       NULL, N_("Filtering Lo_g"), NULL, NULL, G_CALLBACK(filtering_debug_window_show_cb) }, 
@@ -1835,7 +1835,7 @@ MainWindow *main_window_create()
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menu/Tools", "Expunge", "Tools/Expunge", GTK_UI_MANAGER_MENUITEM)
 #ifdef USE_GNUTLS
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menu/Tools", "Separator6", "Tools/---", GTK_UI_MANAGER_SEPARATOR)
-	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menu/Tools", "SSLCertificates", "Tools/SSLCertificates", GTK_UI_MANAGER_MENUITEM)
+	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menu/Tools", "TLSCertificates", "Tools/TLSCertificates", GTK_UI_MANAGER_MENUITEM)
 #endif
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menu/Tools", "Separator7", "Tools/---", GTK_UI_MANAGER_SEPARATOR)
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menu/Tools", "FilteringLog", "Tools/FilteringLog", GTK_UI_MANAGER_MENUITEM)
@@ -1918,7 +1918,7 @@ MainWindow *main_window_create()
 	hbox_stat = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
 	gtk_box_pack_end(GTK_BOX(vbox_body), hbox_stat, FALSE, FALSE, 0);
 
-	warning_icon = gtkut_stock_button("dialog-warning");
+	warning_icon = gtkut_stock_button("dialog-warning", NULL);
 	warning_btn = gtk_event_box_new();
 	gtk_event_box_set_visible_window(GTK_EVENT_BOX(warning_btn), FALSE);
 	

@@ -2320,7 +2320,8 @@ static void oauth2_create_widget_func(PrefsPage * _page,
 	gtk_widget_show (oauth2_authcode_entry);
 	gtk_widget_set_margin_bottom(oauth2_authcode_entry, 8);
 	//gtk_widget_set_size_request (oauth2_authcode_entry, DEFAULT_ENTRY_WIDTH, -1);
-	gtk_widget_set_tooltip_text(oauth2_authcode_entry, _("Paste complete URL from browser or the provided auth token"));
+	gtk_widget_set_tooltip_text(oauth2_authcode_entry,
+		_("Paste complete URL from browser or the provided authorization token"));
 	gtk_box_pack_start (GTK_BOX (hbox), oauth2_authcode_entry, TRUE, TRUE, 0);
 
 	hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
@@ -2915,10 +2916,10 @@ static void ssl_create_widget_func(PrefsPage * _page,
 
 	CREATE_RADIO_BUTTONS(vbox2,
 			     pop_nossl_radiobtn,
-			     _("Don't use SSL/TLS"),
+			     _("Don't use TLS"),
 			     SSL_NONE,
 			     pop_ssltunnel_radiobtn,
-			     _("Use SSL/TLS"),
+			     _("Use TLS"),
 			     SSL_TUNNEL,
 			     pop_starttls_radiobtn,
 			     _("Use STARTTLS command to start encrypted session"),
@@ -2930,10 +2931,10 @@ static void ssl_create_widget_func(PrefsPage * _page,
 
 	CREATE_RADIO_BUTTONS(vbox3,
 			     imap_nossl_radiobtn,
-			     _("Don't use SSL/TLS"),
+			     _("Don't use TLS"),
 			     SSL_NONE,
 			     imap_ssltunnel_radiobtn,
-			     _("Use SSL/TLS"),
+			     _("Use TLS"),
 			     SSL_TUNNEL,
 			     imap_starttls_radiobtn,
 			     _("Use STARTTLS command to start encrypted session"),
@@ -2944,7 +2945,7 @@ static void ssl_create_widget_func(PrefsPage * _page,
 	vbox4 = gtkut_get_options_frame(vbox1, &nntp_frame, _("NNTP"));
 
 	nntp_nossl_radiobtn =
-		gtk_radio_button_new_with_label (NULL, _("Don't use SSL/TLS"));
+		gtk_radio_button_new_with_label (NULL, _("Don't use TLS"));
 	gtk_widget_show (nntp_nossl_radiobtn);
 	gtk_box_pack_start (GTK_BOX (vbox4), nntp_nossl_radiobtn,
 			    FALSE, FALSE, 0);
@@ -2953,7 +2954,7 @@ static void ssl_create_widget_func(PrefsPage * _page,
 			   GINT_TO_POINTER (SSL_NONE));
 
 	CREATE_RADIO_BUTTON(vbox4, nntp_ssltunnel_radiobtn, nntp_nossl_radiobtn,
-			    _("Use SSL/TLS"), SSL_TUNNEL);
+			    _("Use TLS"), SSL_TUNNEL);
 	g_signal_connect(G_OBJECT(nntp_ssltunnel_radiobtn), "toggled",
 			 G_CALLBACK(nntp_ssltunnel_toggled), NULL);
 
@@ -2961,10 +2962,10 @@ static void ssl_create_widget_func(PrefsPage * _page,
 
 	CREATE_RADIO_BUTTONS(vbox5,
 			     smtp_nossl_radiobtn,
-			     _("Don't use SSL/TLS (but, if necessary, use STARTTLS)"),
+			     _("Don't use TLS (but, if necessary, use STARTTLS)"),
 			     SSL_NONE,
 			     smtp_ssltunnel_radiobtn,
-			     _("Use SSL/TLS"),
+			     _("Use TLS"),
 			     SSL_TUNNEL,
 			     smtp_starttls_radiobtn,
 			     _("Use STARTTLS command to start encrypted session"),
@@ -3048,10 +3049,10 @@ static void ssl_create_widget_func(PrefsPage * _page,
 	gtk_box_pack_start (GTK_BOX (vbox1), vbox7, FALSE, FALSE, 0);
 
 	PACK_CHECK_BUTTON(vbox7, ssl_certs_auto_accept_checkbtn,
-			  _("Automatically accept valid SSL/TLS certificates"));
+			  _("Automatically accept valid TLS certificates"));
 
 	PACK_CHECK_BUTTON(vbox7, use_nonblocking_ssl_checkbtn,
-			  _("Use non-blocking SSL/TLS"));
+			  _("Use non-blocking TLS"));
 
 	hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
 	gtk_widget_show (hbox);
@@ -3063,7 +3064,7 @@ static void ssl_create_widget_func(PrefsPage * _page,
 	gtk_widget_set_size_request (hbox_spc, 16, -1);
 
 	label = gtk_label_new
-		(_("Turn this off if you have SSL/TLS connection problems"));
+		(_("Turn this off if you have TLS connection problems"));
 	gtk_widget_show (label);
 	gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, FALSE, 0);
 	gtkut_widget_set_small_font_size (label);
@@ -4160,7 +4161,7 @@ static void register_ssl_page(void)
 	static gchar *path[3];
 
 	path[0] = _("Account");
-	path[1] = _("SSL/TLS");
+	path[1] = _("TLS");
 	path[2] = NULL;
         
 	ssl_page.page.path = path;
@@ -5894,7 +5895,8 @@ gchar *prefs_account_generate_msgid(PrefsAccount *account)
 	while (strchr(addr, '@') != NULL && strchr(addr, '@') != strrchr(addr, '@'))
 		*(strchr(addr, '@')) = '_';
 
-	now = g_date_time_new_now_local();
+	now = (prefs_common.hide_timezone)? g_date_time_new_now_utc() :
+					    g_date_time_new_now_local();
 	tmbuf = g_date_time_format(now, "%Y%m%d%H%M%S");
 	buf = g_strdup_printf("%s.%08x%s",
 			tmbuf, (guint)rand(), addr);

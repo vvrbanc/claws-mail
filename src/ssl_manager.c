@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK+ based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2019 Colin Leroy and the Claws Mail team
+ * Copyright (C) 1999-2021 the Claws Mail team and Colin Leroy
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -192,7 +192,7 @@ void ssl_manager_create(void)
 
 	window = gtkut_window_new(GTK_WINDOW_TOPLEVEL, "ssl_manager");
 	gtk_window_set_title (GTK_WINDOW(window),
-			      _("Saved SSL/TLS certificates"));
+			      _("Saved TLS certificates"));
 
 	gtk_container_set_border_width (GTK_CONTAINER (window), 8);
 	gtk_window_set_position (GTK_WINDOW (window), GTK_WIN_POS_CENTER);
@@ -208,12 +208,12 @@ void ssl_manager_create(void)
 
 	hbox1 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
 	vbox1 = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-	delete_btn = gtkut_stock_button("edit-delete");
+	delete_btn = gtkut_stock_button("edit-delete", _("D_elete"));
 
 	g_signal_connect(G_OBJECT(delete_btn), "clicked",
 			 G_CALLBACK(ssl_manager_delete_cb), NULL);
 
-	view_btn = gtkut_stock_button("document-properties");
+	view_btn = gtkut_stock_button("dialog-information", _("_Information"));
 	g_signal_connect(G_OBJECT(view_btn), "clicked",
 			 G_CALLBACK(ssl_manager_view_cb), NULL);
 

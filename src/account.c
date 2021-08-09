@@ -1,6 +1,6 @@
 /*
- * Sylpheed -- a GTK+ based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2020 the Claws Mail team and Hiroyuki Yamamoto
+ * Claws Mail -- a GTK+ based, lightweight, and fast e-mail client
+ * Copyright (C) 1999-2021 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -778,37 +778,37 @@ static void account_edit_create(void)
 	gtk_widget_show (vbox2);
 	gtk_box_pack_start (GTK_BOX (hbox), vbox2, FALSE, FALSE, 0);
 
-	add_btn = gtk_button_new_with_mnemonic("_New");
+	add_btn = gtk_button_new_with_mnemonic(_("_New"));
 	gtk_widget_show (add_btn);
 	gtk_box_pack_start (GTK_BOX (vbox2), add_btn, FALSE, FALSE, 4);
 	g_signal_connect (G_OBJECT(add_btn), "clicked",
 			  G_CALLBACK (account_add), NULL);
 
-	edit_btn = gtk_button_new_with_mnemonic("_Edit");
+	edit_btn = gtk_button_new_with_mnemonic(_("_Edit"));
 	gtk_widget_show (edit_btn);
 	gtk_box_pack_start (GTK_BOX (vbox2), edit_btn, FALSE, FALSE, 4);
 	g_signal_connect (G_OBJECT(edit_btn), "clicked",
 			  G_CALLBACK (account_edit_prefs), NULL);
 
-	del_btn = gtkut_stock_button("edit-delete");
+	del_btn = gtkut_stock_button("edit-delete", _("D_elete"));
 	gtk_widget_show (del_btn);
 	gtk_box_pack_start (GTK_BOX (vbox2), del_btn, FALSE, FALSE, 4);
 	g_signal_connect (G_OBJECT(del_btn), "clicked",
 			  G_CALLBACK (account_delete), NULL);
 
-	clone_btn = gtkut_stock_button("edit-copy");
+	clone_btn = gtkut_stock_button("edit-copy", _("_Copy"));
 	gtk_widget_show (clone_btn);
 	gtk_box_pack_start (GTK_BOX (vbox2), clone_btn, FALSE, FALSE, 4);
 	g_signal_connect(G_OBJECT(clone_btn), "clicked",
 			 G_CALLBACK(account_clone), NULL);
 	
-	down_btn = gtkut_stock_button("go-down");
+	down_btn = gtkut_stock_button("go-down", _("_Down"));
 	gtk_widget_show (down_btn);
 	gtk_box_pack_end (GTK_BOX (vbox2), down_btn, FALSE, FALSE, 4);
 	g_signal_connect (G_OBJECT(down_btn), "clicked",
 			  G_CALLBACK (account_down), NULL);
 
-	up_btn = gtkut_stock_button("go-up");
+	up_btn = gtkut_stock_button("go-up", _("_Up"));
 	gtk_widget_show (up_btn);
 	gtk_box_pack_end (GTK_BOX (vbox2), up_btn, FALSE, FALSE, 4);
 	g_signal_connect (G_OBJECT(up_btn), "clicked",
@@ -1506,17 +1506,17 @@ static void account_list_store_insert_account_item(GtkListStore *list_store,
 #ifdef USE_GNUTLS
 	protocol = ac_prefs->protocol == A_POP3 ?
 		  (ac_prefs->ssl_pop == SSL_TUNNEL ?
-		   "POP (SSL/TLS)" :
+		   "POP (TLS)" :
 		   ac_prefs->ssl_pop == SSL_STARTTLS ?
 		   "POP (STARTTLS)" : "POP") :
 		   ac_prefs->protocol == A_IMAP4 ?
 		  (ac_prefs->ssl_imap == SSL_TUNNEL ?
-		   "IMAP (SSL/TLS)" :
+		   "IMAP (TLS)" :
 		   ac_prefs->ssl_imap == SSL_STARTTLS ?
 		   "IMAP (STARTTLS)" : "IMAP") :
 		   ac_prefs->protocol == A_NNTP ?
 		  (ac_prefs->ssl_nntp == SSL_TUNNEL ?
-		   "NNTP (SSL/TLS)" : "NNTP") :
+		   "NNTP (TLS)" : "NNTP") :
 		   ac_prefs->protocol == A_LOCAL ? "Local" :
 		   ac_prefs->protocol == A_NONE ?  "SMTP" : "-";
 #else

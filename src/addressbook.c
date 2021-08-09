@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK+ based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2020 the Claws Mail team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2021 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1162,7 +1162,7 @@ static void addressbook_create(void)
 	gtk_box_pack_start(GTK_BOX(hbbox), reg_btn, TRUE, TRUE, 0);
 
 
-	lup_btn = gtkut_stock_button("edit-find");
+	lup_btn = gtkut_stock_button("edit-find", _("_Find"));
 	gtk_widget_set_can_default(lup_btn, TRUE);
 	gtk_box_pack_start(GTK_BOX(hbox), lup_btn, TRUE, TRUE, 0);
 
@@ -1433,7 +1433,7 @@ static void addressbook_del_clicked(GtkButton *button, gpointer data)
 	iface = ds->interface;
 	if( iface->readOnly ) {
 		alertpanel( _("Delete address(es)"),
-			_("This address data is readonly and cannot be deleted."),
+			_("This address data is read-only and cannot be deleted."),
 			_("_Close"), NULL, NULL, ALERTFOCUS_FIRST);
 		return;
 	}
@@ -2205,7 +2205,7 @@ static void addressbook_clip_paste_cb( GtkAction *action, gpointer data ) {
 	ds = addressbook_find_datasource( GTK_CMCTREE_NODE(addrbook.treeSelected) );
 	if( ds == NULL ) return;
 	if( addrindex_ds_get_readonly( ds ) ) {
-		alertpanel_error( _("Cannot paste. Target address book is readonly.") );
+		alertpanel_error( _("Cannot paste. Target address book is read-only.") );
 		return;
 	}
 
