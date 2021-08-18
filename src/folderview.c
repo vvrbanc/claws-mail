@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK+ based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2020 the Claws Mail team
+ * Copyright (C) 1999-2021 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -666,6 +666,8 @@ static GtkWidget *treeview_create_unconnected()
 	GtkWidget *treeview = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
 	g_object_unref(store);
 
+	gtk_widget_set_name(GTK_WIDGET(treeview), "folderview_treeview");
+
 	gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(treeview), TRUE);
 	gtk_tree_view_set_rules_hint(GTK_TREE_VIEW(treeview),
 			prefs_common.use_stripes_in_summaries);
@@ -794,6 +796,7 @@ FolderView *folderview_create(MainWindow *mainwin)
 	g_hash_table_foreach(folderview_popups, create_action_groups, folderview);
 
 	scrolledwin = gtk_scrolled_window_new(NULL, NULL);
+	gtk_widget_set_name(GTK_WIDGET(scrolledwin), "folderview");
 	gtk_scrolled_window_set_policy
 		(GTK_SCROLLED_WINDOW(scrolledwin),
 		 GTK_POLICY_AUTOMATIC,

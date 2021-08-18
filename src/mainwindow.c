@@ -1916,6 +1916,7 @@ MainWindow *main_window_create()
 
 #ifndef GENERIC_UMPC
 	hbox_stat = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
+	gtk_widget_set_name(GTK_WIDGET(hbox_stat), "hbox_stat");
 	gtk_box_pack_end(GTK_BOX(vbox_body), hbox_stat, FALSE, FALSE, 0);
 
 	warning_icon = gtkut_stock_button("dialog-warning", NULL);
@@ -2205,6 +2206,9 @@ void main_window_update_actions_menu(MainWindow *mainwin)
 
 void main_window_cursor_wait(MainWindow *mainwin)
 {
+	GdkDisplay *display;
+
+	display = gdk_display_get_default();
 
 	if (mainwin->cursor_count == 0) {
 		gdk_window_set_cursor(gtk_widget_get_window(mainwin->window), watch_cursor);
@@ -2213,11 +2217,15 @@ void main_window_cursor_wait(MainWindow *mainwin)
 	
 	mainwin->cursor_count++;
 
-	gdk_flush();
+	gdk_display_flush(display);
 }
 
 void main_window_cursor_normal(MainWindow *mainwin)
 {
+	GdkDisplay *display;
+
+	display = gdk_display_get_default();
+
 	if (mainwin->cursor_count)
 		mainwin->cursor_count--;
 
@@ -2225,7 +2233,7 @@ void main_window_cursor_normal(MainWindow *mainwin)
 		gdk_window_set_cursor(gtk_widget_get_window(mainwin->window), NULL);
 		textview_cursor_normal(mainwin->messageview->mimeview->textview);
 	}
-	gdk_flush();
+	gdk_display_flush(display);
 }
 
 /* lock / unlock the user-interface */

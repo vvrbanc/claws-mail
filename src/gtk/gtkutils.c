@@ -729,14 +729,18 @@ void gtkut_window_popup(GtkWidget *window)
 {
 	GdkWindow *gdkwin;
 	gint x, y, sx, sy, new_x, new_y;
+	GdkRectangle workarea = {0};
 
 	gdkwin = gtk_widget_get_window(window);
 
 	cm_return_if_fail(window != NULL);
 	cm_return_if_fail(gdkwin != NULL);
 
-	sx = gdk_screen_width();
-	sy = gdk_screen_height();
+	gdk_monitor_get_workarea(gdk_display_get_primary_monitor(gdk_display_get_default()),
+				 &workarea);
+
+	sx = workarea.width;
+	sy = workarea.height;
 
 	gdk_window_get_origin(gdkwin, &x, &y);
 	new_x = x % sx; if (new_x < 0) new_x = 0;
@@ -753,14 +757,18 @@ void gtkut_widget_get_uposition(GtkWidget *widget, gint *px, gint *py)
 	GdkWindow *gdkwin;
 	gint x, y;
 	gint sx, sy;
+	GdkRectangle workarea = {0};
 
 	gdkwin = gtk_widget_get_window(widget);
 
 	cm_return_if_fail(widget != NULL);
 	cm_return_if_fail(gdkwin != NULL);
 
-	sx = gdk_screen_width();
-	sy = gdk_screen_height();
+	gdk_monitor_get_workarea(gdk_display_get_primary_monitor(gdk_display_get_default()),
+				 &workarea);
+
+	sx = workarea.width;
+	sy = workarea.height;
 
 	/* gdk_window_get_root_origin ever return *rootwindow*'s position */
 	gdk_window_get_root_origin(gdkwin, &x, &y);
@@ -1062,7 +1070,6 @@ GtkWidget *gtkut_get_replace_btn(const gchar *button_label)
 GtkWidget *gtkut_stock_button(const gchar *stock_image, const gchar *label)
 {
 	GtkWidget *button;
-	gint i;
 	
 	cm_return_val_if_fail(stock_image != NULL, NULL);
 
@@ -1070,7 +1077,6 @@ GtkWidget *gtkut_stock_button(const gchar *stock_image, const gchar *label)
 	if (label != NULL)
 		gtk_button_set_label(GTK_BUTTON(button), _(label));
 	gtk_button_set_use_underline(GTK_BUTTON(button), TRUE);
-	gtk_button_set_use_stock(GTK_BUTTON(button), TRUE);
 	gtk_button_set_always_show_image(GTK_BUTTON(button), TRUE);
 	
 	return button;
@@ -1654,6 +1660,7 @@ GtkWidget *gtkut_window_new		(GtkWindowType	 type,
 {
 	GtkWidget *window = gtk_window_new(type);
 	gtk_window_set_role(GTK_WINDOW(window), class);
+	gtk_widget_set_name(GTK_WIDGET(window), class);
 	return window;
 }
 
