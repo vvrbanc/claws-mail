@@ -2401,7 +2401,6 @@ static void folderview_drag_data_get(GtkWidget        *widget,
 	GtkTreeModel *model;
 	GtkTreeIter iter;
 	FolderItem *item;
-	gchar *source = NULL;
 	if (info == TARGET_DUMMY) {
 		if (!folderview->open_path)
 			return;
@@ -2413,7 +2412,10 @@ static void folderview_drag_data_get(GtkWidget        *widget,
 		gtk_tree_model_get_iter(model, &iter, folderview->open_path);
 		gtk_tree_model_get(model, &iter, F_COL_FOLDERITEM, &item, -1);
 		if (item) {
-			source = g_strdup_printf ("FROM_OTHER_FOLDER%s", folder_item_get_identifier(item));
+			gchar *source = NULL;
+			gchar *name = folder_item_get_identifier(item);
+			source = g_strdup_printf ("FROM_OTHER_FOLDER%s", name);
+			g_free(name);
 			gtk_selection_data_set(selection_data,
 					       gtk_selection_data_get_target(selection_data), 8,
 					       source, strlen(source));
@@ -2644,7 +2646,7 @@ static void folderview_drag_received_cb(GtkWidget        *widget,
 			/* comes from summaryview */
 			src_item = folderview->summaryview->folder_item;
 
-			if (item->no_select) {
+			if (item && item->no_select) {
 				alertpanel_error(_("The destination folder can only be used to "
 						   "store subfolders."));
 				return;
@@ -3403,13 +3405,19 @@ static void mark_all_read_unread_handler(GtkAction *action, gpointer data,
 	if (read) {
 		if (recursive)
 			folderutils_mark_all_read_recursive(item, TRUE);
-		else
+		else {
+			if (prefs_common.run_processingrules_before_mark_all)
+				folderview_run_processing(item);
 			folderutils_mark_all_read(item, TRUE);
+		}
 	} else {
 		if (recursive)
 			folderutils_mark_all_read_recursive(item, FALSE);
-		else
+		else {
 			folderutils_mark_all_read(item, FALSE);
+			if (prefs_common.run_processingrules_before_mark_all)
+				folderview_run_processing(item);
+		}
 	}
 	if (folderview->summaryview->folder_item != item && !recursive)
 		summary_unlock(folderview->summaryview);
