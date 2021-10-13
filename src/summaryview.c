@@ -774,6 +774,7 @@ SummaryView *summary_create(MainWindow *mainwin)
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menus/SummaryViewPopup/CreateFilterRule", "ByFrom", "Tools/CreateFilterRule/ByFrom", GTK_UI_MANAGER_MENUITEM)
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menus/SummaryViewPopup/CreateFilterRule", "ByTo", "Tools/CreateFilterRule/ByTo", GTK_UI_MANAGER_MENUITEM)
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menus/SummaryViewPopup/CreateFilterRule", "BySubject", "Tools/CreateFilterRule/BySubject", GTK_UI_MANAGER_MENUITEM)
+	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menus/SummaryViewPopup/CreateFilterRule", "BySender", "Tools/CreateFilterRule/BySender", GTK_UI_MANAGER_MENUITEM)
 		
 #ifndef GENERIC_UMPC
 	/* submenus - createprocessingrule */
@@ -781,6 +782,7 @@ SummaryView *summary_create(MainWindow *mainwin)
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menus/SummaryViewPopup/CreateProcessingRule", "ByFrom", "Tools/CreateProcessingRule/ByFrom", GTK_UI_MANAGER_MENUITEM)
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menus/SummaryViewPopup/CreateProcessingRule", "ByTo", "Tools/CreateProcessingRule/ByTo", GTK_UI_MANAGER_MENUITEM)
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menus/SummaryViewPopup/CreateProcessingRule", "BySubject", "Tools/CreateProcessingRule/BySubject", GTK_UI_MANAGER_MENUITEM)
+	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menus/SummaryViewPopup/CreateProcessingRule", "BySender", "Tools/CreateProcessingRule/BySender", GTK_UI_MANAGER_MENUITEM)
 #endif
 		
 	/* submenus - view */
@@ -1647,16 +1649,9 @@ gboolean summary_show(SummaryView *summaryview, FolderItem *item, gboolean avoid
 
 		summary_unlock(summaryview);
 
-		if (node) {
-			gint open_selected = -1;
-			if (!is_refresh) {
-				if (OPEN_SELECTED_ON_FOLDER_OPEN)
-					open_selected = 1;
-				else
-					open_selected = 0;
-			}
-			summary_select_node(summaryview, node, open_selected);
-		}
+		if (node)
+			summary_select_node(summaryview, node,
+					OPEN_SELECTED_ON_FOLDER_OPEN);
 
 		summary_lock(summaryview);
 	}
@@ -4973,9 +4968,11 @@ void summary_save_as(SummaryView *summaryview)
 	GtkCMCTree *ctree = GTK_CMCTREE(summaryview->ctree);
 	MsgInfo *msginfo;
 	gchar *filename = NULL;
-	gchar *src, *dest;
+	gchar *src, *dest, *dest_default;
 	gchar *tmp;
 	gchar *filedir = NULL;
+	gchar *converted_filename = NULL;
+	gchar * filepath = NULL;
 
 	AlertValue aval = 0;
 
@@ -4991,25 +4988,29 @@ void summary_save_as(SummaryView *summaryview)
 	manage_window_focus_in(summaryview->window, NULL, NULL);
 
 	if (filename && !g_utf8_validate(filename, -1, NULL)) {
-		gchar *converted_filename = conv_codeset_strdup(filename,
+		converted_filename = conv_codeset_strdup(filename,
 					       conv_get_locale_charset_str(),
 					       CS_UTF_8);
 		if (!converted_filename) {
-			g_warning("summary_save_as(): failed to convert character set.");
+			g_warning("summary_save_as(): failed to convert character set");
 		} else {
-			g_free(filename);
 			filename = converted_filename;
 		}
 	}
+	if (!filename)
+		return;
 
-	dest = filename;
-	filename = NULL;
-	if (!dest) return;
-	if (prefs_common.attach_save_dir && *prefs_common.attach_save_dir)
-		dest = g_strconcat(prefs_common.attach_save_dir, G_DIR_SEPARATOR_S,
-				   dest, NULL);
-	dest = filesel_select_file_save(_("Save as"), dest);
-	if (!dest) return;
+	if (prefs_common.attach_save_dir && *prefs_common.attach_save_dir) {
+        filepath = g_strconcat(prefs_common.attach_save_dir, G_DIR_SEPARATOR_S,
+				   filename, NULL);
+	}
+	dest = filesel_select_file_save(_("Save as"), filepath ? filepath : filename);
+	if (filepath)
+		g_free(filepath);
+	if (converted_filename)
+		g_free(converted_filename);
+	if (!dest)
+		return;
 
 	if (is_file_exist(dest)) {
 		aval = alertpanel(_("Append or Overwrite"),
@@ -5050,9 +5051,12 @@ void summary_save_as(SummaryView *summaryview)
 	}
 
 	filedir = g_path_get_dirname(dest);
-	if (filedir && strcmp(filedir, ".")) {
-		g_free(prefs_common.attach_save_dir);
-		prefs_common.attach_save_dir = g_filename_to_utf8(filedir, -1, NULL, NULL, NULL);
+	if (filedir) {
+		if (strcmp(filedir, ".")) {
+			g_free(prefs_common.attach_save_dir);
+			prefs_common.attach_save_dir = g_filename_to_utf8(filedir, -1, NULL, NULL, NULL);
+		}
+        g_free(filedir);
 	}
 
 	g_free(dest);
@@ -6261,10 +6265,6 @@ static void summary_colorlabel_menu_create(SummaryView *summaryview, gboolean re
 	g_free(accel_path);
 	gtk_accel_map_add_entry("<ClawsColorLabels>/None", GDK_KEY_0, GDK_CONTROL_MASK);
 
-	item = gtk_menu_item_new();
-	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
-	gtk_widget_show(item);
-
 	/* create pixmap/label menu items */
 	for (i = 0; i < N_COLOR_LABELS; i++) {
 		item = colorlabel_create_check_color_menu_item(
@@ -6405,7 +6405,7 @@ static void summary_tags_menu_item_apply_tags_activate_cb(GtkWidget *widget,
 				"dont_toggle"))
 		return;
 	
-	tag_apply_open(summary_get_selection(summaryview));	
+	tags_window_open(summary_get_selection(summaryview));
 }
 
 static gint summary_tag_cmp_list(gconstpointer a, gconstpointer b)
@@ -6469,12 +6469,12 @@ static void summary_tags_menu_create(SummaryView *summaryview, gboolean refresh)
 	}
 	if (existing_tags) {
 		/* separator */
-		item = gtk_menu_item_new();
+		item = gtk_separator_menu_item_new();
 		gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
 		gtk_widget_show(item);
 	}
 
-	item = gtk_menu_item_new_with_label(_("Apply tags..."));
+	item = gtk_menu_item_new_with_label(_("Modify tags..."));
 	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
 	g_signal_connect(G_OBJECT(item), "activate",
 			 G_CALLBACK(summary_tags_menu_item_apply_tags_activate_cb),
@@ -6482,7 +6482,7 @@ static void summary_tags_menu_create(SummaryView *summaryview, gboolean refresh)
 	g_object_set_data(G_OBJECT(item), "summaryview",
 			  summaryview);
 	gtk_widget_show(item);
-	accel_path = g_strdup_printf("<ClawsTags>/ApplyTags");
+	accel_path = g_strdup_printf("<ClawsTags>/ModifyTags");
 	gtk_menu_item_set_accel_path(GTK_MENU_ITEM(item), accel_path);
 	g_free(accel_path);
 
@@ -7551,12 +7551,18 @@ static void summary_drag_data_get(GtkWidget        *widget,
 						san_subject, msginfo->msgnum);
 				g_free(san_subject);
 				san_subject = g_filename_from_utf8(dest, -1, NULL, NULL, NULL);
-				g_free(dest);
-				dest = san_subject;
-				if (copy_file(tmp2, dest, TRUE) == 0) {
-					g_free(tmp2);
-					tmp2 = dest;
+				if (!san_subject) {
+					g_warning("failed to convert encoding of file name: %s", dest);
+				} else {
+					g_free(dest);
+					dest = san_subject;
 				}
+				if (copy_file(tmp2, dest, TRUE) < 0) {
+					g_warning("summary_drag_data_get: can't copy %s to %s",
+							tmp2, dest);
+				} 
+				g_free(tmp2);
+				tmp2 = dest;
 			} 
 			tmp1 = g_filename_to_uri(tmp2, NULL, NULL);
 			g_free(tmp2);
@@ -7601,24 +7607,28 @@ static void summary_drag_data_get(GtkWidget        *widget,
               path_list = folder_item_get_identifier(msginfo->folder);
 		}
 
-		for (cur = GTK_CMCLIST(ctree)->selection;
-		     cur != NULL && cur->data != NULL; cur = cur->next) {
-			gchar *tmp;
-
-			msginfo = gtk_cmctree_node_get_row_data(ctree, GTK_CMCTREE_NODE(cur->data));
-            if(!msginfo)
-              continue;
-			tmp = path_list;
-			path_list = g_strconcat(path_list, "\n", (msginfo->msgid ? msginfo->msgid : "unknown"), NULL);
-			g_free(tmp);
-		}
-
 		if (path_list != NULL) {
-			gtk_selection_data_set(selection_data,
+			for (cur = GTK_CMCLIST(ctree)->selection;
+			     cur != NULL && cur->data != NULL && path_list != NULL; cur = cur->next) {
+				gchar *tmp;
+
+				msginfo = gtk_cmctree_node_get_row_data(ctree, GTK_CMCTREE_NODE(cur->data));
+				if(!msginfo)
+					continue;
+				tmp = path_list;
+				path_list = g_strconcat(path_list, "\n", (msginfo->msgid ? msginfo->msgid : "unknown"), NULL);
+				g_free(tmp);
+			}
+
+			if (path_list != NULL) {
+				gtk_selection_data_set(selection_data,
 					       gtk_selection_data_get_target(selection_data), 8,
 					       path_list, strlen(path_list));
-			g_free(path_list);
-		}
+				g_free(path_list);
+			}
+		} else {
+			g_warning("summary_drag_data_get: no folder item identifier");
+		}        
     }
 }
 

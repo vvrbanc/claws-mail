@@ -57,7 +57,6 @@
 #include "prefs_common.h"
 #include "manage_window.h"
 #include "manual.h"
-#include "combobox.h"
 
 gboolean gtkut_get_font_size(GtkWidget *widget,
 			     gint *width, gint *height)
@@ -566,7 +565,7 @@ static gboolean gtkut_text_buffer_find(GtkTextBuffer *buffer, const GtkTextIter 
 
 	wcs = g_utf8_to_ucs4(str, -1, &items_read, &items_written, &error);
 	if (error != NULL) {
-		g_warning("An error occurred while converting a string from UTF-8 to UCS-4: %s",
+		g_warning("an error occurred while converting a string from UTF-8 to UCS-4: %s",
 			  error->message);
 		g_error_free(error);
 	}
@@ -602,7 +601,7 @@ static gboolean gtkut_text_buffer_find_backward(GtkTextBuffer *buffer,
 
 	wcs = g_utf8_to_ucs4(str, -1, &items_read, &items_written, &error);
 	if (error != NULL) {
-		g_warning("An error occurred while converting a string from UTF-8 to UCS-4: %s",
+		g_warning("an error occurred while converting a string from UTF-8 to UCS-4: %s",
 			  error->message);
 		g_error_free(error);
 	}
@@ -739,8 +738,8 @@ void gtkut_window_popup(GtkWidget *window)
 	gdk_monitor_get_workarea(gdk_display_get_primary_monitor(gdk_display_get_default()),
 				 &workarea);
 
-	sx = workarea.width;
-	sy = workarea.height;
+	sx = MAX(1, workarea.width);
+	sy = MAX(1, workarea.height);
 
 	gdk_window_get_origin(gdkwin, &x, &y);
 	new_x = x % sx; if (new_x < 0) new_x = 0;
@@ -767,8 +766,8 @@ void gtkut_widget_get_uposition(GtkWidget *widget, gint *px, gint *py)
 	gdk_monitor_get_workarea(gdk_display_get_primary_monitor(gdk_display_get_default()),
 				 &workarea);
 
-	sx = workarea.width;
-	sy = workarea.height;
+	sx = MAX(1, workarea.width);
+	sy = MAX(1, workarea.height);
 
 	/* gdk_window_get_root_origin ever return *rootwindow*'s position */
 	gdk_window_get_root_origin(gdkwin, &x, &y);
@@ -963,20 +962,6 @@ GtkWidget *gtkut_account_menu_new(GList			*ac_list,
 	return optmenu;
 }
 
-void gtkut_set_widget_bgcolor_rgb(GtkWidget *widget, GdkRGBA rgba)
-{
-	GtkStyle *newstyle;
-	GdkColor gdk_color;
-
-	GTKUT_GDKRGBA_TO_GDKCOLOR(rgba, gdk_color);
-	newstyle = gtk_style_copy(gtk_widget_get_default_style());
-	newstyle->bg[GTK_STATE_NORMAL]   = gdk_color;
-	newstyle->bg[GTK_STATE_PRELIGHT] = gdk_color;
-	newstyle->bg[GTK_STATE_ACTIVE]   = gdk_color;
-	gtk_widget_set_style(widget, newstyle);
-	g_object_unref(newstyle);
-}
-  
 /*!
  *\brief	Tries to find a focused child using a lame strategy
  */
@@ -1214,6 +1199,8 @@ GtkWidget *xface_get_from_header(const gchar *o_xface)
 {
 	static gchar *xpm_xface[XPM_XFACE_HEIGHT];
 	static gboolean xpm_xface_init = TRUE;
+	GdkPixbuf *pixbuf;
+	GtkWidget *ret;
 	gchar xface[2048];
 	
 	if (o_xface == NULL)
@@ -1239,8 +1226,11 @@ GtkWidget *xface_get_from_header(const gchar *o_xface)
 
 	create_xpm_from_xface(xpm_xface, xface);
 
-	return gtk_image_new_from_pixbuf(
-		gdk_pixbuf_new_from_xpm_data((const char **)xpm_xface));
+	pixbuf = gdk_pixbuf_new_from_xpm_data((const char **)xpm_xface);
+	ret = gtk_image_new_from_pixbuf(pixbuf);
+	g_object_unref(pixbuf);
+
+	return ret;
 }
 #endif
 
@@ -1348,48 +1338,6 @@ static void link_btn_unrealize(GtkButton *button, gpointer data)
 	g_signal_handlers_disconnect_by_func(G_OBJECT(button), 
 			 G_CALLBACK(link_btn_clicked), url);
 	g_free(url);
-}
-
-GtkWidget *gtkut_get_link_btn(GtkWidget *window, const gchar *url, const gchar *label)
-{
-	GtkWidget *btn;
-	GtkWidget *btn_label;
-	GdkColor uri_color[2] = {{0, 0, 0, 0xffff}, {0, 0xffff, 0, 0}};
-	gchar *local_url = NULL;
-	if (!url)
-		return NULL;
-
-	GTKUT_GDKRGBA_TO_GDKCOLOR(prefs_common.color[COL_URI], uri_color[0])
-	GTKUT_GDKRGBA_TO_GDKCOLOR(prefs_common.color[COL_URI], uri_color[1])
-
-	btn = gtk_button_new_with_label(label?label:url);
-	gtk_button_set_relief(GTK_BUTTON(btn), GTK_RELIEF_NONE);
-	btn_label = gtk_bin_get_child(GTK_BIN((btn)));
-		GtkStyle *style;
-		gtk_widget_ensure_style(btn_label);
-		style = gtk_style_copy
-			(gtk_widget_get_style(btn_label));
-		style->fg[GTK_STATE_NORMAL]   = uri_color[0];
-		style->fg[GTK_STATE_ACTIVE]   = uri_color[1];
-		style->fg[GTK_STATE_PRELIGHT] = uri_color[0];
-		gtk_widget_set_style(btn_label, style);
-		g_object_unref(style);
-
-	g_signal_connect(G_OBJECT(btn), "enter",
-			 G_CALLBACK(link_btn_enter), window);
-	g_signal_connect(G_OBJECT(btn), "leave",
-			 G_CALLBACK(link_btn_leave), window);
-	g_signal_connect(G_OBJECT(btn), "pressed",
-			 G_CALLBACK(link_btn_pressed), window);
-	g_signal_connect(G_OBJECT(btn), "released",
-			 G_CALLBACK(link_btn_released), window);
-			 
-	local_url = g_strdup(url);
-	g_signal_connect(G_OBJECT(btn), "clicked",
-			 G_CALLBACK(link_btn_clicked), local_url);
-	g_signal_connect(G_OBJECT(btn), "unrealize",
-			 G_CALLBACK(link_btn_unrealize), local_url);
-	return btn;
 }
 
 static gboolean _combobox_separator_func(GtkTreeModel *model,
@@ -2274,24 +2222,3 @@ gchar *gtkut_gdk_rgba_to_string(GdkRGBA *rgba)
 	return str;
 }
 #undef RGBA_ELEMENT_TO_BYTE
-
-void gtkut_set_button_color(GtkWidget *button,
-		GdkRGBA *rgba)
-{
-	gchar *str, *markup;
-	GtkWidget *label;
-
-	cm_return_if_fail(button != NULL);
-	cm_return_if_fail(rgba != NULL);
-
-	label = gtk_bin_get_child(GTK_BIN(button));
-	cm_return_if_fail(label != NULL);
-
-	str = gtkut_gdk_rgba_to_string(rgba);
-
-	markup = g_strdup_printf("<span bgcolor=\"%s\">" GTKUT_COLOR_BUTTON_LABEL "</span>", str);
-	g_free(str);
-
-	gtk_label_set_markup(GTK_LABEL(label), markup);
-	g_free(markup);
-}

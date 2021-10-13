@@ -27,7 +27,6 @@
 
 #include "defs.h"
 
-#include <glib.h>
 #include <gtk/gtk.h>
 
 #include "gtkutils.h"
@@ -553,7 +552,7 @@ static void save_archiver_prefs(PrefsPage * _page)
           return;
         
         if (prefs_write_param(param, pref_file->fp) < 0) {
-          g_warning("failed to write Archiver Plugin configuration");
+          g_warning("failed to write Archiver plugin configuration");
           prefs_file_close_revert(pref_file);
           return;
         }

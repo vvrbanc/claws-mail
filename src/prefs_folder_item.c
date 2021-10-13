@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK+ based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2019 the Claws Mail team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2021 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,7 +33,6 @@
 #include "alertpanel.h"
 #include "prefs_folder_item.h"
 #include "folderview.h"
-#include "folder.h"
 #include "summaryview.h"
 #include "menu.h"
 #include "account.h"
@@ -45,7 +44,6 @@
 #include "gtkutils.h"
 #include "filtering.h"
 #include "folder_item_prefs.h"
-#include "gtk/colorsel.h"
 #include "string_match.h"
 #include "quote_fmt.h"
 #include "combobox.h"
@@ -85,6 +83,7 @@ struct _FolderItemGeneralPage
 	GtkWidget *checkbtn_enable_processing;
 	GtkWidget *checkbtn_enable_processing_when_opening;
 	GtkWidget *checkbtn_newmailcheck;
+	GtkWidget *checkbtn_skip_on_goto_unread_or_new;
 	GtkWidget *checkbtn_offlinesync;
 	GtkWidget *label_offlinesync;
 	GtkWidget *entry_offlinesync;
@@ -99,6 +98,7 @@ struct _FolderItemGeneralPage
 	GtkWidget *enable_processing_rec_checkbtn;
 	GtkWidget *enable_processing_when_opening_rec_checkbtn;
 	GtkWidget *newmailcheck_rec_checkbtn;
+	GtkWidget *skip_on_goto_unread_or_new_rec_checkbtn;
 	GtkWidget *offlinesync_rec_checkbtn;
 	GtkWidget *promote_html_part_rec_checkbtn;
 
@@ -116,6 +116,8 @@ struct _FolderItemComposePage
 	GtkWidget *no_save_warning;
 	GtkWidget *checkbtn_request_return_receipt;
 	GtkWidget *checkbtn_save_copy_to_folder;
+	GtkWidget *checkbtn_default_from;
+	GtkWidget *entry_default_from;
 	GtkWidget *checkbtn_default_to;
 	GtkWidget *entry_default_to;
 	GtkWidget *checkbtn_default_reply_to;
@@ -140,6 +142,7 @@ struct _FolderItemComposePage
 	/* apply to sub folders */
 	GtkWidget *request_return_receipt_rec_checkbtn;
 	GtkWidget *save_copy_to_folder_rec_checkbtn;
+	GtkWidget *default_from_rec_checkbtn;
 	GtkWidget *default_to_rec_checkbtn;
 	GtkWidget *default_reply_to_rec_checkbtn;
 	GtkWidget *default_cc_rec_checkbtn;
@@ -192,7 +195,6 @@ static gboolean templates_save_recurse_func(GNode *node, gpointer data);
 
 static gint prefs_folder_item_chmod_mode		(gchar *folder_chmod);
 
-static void folder_color_set_dialog(GtkWidget *widget, gpointer data);
 static void clean_cache_cb(GtkWidget *widget, gpointer data);
 static void folder_regexp_test_cb(GtkWidget *widget, gpointer data);
 static void folder_regexp_set_subject_example_cb(GtkWidget *widget, gpointer data);
@@ -256,6 +258,7 @@ static void prefs_folder_item_general_create_widget_func(PrefsPage * page_,
 	GtkWidget *checkbtn_enable_processing;
 	GtkWidget *checkbtn_enable_processing_when_opening;
 	GtkWidget *checkbtn_newmailcheck;
+	GtkWidget *checkbtn_skip_on_goto_unread_or_new;
 	GtkWidget *checkbtn_offlinesync;
 	GtkWidget *label_offlinesync;
 	GtkWidget *entry_offlinesync;
@@ -271,8 +274,11 @@ static void prefs_folder_item_general_create_widget_func(PrefsPage * page_,
 	GtkWidget *enable_processing_rec_checkbtn;
 	GtkWidget *enable_processing_when_opening_rec_checkbtn;
 	GtkWidget *newmailcheck_rec_checkbtn;
+	GtkWidget *skip_on_goto_unread_or_new_rec_checkbtn;
 	GtkWidget *offlinesync_rec_checkbtn;
 	GtkWidget *promote_html_part_rec_checkbtn;
+
+	gint wreq1, wreq2;
 
 	page->item	   = item;
 
@@ -352,17 +358,14 @@ static void prefs_folder_item_general_create_widget_func(PrefsPage * page_,
 	gtk_box_pack_start(GTK_BOX(box1), box2, TRUE, TRUE, 0);
 
 	checkbtn_simplify_subject = gtk_check_button_new_with_label(_("Simplify Subject RegExp"));
-	gtk_box_pack_start(GTK_BOX(box2), checkbtn_simplify_subject, TRUE, TRUE, 0);
+	gtk_box_pack_start(GTK_BOX(box2), checkbtn_simplify_subject, FALSE, FALSE, 0);
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(checkbtn_simplify_subject), 
 				     item->prefs->enable_simplify_subject);
-
 	g_signal_connect(G_OBJECT(checkbtn_simplify_subject), "toggled",
 			G_CALLBACK(folder_regexp_set_subject_example_cb), page);
 
 	entry_simplify_subject = gtk_entry_new();
 	gtk_box_pack_start(GTK_BOX(box2), entry_simplify_subject, TRUE, TRUE, 0);
-	gtk_widget_set_hexpand(entry_simplify_subject, TRUE);
-	gtk_widget_set_halign(entry_simplify_subject, GTK_ALIGN_FILL);
 	SET_TOGGLE_SENSITIVITY(checkbtn_simplify_subject, entry_simplify_subject);
 	gtk_entry_set_text(GTK_ENTRY(entry_simplify_subject), 
 			   SAFE_STRING(item->prefs->simplify_subject_regexp));
@@ -382,12 +385,12 @@ static void prefs_folder_item_general_create_widget_func(PrefsPage * page_,
 	gtk_box_pack_start(GTK_BOX(box1), box2, TRUE, TRUE, 0);
 
 	label_regexp_test = gtk_label_new(_("Test string"));
-	gtk_box_pack_start(GTK_BOX(box2), label_regexp_test, TRUE, TRUE, 0);
+	gtk_box_pack_start(GTK_BOX(box2), label_regexp_test, FALSE, FALSE, 0);
+	gtk_label_set_xalign(GTK_LABEL(label_regexp_test), 1);
 	SET_TOGGLE_SENSITIVITY(checkbtn_simplify_subject, label_regexp_test);
 
 	entry_regexp_test_string = gtk_entry_new();
 	gtk_box_pack_start(GTK_BOX(box2), entry_regexp_test_string, TRUE, TRUE, 0);
-	gtk_widget_set_halign(entry_regexp_test_string, GTK_ALIGN_FILL);
 	gtk_grid_attach(GTK_GRID(table), box1, 0, rowcount, 1, 1);
 	
 	SET_TOGGLE_SENSITIVITY(checkbtn_simplify_subject, entry_regexp_test_string);
@@ -403,12 +406,12 @@ static void prefs_folder_item_general_create_widget_func(PrefsPage * page_,
 	gtk_box_pack_start(GTK_BOX(box1), box2, TRUE, TRUE, 0);
 
 	label_regexp_result = gtk_label_new(_("Result"));
-	gtk_box_pack_start(GTK_BOX(box2), label_regexp_result, TRUE, TRUE, 0);
+	gtk_box_pack_start(GTK_BOX(box2), label_regexp_result, FALSE, FALSE, 0);
+	gtk_label_set_xalign(GTK_LABEL(label_regexp_result), 1);
 	SET_TOGGLE_SENSITIVITY(checkbtn_simplify_subject, label_regexp_result);
 
 	entry_regexp_test_result = gtk_entry_new();
 	gtk_box_pack_start(GTK_BOX(box2), entry_regexp_test_result, TRUE, TRUE, 0);
-	gtk_widget_set_halign(entry_regexp_test_result, GTK_ALIGN_FILL);
 	SET_TOGGLE_SENSITIVITY(checkbtn_simplify_subject, entry_regexp_test_result);
 	gtk_editable_set_editable(GTK_EDITABLE(entry_regexp_test_result), FALSE);
 	gtk_grid_attach(GTK_GRID(table), box1, 0, rowcount, 1, 1);
@@ -455,19 +458,16 @@ static void prefs_folder_item_general_create_widget_func(PrefsPage * page_,
 	hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
 	gtk_box_pack_start(GTK_BOX(box2), hbox, FALSE, FALSE, 0);
 
-	folder_color_btn = gtk_button_new_with_label("");
+	folder_color_btn = gtk_color_button_new_with_rgba(
+				&item->prefs->color);
+	gtk_color_button_set_title(GTK_COLOR_BUTTON(folder_color_btn),
+				   _("Pick color for folder"));
 
   	gtk_box_pack_start (GTK_BOX(hbox), folder_color_btn, FALSE, FALSE, 0);
 	CLAWS_SET_TIP(folder_color_btn,
 			     _("Pick color for folder"));
 
 	page->folder_color = item->prefs->color;
-
-	g_signal_connect(G_OBJECT(folder_color_btn), "clicked",
-			 G_CALLBACK(folder_color_set_dialog),
-			 page);
-
-	gtkut_set_button_color(folder_color_btn, &item->prefs->color);
 
 	gtk_grid_attach(GTK_GRID(table), box1, 0, rowcount, 1, 1);
 	folder_color_rec_checkbtn = gtk_check_button_new();
@@ -517,7 +517,8 @@ static void prefs_folder_item_general_create_widget_func(PrefsPage * page_,
 	rowcount++;
 
 	/* Select HTML part by default? */
-	hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
+	hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, VSPACING_NARROW_2);
+	gtk_box_set_spacing(GTK_BOX(hbox), 8);
 	gtk_grid_attach(GTK_GRID(table), hbox, 0, rowcount, 1, 1);
 
 	label = gtk_label_new(_("Select the HTML part of multipart messages"));
@@ -540,8 +541,24 @@ static void prefs_folder_item_general_create_widget_func(PrefsPage * page_,
 
 	promote_html_part_rec_checkbtn = gtk_check_button_new();
 	gtk_grid_attach(GTK_GRID(table), promote_html_part_rec_checkbtn, 2, rowcount, 1, 1);
+
 	rowcount++;
 
+	/* Skip folder on 'goto unread (or new) message' */
+	checkbtn_skip_on_goto_unread_or_new = gtk_check_button_new_with_label(
+			     _("Skip folder when searching for unread or new messages"));
+	CLAWS_SET_TIP(checkbtn_skip_on_goto_unread_or_new,
+			     _("Turn this option on if you want this folder to be ignored "
+			       "when searching for unread or new messages"));
+	gtk_grid_attach(GTK_GRID(table), checkbtn_skip_on_goto_unread_or_new, 0, rowcount, 1, 1);
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(checkbtn_skip_on_goto_unread_or_new),
+								 item->prefs->skip_on_goto_unread_or_new);
+
+	skip_on_goto_unread_or_new_rec_checkbtn = gtk_check_button_new();
+	gtk_grid_attach(GTK_GRID(table), skip_on_goto_unread_or_new_rec_checkbtn, 2, rowcount, 1, 1);
+
+	rowcount++;
+        
 	/* Synchronise folder for offline use */
 	checkbtn_offlinesync = gtk_check_button_new_with_label(_("Synchronise for offline use"));
 	gtk_grid_attach(GTK_GRID(table), checkbtn_offlinesync, 0, rowcount, 1, 1);
@@ -555,6 +572,7 @@ static void prefs_folder_item_general_create_widget_func(PrefsPage * page_,
 	gtk_grid_attach(GTK_GRID(table), hbox, 0, rowcount, 1, 1);
 	gtk_widget_set_hexpand(hbox, TRUE);
 	gtk_widget_set_halign(hbox, GTK_ALIGN_FILL);
+
 	rowcount++;
 
 	hbox_spc = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
@@ -579,6 +597,7 @@ static void prefs_folder_item_general_create_widget_func(PrefsPage * page_,
 	gtk_grid_attach(GTK_GRID(table), hbox2, 0, rowcount, 1, 1);
 	gtk_widget_set_hexpand(hbox2, TRUE);
 	gtk_widget_set_halign(hbox2, GTK_ALIGN_FILL);
+
 	rowcount++;
 
 	hbox_spc = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
@@ -600,6 +619,12 @@ static void prefs_folder_item_general_create_widget_func(PrefsPage * page_,
 			 page);
 
 	gtk_widget_show_all(table);
+
+	/* line few widgets up now that we know their display size */
+	gtk_widget_get_preferred_width(label_regexp_test, &wreq1, NULL);
+	gtk_widget_get_preferred_width(label_regexp_result, &wreq2, NULL);
+	gtk_widget_set_size_request(label_regexp_test, MAX(100, MAX(wreq1, wreq2)), -1);
+	gtk_widget_set_size_request(label_regexp_result, MAX(100, MAX(wreq1, wreq2)), -1);
 
 	if (item->folder && (item->folder->klass->type != F_IMAP && 
 	    item->folder->klass->type != F_NEWS)) {
@@ -643,13 +668,13 @@ static void prefs_folder_item_general_create_widget_func(PrefsPage * page_,
 	page->checkbtn_enable_processing = checkbtn_enable_processing;
 	page->checkbtn_enable_processing_when_opening = checkbtn_enable_processing_when_opening;
 	page->checkbtn_newmailcheck = checkbtn_newmailcheck;
+	page->checkbtn_skip_on_goto_unread_or_new = checkbtn_skip_on_goto_unread_or_new;
 	page->checkbtn_offlinesync = checkbtn_offlinesync;
 	page->label_offlinesync = label_offlinesync;
 	page->entry_offlinesync = entry_offlinesync;
 	page->label_end_offlinesync = label_end_offlinesync;
 	page->checkbtn_remove_old_offlinesync = checkbtn_remove_old_offlinesync;
 	page->promote_html_part = promote_html_part;
-
 
 	page->simplify_subject_rec_checkbtn  = simplify_subject_rec_checkbtn;
 
@@ -658,6 +683,7 @@ static void prefs_folder_item_general_create_widget_func(PrefsPage * page_,
 	page->enable_processing_rec_checkbtn = enable_processing_rec_checkbtn;
 	page->enable_processing_when_opening_rec_checkbtn = enable_processing_when_opening_rec_checkbtn;
 	page->newmailcheck_rec_checkbtn	     = newmailcheck_rec_checkbtn;
+	page->skip_on_goto_unread_or_new_rec_checkbtn = skip_on_goto_unread_or_new_rec_checkbtn;
 	page->offlinesync_rec_checkbtn	     = offlinesync_rec_checkbtn;
 	page->promote_html_part_rec_checkbtn = promote_html_part_rec_checkbtn;
 
@@ -726,7 +752,8 @@ static void general_save_folder_prefs(FolderItem *folder, FolderItemGeneralPage 
 
 	if (all || gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(page->folder_color_rec_checkbtn))) {
 		GdkRGBA old_color = prefs->color;
-		prefs->color = page->folder_color;
+		gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(page->folder_color_btn),
+				   &prefs->color);
 	
 		/* update folder view */
 		if (!gdk_rgba_equal(&prefs->color, &old_color))
@@ -746,6 +773,11 @@ static void general_save_folder_prefs(FolderItem *folder, FolderItemGeneralPage 
 	if (all ||  gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(page->newmailcheck_rec_checkbtn))) {
 		prefs->newmailcheck = 
 			gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(page->checkbtn_newmailcheck));
+	}
+
+	if (all ||  gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(page->skip_on_goto_unread_or_new_rec_checkbtn))) {
+		prefs->skip_on_goto_unread_or_new = 
+			gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(page->checkbtn_skip_on_goto_unread_or_new));
 	}
 
 	if (all ||  gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(page->offlinesync_rec_checkbtn))) {
@@ -787,6 +819,7 @@ static gboolean general_save_recurse_func(GNode *node, gpointer data)
 	      gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(page->enable_processing_when_opening_rec_checkbtn)) ||
 	      gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(page->newmailcheck_rec_checkbtn)) ||
 	      gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(page->offlinesync_rec_checkbtn)) ||
+		  gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(page->skip_on_goto_unread_or_new_rec_checkbtn)) ||
 				gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(page->promote_html_part_rec_checkbtn))
 			))
 		return TRUE;
@@ -833,6 +866,8 @@ static void prefs_folder_item_compose_create_widget_func(PrefsPage * page_,
 	GtkWidget *no_save_warning = NULL;
 	GtkWidget *checkbtn_request_return_receipt = NULL;
 	GtkWidget *checkbtn_save_copy_to_folder = NULL;
+	GtkWidget *checkbtn_default_from = NULL;
+	GtkWidget *entry_default_from = NULL;
 	GtkWidget *checkbtn_default_to = NULL;
 	GtkWidget *entry_default_to = NULL;
 	GtkWidget *checkbtn_default_reply_to = NULL;
@@ -862,6 +897,7 @@ static void prefs_folder_item_compose_create_widget_func(PrefsPage * page_,
 	GtkListStore *always_encrypt_menu;
 	GtkWidget *request_return_receipt_rec_checkbtn = NULL;
 	GtkWidget *save_copy_to_folder_rec_checkbtn = NULL;
+	GtkWidget *default_from_rec_checkbtn = NULL;
 	GtkWidget *default_to_rec_checkbtn = NULL;
 	GtkWidget *default_reply_to_rec_checkbtn = NULL;
 	GtkWidget *default_cc_rec_checkbtn = NULL;
@@ -922,6 +958,31 @@ static void prefs_folder_item_compose_create_widget_func(PrefsPage * page_,
 
 		save_copy_to_folder_rec_checkbtn = gtk_check_button_new();
 		gtk_grid_attach(GTK_GRID(table), save_copy_to_folder_rec_checkbtn, 2, rowcount, 1, 1);
+		rowcount++;
+
+		/* Default From */
+		tr = g_strdup(C_("folder properties: %s stands for a header name",
+				 	  "Default %s"));
+		text = g_strdup_printf(tr, prefs_common_translated_header_name("From:"));
+		checkbtn_default_from = gtk_check_button_new_with_label(text);
+		gtk_grid_attach(GTK_GRID(table), checkbtn_default_from, 0, rowcount, 1, 1);
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(checkbtn_default_from), 
+					     item->prefs->enable_default_from);
+		g_free(text);
+		g_free(tr);
+
+		entry_default_from = gtk_entry_new();
+		gtk_grid_attach(GTK_GRID(table), entry_default_from, 1, rowcount, 1, 1);
+		gtk_widget_set_hexpand(entry_default_from, TRUE);
+		gtk_widget_set_halign(entry_default_from, GTK_ALIGN_FILL);
+		SET_TOGGLE_SENSITIVITY(checkbtn_default_from, entry_default_from);
+		gtk_entry_set_text(GTK_ENTRY(entry_default_from), SAFE_STRING(item->prefs->default_from));
+		address_completion_register_entry(GTK_ENTRY(entry_default_from),
+				TRUE);
+
+		default_from_rec_checkbtn = gtk_check_button_new();
+		gtk_grid_attach(GTK_GRID(table), default_from_rec_checkbtn, 2, rowcount, 1, 1);
+
 		rowcount++;
 
 		/* Default To */
@@ -1162,6 +1223,7 @@ static void prefs_folder_item_compose_create_widget_func(PrefsPage * page_,
 
 	/* PGP sign? */
 	hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
+	gtk_box_set_spacing(GTK_BOX(hbox), 8);
 	gtk_widget_show (hbox);
 	gtk_grid_attach(GTK_GRID(table), hbox, 0, rowcount, 1, 1);
 
@@ -1192,6 +1254,7 @@ static void prefs_folder_item_compose_create_widget_func(PrefsPage * page_,
 
 	/* PGP encrypt? */
 	hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
+	gtk_box_set_spacing(GTK_BOX(hbox), 8);
 	gtk_widget_show (hbox);
 	gtk_grid_attach(GTK_GRID(table), hbox, 0, rowcount, 1, 1);
 
@@ -1227,6 +1290,8 @@ static void prefs_folder_item_compose_create_widget_func(PrefsPage * page_,
 	page->no_save_warning = no_save_warning;
 	page->checkbtn_request_return_receipt = checkbtn_request_return_receipt;
 	page->checkbtn_save_copy_to_folder = checkbtn_save_copy_to_folder;
+	page->checkbtn_default_from = checkbtn_default_from;
+	page->entry_default_from = entry_default_from;
 	page->checkbtn_default_to = checkbtn_default_to;
 	page->entry_default_to = entry_default_to;
 	page->checkbtn_default_reply_to = checkbtn_default_reply_to;
@@ -1250,6 +1315,7 @@ static void prefs_folder_item_compose_create_widget_func(PrefsPage * page_,
 
 	page->request_return_receipt_rec_checkbtn = request_return_receipt_rec_checkbtn;
 	page->save_copy_to_folder_rec_checkbtn	  = save_copy_to_folder_rec_checkbtn;
+	page->default_from_rec_checkbtn		  = default_from_rec_checkbtn;
 	page->default_to_rec_checkbtn		  = default_to_rec_checkbtn;
 	page->default_reply_to_rec_checkbtn	  = default_reply_to_rec_checkbtn;
 	page->default_cc_rec_checkbtn		  = default_cc_rec_checkbtn;
@@ -1270,6 +1336,8 @@ static void prefs_folder_item_compose_destroy_widget_func(PrefsPage *page_)
 {
 	FolderItemComposePage *page = (FolderItemComposePage *) page_;
 
+	if (page->entry_default_from)
+		address_completion_unregister_entry(GTK_ENTRY(page->entry_default_from));
 	if (page->entry_default_to)
 		address_completion_unregister_entry(GTK_ENTRY(page->entry_default_to));
 	if (page->entry_default_reply_to)
@@ -1314,8 +1382,14 @@ static void compose_save_folder_prefs(FolderItem *folder, FolderItemComposePage 
 				gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(page->checkbtn_save_copy_to_folder));
 		}
 
-		if (all || gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(page->default_to_rec_checkbtn))) {
+		if (all || gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(page->default_from_rec_checkbtn))) {
+			prefs->enable_default_from = 
+				gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(page->checkbtn_default_from));
+			ASSIGN_STRING(prefs->default_from,
+				      gtk_editable_get_chars(GTK_EDITABLE(page->entry_default_from), 0, -1));
+		}
 
+		if (all || gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(page->default_to_rec_checkbtn))) {
 			prefs->enable_default_to = 
 				gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(page->checkbtn_default_to));
 			ASSIGN_STRING(prefs->default_to,
@@ -1356,6 +1430,7 @@ static void compose_save_folder_prefs(FolderItem *folder, FolderItemComposePage 
 	} else {
 		prefs->request_return_receipt = FALSE;
 		prefs->save_copy_to_folder = FALSE;
+		prefs->enable_default_from = FALSE;
 		prefs->enable_default_to = FALSE;
 		prefs->enable_default_reply_to = FALSE;
 		prefs->enable_default_cc = FALSE;
@@ -1416,6 +1491,7 @@ static gboolean compose_save_recurse_func(GNode *node, gpointer data)
 	if ((node == page->item->node) && item_protocol(item) != A_NNTP &&
 	    !(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(page->request_return_receipt_rec_checkbtn)) ||
 	      gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(page->save_copy_to_folder_rec_checkbtn)) ||
+	      gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(page->default_from_rec_checkbtn)) ||
 	      gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(page->default_to_rec_checkbtn)) ||
 	      gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(page->default_account_rec_checkbtn)) ||
 	      gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(page->default_cc_rec_checkbtn)) ||
@@ -1737,16 +1813,6 @@ static gint prefs_folder_item_chmod_mode(gchar *folder_chmod)
 	return newmode;
 }
 
-static void folder_color_set_dialog(GtkWidget *widget, gpointer data)
-{
-	FolderItemGeneralPage *page = (FolderItemGeneralPage *) data;
-	GdkRGBA rgbcolor;
-
-	rgbcolor = colorsel_select_color_rgb(_("Pick color for folder"), 
-					     page->folder_color);
-	gtkut_set_button_color(page->folder_color_btn, &rgbcolor);
-	page->folder_color = rgbcolor;
-}
 
 static void clean_cache_cb(GtkWidget *widget, gpointer data)
 {

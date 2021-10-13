@@ -322,12 +322,14 @@ static GtkActionEntry msgview_entries[] =
 	{"Tools/CreateFilterRule/ByFrom",            NULL, N_("By _From"), NULL, NULL, G_CALLBACK(create_filter_cb) }, /* FILTER_BY_FROM */
 	{"Tools/CreateFilterRule/ByTo",              NULL, N_("By _To"), NULL, NULL, G_CALLBACK(create_filter_cb) }, /* FILTER_BY_TO     */
 	{"Tools/CreateFilterRule/BySubject",         NULL, N_("By _Subject"), NULL, NULL, G_CALLBACK(create_filter_cb) }, /* FILTER_BY_SUBJECT */
+	{"Tools/CreateFilterRule/BySender",          NULL, N_("By S_ender"), NULL, NULL, G_CALLBACK(create_filter_cb) }, /* FILTER_BY_SENDER */
 
 	{"Tools/CreateProcessingRule",               NULL, N_("Create processing rule"), NULL, NULL, NULL },
 	{"Tools/CreateProcessingRule/Automatically", NULL, N_("_Automatically"), NULL, NULL, G_CALLBACK(create_processing_cb) }, 
 	{"Tools/CreateProcessingRule/ByFrom",        NULL, N_("By _From"), NULL, NULL, G_CALLBACK(create_processing_cb) }, 
 	{"Tools/CreateProcessingRule/ByTo",          NULL, N_("By _To"), NULL, NULL, G_CALLBACK(create_processing_cb) }, 
 	{"Tools/CreateProcessingRule/BySubject",     NULL, N_("By _Subject"), NULL, NULL, G_CALLBACK(create_processing_cb) }, 
+	{"Tools/CreateProcessingRule/BySender",      NULL, N_("By S_ender"), NULL, NULL, G_CALLBACK(create_processing_cb) },
 	/* {"Tools/---",                             NULL, "---", NULL, NULL, NULL }, */
 
 	{"Tools/ListUrls",                           NULL, N_("List _URLs..."), "<control><shift>U", NULL, G_CALLBACK(open_urls_cb) }, 
@@ -647,12 +649,14 @@ static void messageview_add_toolbar(MessageView *msgview, GtkWidget *window)
 	MENUITEM_ADDUI_MANAGER(msgview->ui_manager, "/Menu/Tools/CreateFilterRule", "ByFrom", "Tools/CreateFilterRule/ByFrom", GTK_UI_MANAGER_MENUITEM)
 	MENUITEM_ADDUI_MANAGER(msgview->ui_manager, "/Menu/Tools/CreateFilterRule", "ByTo", "Tools/CreateFilterRule/ByTo", GTK_UI_MANAGER_MENUITEM)
 	MENUITEM_ADDUI_MANAGER(msgview->ui_manager, "/Menu/Tools/CreateFilterRule", "BySubject", "Tools/CreateFilterRule/BySubject", GTK_UI_MANAGER_MENUITEM)
+	MENUITEM_ADDUI_MANAGER(msgview->ui_manager, "/Menu/Tools/CreateFilterRule", "BySender", "Tools/CreateFilterRule/BySender", GTK_UI_MANAGER_MENUITEM)
 
 	MENUITEM_ADDUI_MANAGER(msgview->ui_manager, "/Menu/Tools", "CreateProcessingRule", "Tools/CreateProcessingRule", GTK_UI_MANAGER_MENU)
 	MENUITEM_ADDUI_MANAGER(msgview->ui_manager, "/Menu/Tools/CreateProcessingRule", "Automatically", "Tools/CreateProcessingRule/Automatically", GTK_UI_MANAGER_MENUITEM)
 	MENUITEM_ADDUI_MANAGER(msgview->ui_manager, "/Menu/Tools/CreateProcessingRule", "ByFrom", "Tools/CreateProcessingRule/ByFrom", GTK_UI_MANAGER_MENUITEM)
 	MENUITEM_ADDUI_MANAGER(msgview->ui_manager, "/Menu/Tools/CreateProcessingRule", "ByTo", "Tools/CreateProcessingRule/ByTo", GTK_UI_MANAGER_MENUITEM)
 	MENUITEM_ADDUI_MANAGER(msgview->ui_manager, "/Menu/Tools/CreateProcessingRule", "BySubject", "Tools/CreateProcessingRule/BySubject", GTK_UI_MANAGER_MENUITEM)
+	MENUITEM_ADDUI_MANAGER(msgview->ui_manager, "/Menu/Tools/CreateProcessingRule", "BySender", "Tools/CreateProcessingRule/BySender", GTK_UI_MANAGER_MENUITEM)
 	MENUITEM_ADDUI_MANAGER(msgview->ui_manager, "/Menu/Tools", "Separator2", "Tools/---", GTK_UI_MANAGER_SEPARATOR)
 	
 	MENUITEM_ADDUI_MANAGER(msgview->ui_manager, "/Menu/Tools", "ListUrls", "Tools/ListUrls", GTK_UI_MANAGER_MENUITEM)
@@ -962,8 +966,10 @@ static gint disposition_notification_send(MsgInfo *msginfo)
 		}
 		g_free(buf);
 		buf = NULL;
-	} else
-		goto FILE_ERROR;
+	} else {
+		if (fprintf(fp, "From: %s\n", account->address) < 0)
+			goto FILE_ERROR;
+	}
 
 	if (fprintf(fp, "To: %s\n", to) < 0)
 		goto FILE_ERROR;
@@ -1370,7 +1376,7 @@ gint messageview_show(MessageView *messageview, MsgInfo *msginfo,
 		statusbar_pop_all();
 
 	if (!file) {
-		g_warning("can't get message file path.");
+		g_warning("can't get message file path");
 		textview_show_error(messageview->mimeview->textview);
 		return -1;
 	}
@@ -1921,7 +1927,7 @@ static void return_receipt_send_clicked(NoticeView *noticeview, MsgInfo *msginfo
 
 	file = procmsg_get_message_file_path(msginfo);
 	if (!file) {
-		g_warning("can't get message file path.");
+		g_warning("can't get message file path");
 		return;
 	}
 
@@ -2238,6 +2244,7 @@ void messageview_print(MsgInfo *msginfo, gboolean all_headers,
 			print_mimeview(tmpview->mimeview, 
 				sel_start, sel_end, partnum);
 	}
+	messageview_clear(tmpview);
 	messageview_destroy(tmpview);
 }
 
@@ -2832,7 +2839,7 @@ static void addressbook_open_cb(GtkAction *action, gpointer data)
 	
 	addressbook_dbus_open(FALSE, &error);
 	if (error) {
-		g_warning("Failed to open address book: %s", error->message);
+		g_warning("failed to open address book: %s", error->message);
 		g_error_free(error);
 	}
 #endif
@@ -2887,6 +2894,7 @@ static void create_filter_cb(GtkAction *gaction, gpointer data)
 	DO_ACTION("Tools/CreateFilterRule/ByFrom", FILTER_BY_FROM);
 	DO_ACTION("Tools/CreateFilterRule/ByTo", FILTER_BY_TO);
 	DO_ACTION("Tools/CreateFilterRule/BySubject", FILTER_BY_SUBJECT);
+	DO_ACTION("Tools/CreateFilterRule/BySender", FILTER_BY_SENDER);
 	
 	item = messageview->msginfo->folder;
 	summary_msginfo_filter_open(item,  messageview->msginfo,
@@ -2906,6 +2914,7 @@ static void create_processing_cb(GtkAction *gaction, gpointer data)
 	DO_ACTION("Tools/CreateProcessingRule/ByFrom", FILTER_BY_FROM);
 	DO_ACTION("Tools/CreateProcessingRule/ByTo", FILTER_BY_TO);
 	DO_ACTION("Tools/CreateProcessingRule/BySubject", FILTER_BY_SUBJECT);
+	DO_ACTION("Tools/CreateProcessingRule/BySender", FILTER_BY_SENDER);
 
 	item = messageview->msginfo->folder;
 	summary_msginfo_filter_open(item,  messageview->msginfo,
@@ -3014,7 +3023,11 @@ void messageview_list_urls (MessageView	*msgview)
 		if (uri->uri &&
 		    (!g_ascii_strncasecmp(uri->uri, "ftp.", 4) ||
 		     !g_ascii_strncasecmp(uri->uri, "ftp:", 4) ||
+		     !g_ascii_strncasecmp(uri->uri, "ftps:", 5) ||
+		     !g_ascii_strncasecmp(uri->uri, "sftp:", 5) ||
 		     !g_ascii_strncasecmp(uri->uri, "www.", 4) ||
+		     !g_ascii_strncasecmp(uri->uri, "webcal:", 7) ||
+		     !g_ascii_strncasecmp(uri->uri, "webcals:", 8) ||
 		     !g_ascii_strncasecmp(uri->uri, "http:", 5) ||
 		     !g_ascii_strncasecmp(uri->uri, "https:", 6)))
 		{

@@ -38,9 +38,6 @@
 #include "logwindow.h"
 #include "prefs_common.h"
 
-#define ALERT_PANEL_WIDTH	380
-#define TITLE_HEIGHT		72
-#define MESSAGE_HEIGHT		62
 #define ALERT_PANEL_BUFSIZE	1024
 
 static AlertValue value;
@@ -265,7 +262,7 @@ static void alertpanel_create(const gchar *title,
 	gtk_window_set_title(GTK_WINDOW(window), title);
 	gtk_window_set_type_hint(GTK_WINDOW(window), GDK_WINDOW_TYPE_HINT_DIALOG);
 	gtk_window_set_modal(GTK_WINDOW(window), TRUE);
-
+	gtk_window_set_default_size (GTK_WINDOW(window), 450, 200);
 	
 	gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
 	g_signal_connect(G_OBJECT(window), "delete_event",
@@ -339,6 +336,8 @@ static void alertpanel_create(const gchar *title,
 	gtk_label_set_selectable(GTK_LABEL(label), TRUE);
 	gtk_label_set_use_markup(GTK_LABEL(label), TRUE);
 	gtk_widget_set_can_focus(label, FALSE);
+	gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
+	gtk_label_set_line_wrap_mode(GTK_LABEL(label), PANGO_WRAP_CHAR);
 	gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
 	gtk_widget_show(label);
 		

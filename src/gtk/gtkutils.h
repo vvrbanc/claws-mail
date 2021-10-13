@@ -173,11 +173,6 @@ GtkWidget *gtkut_account_menu_new	(GList			*ac_list,
 				  	 GCallback	 	 callback,
 					 gpointer		 data);
 
-void gtkut_set_widget_bgcolor_rgb	(GtkWidget 	*widget,
-					 GdkRGBA 		 rgbvalue);
-void gtkut_set_button_color(GtkWidget *button,
-					 GdkRGBA 		 *rgbvalue);
-
 void gtkut_widget_set_small_font_size(GtkWidget *widget);
 GtkWidget *gtkut_get_focused_child	(GtkContainer 	*parent);
 
@@ -195,7 +190,6 @@ gboolean get_tag_range(GtkTextIter *iter,
 				       GtkTextIter *end_iter);
 
 GtkWidget *face_get_from_header(const gchar *o_face);
-GtkWidget *gtkut_get_link_btn(GtkWidget *window, const gchar *url, const gchar *label);
 
 GtkWidget *gtkut_sc_combobox_create(GtkWidget *eventbox, gboolean focus_on_click);
 void gtkutils_scroll_one_line	(GtkWidget *widget, 

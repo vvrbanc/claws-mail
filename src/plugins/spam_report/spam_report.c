@@ -42,7 +42,6 @@
 #include "procmsg.h"
 #include "log.h"
 #include "inc.h"
-#include "plugin.h"
 #include "menu.h"
 #include "defs.h"
 #include "procheader.h"
@@ -287,7 +286,7 @@ static void report_spam(gint id, ReportInterface *intf, MsgInfo *msginfo, gchar 
 		}
 		break;
 	default:
-		g_warning("Unknown method");
+		g_warning("unknown method");
 	}
 	g_free(reqbody);
 	g_free(geturl);

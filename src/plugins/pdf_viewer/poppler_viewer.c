@@ -59,14 +59,14 @@ static gboolean	pdf_viewer_text_search(MimeViewer *_viewer, gboolean backward,
 static void pdf_viewer_render_selection(PdfViewer *viewer, PopplerRectangle *rect, PageResult *page_results);
 static void pdf_viewer_render_page(PopplerPage *page, GtkWidget *view, double width, double height, double zoom, gint rotate);
 
-static char * pdf_viewer_get_document_format_data(GTime utime);
+static char * pdf_viewer_get_document_format_data(GDateTime *utime);
 static void pdf_viewer_get_document_index(PdfViewer *viewer, PopplerIndexIter *index_iter, GtkTreeIter *parentiter);
 static void pdf_viewer_index_row_activated(GtkTreeView		*tree_view,
 				   	GtkTreePath		*path,
 				   	GtkTreeViewColumn	*column,
 				   	gpointer		 data);
 
-static GtkTable * pdf_viewer_fill_info_table(PdfViewer *viewer);
+static GtkGrid * pdf_viewer_fill_info_table(PdfViewer *viewer);
 
 /* Callbacks */
 static void pdf_viewer_move_events_cb(GtkWidget *widget, GdkEventMotion *event, PdfViewer *viewer); 
@@ -632,7 +632,7 @@ static void pdf_viewer_set_index_button_sensitive(PdfViewer *viewer)
     viewer->pdf_index = NULL;
 }
 
-static char * pdf_viewer_get_document_format_data(GTime utime) 
+static char * pdf_viewer_get_document_format_data(GDateTime *utime) 
 {
 	time_t time = (time_t) utime;
 	struct tm t;
@@ -649,7 +649,7 @@ static char * pdf_viewer_get_document_format_data(GTime utime)
 	return g_locale_to_utf8(s, -1, NULL, NULL, NULL);
 }
 
-#define ADD_TO_TABLE(LABEL, VALUE) \
+#define ADD_TO_GRID(LABEL, VALUE) \
 	label = gtk_label_new(LABEL); \
 	gtk_label_set_xalign(GTK_LABEL(label), 1.0); \
 	gtk_widget_set_margin_start(GTK_WIDGET(label), 4); \
@@ -666,7 +666,7 @@ static char * pdf_viewer_get_document_format_data(GTime utime)
 	row++;
 
 
-static GtkTable * pdf_viewer_fill_info_table(PdfViewer *viewer)
+static GtkGrid * pdf_viewer_fill_info_table(PdfViewer *viewer)
 {
 	GtkWidget *label;
 	const gchar *title, *format, *author, *subject, *keywords, *creator, *producer;
@@ -674,7 +674,7 @@ static GtkTable * pdf_viewer_fill_info_table(PdfViewer *viewer)
 	gchar *tmp;
 	gint row = 0;
 
-	GTime creation_date, mod_date;
+	GDateTime *creation_date, *mod_date;
 
 	PopplerPageLayout layout;
 	PopplerPageMode mode;
@@ -702,37 +702,37 @@ static GtkTable * pdf_viewer_fill_info_table(PdfViewer *viewer)
 
 	viewer->table_doc_info = gtk_grid_new();
 
-	ADD_TO_TABLE(_("Filename:"), viewer->target_filename)
-	ADD_TO_TABLE(_("Size:"), to_human_readable(viewer->to_load->length))
-	ADD_TO_TABLE(NULL, NULL)
-	ADD_TO_TABLE(_("Title:"), title)
-	ADD_TO_TABLE(_("Subject:"), subject)
-	ADD_TO_TABLE(_("Author:"), author)
-	ADD_TO_TABLE(_("Keywords:"), keywords)
-	ADD_TO_TABLE(_("Creator:"), creator)
-	ADD_TO_TABLE(_("Producer:"), producer)
+	ADD_TO_GRID(_("Filename:"), viewer->target_filename)
+	ADD_TO_GRID(_("Size:"), to_human_readable(viewer->to_load->length))
+	ADD_TO_GRID(NULL, NULL)
+	ADD_TO_GRID(_("Title:"), title)
+	ADD_TO_GRID(_("Subject:"), subject)
+	ADD_TO_GRID(_("Author:"), author)
+	ADD_TO_GRID(_("Keywords:"), keywords)
+	ADD_TO_GRID(_("Creator:"), creator)
+	ADD_TO_GRID(_("Producer:"), producer)
 
 	tmp = pdf_viewer_get_document_format_data(creation_date);
-	ADD_TO_TABLE(_("Created:"), tmp)
+	ADD_TO_GRID(_("Created:"), tmp)
 	g_free(tmp);
 
 	tmp = pdf_viewer_get_document_format_data(mod_date);
-	ADD_TO_TABLE(_("Modified:"), tmp)
+	ADD_TO_GRID(_("Modified:"), tmp)
 	g_free(tmp);
 
-	ADD_TO_TABLE(_("Format:"), format)
+	ADD_TO_GRID(_("Format:"), format)
 	if (linearized) {
-		ADD_TO_TABLE(_("Optimized:"), _("Yes"))
+		ADD_TO_GRID(_("Optimized:"), _("Yes"))
 	}
 	else {
-		ADD_TO_TABLE(_("Optimized:"), _("No"))
+		ADD_TO_GRID(_("Optimized:"), _("No"))
 	}
-	//ADD_TO_TABLE(_("Page Mode:"), pdf_viewer_get_document_info_mode(mode)) 
-	//ADD_TO_TABLE(_("Page Layout:"), pdf_viewer_get_document_info_layout(layout))
+	//ADD_TO_GRID(_("Page Mode:"), pdf_viewer_get_document_info_mode(mode)) 
+	//ADD_TO_GRID(_("Page Layout:"), pdf_viewer_get_document_info_layout(layout))
 
-	return(GtkTable *) viewer->table_doc_info;
+	return(GtkGrid *) viewer->table_doc_info;
 }
-#undef ADD_TO_TABLE
+#undef ADD_TO_GRID
 
 static FileType pdf_viewer_mimepart_get_type(MimeInfo *partinfo)
 {
@@ -861,7 +861,7 @@ static void pdf_viewer_button_press_events_cb(GtkWidget *widget, GdkEventButton 
 			dest = poppler_document_find_dest(
 					viewer->pdf_doc, viewer->link_action->goto_remote.dest->named_dest);
 			if (dest->type != POPPLER_DEST_XYZ) {
-				g_warning ("couldn't figure out link");
+				g_warning("couldn't figure out link");
 				poppler_dest_free(dest);
 				break;
 			}
@@ -1111,6 +1111,7 @@ static gboolean pdf_viewer_scroll_cb(GtkWidget *widget, GdkEventScroll *event,
 	GtkAdjustment *adj = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(viewer->scrollwin));
 	static gboolean in_scroll_cb = FALSE;
 	gboolean handled = FALSE;
+	gdouble delta_x = 0.0, delta_y = 0.0;
 	gint cur_p = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(viewer->cur_page));		
 
 	if (in_scroll_cb)
@@ -1128,14 +1129,18 @@ static gboolean pdf_viewer_scroll_cb(GtkWidget *widget, GdkEventScroll *event,
 		return TRUE;
 	}
 
-	if (event->direction == GDK_SCROLL_UP &&
+	if (event->direction == GDK_SCROLL_SMOOTH) {
+		gdk_event_get_scroll_deltas((GdkEvent *)event, &delta_x, &delta_y);
+	}
+
+	if ((delta_y < 0.0 || event->direction == GDK_SCROLL_UP) &&
 	    gtk_adjustment_get_value(adj) == gtk_adjustment_get_lower(adj) &&
 	    cur_p > 1) {
 		gtk_spin_button_spin(GTK_SPIN_BUTTON(viewer->cur_page), GTK_SPIN_STEP_BACKWARD, 1);
 		gtk_adjustment_set_value(adj,
 				gtk_adjustment_get_upper(adj) - gtk_adjustment_get_page_size(adj));
 		handled = TRUE;
-	} else if (event->direction == GDK_SCROLL_DOWN &&
+	} else if ((delta_y > 0.0 || event->direction == GDK_SCROLL_DOWN) &&
 	    gtk_adjustment_get_value(adj) + gtk_adjustment_get_page_size(adj) == gtk_adjustment_get_upper(adj) &&
 	    cur_p < viewer->num_pages) {
 		gtk_spin_button_spin(GTK_SPIN_BUTTON(viewer->cur_page), GTK_SPIN_STEP_FORWARD, 1);
@@ -1451,7 +1456,7 @@ static void pdf_viewer_update(MimeViewer *_viewer, gboolean reload_file, int pag
 		viewer->pdf_page = poppler_document_get_page(viewer->pdf_doc, page_num - 1);
 
 		if (viewer->pdf_page == NULL) {
-			g_warning("Page not found");
+			g_warning("page not found");
 			return;
 		}   
 
@@ -1637,14 +1642,14 @@ static void pdf_viewer_scroll_one_line(MimeViewer *_viewer, gboolean up)
 }
 
 #define BUTTON_H_PADDING 3
-#define ADD_BUTTON_TO_TABLE(widget, stock_image) \
+#define ADD_BUTTON_TO_GRID(widget, stock_image) \
 	widget = gtk_button_new(); \
 	img = stock_pixmap_widget(stock_image); \
 	gtk_button_set_image(GTK_BUTTON(widget), img); \
 	gtk_grid_attach(GTK_GRID(viewer->widgets_table), GTK_WIDGET(widget), \
 			col, 0, 1, 1); \
 	col++;
-#define ADD_TOGGLE_BUTTON_TO_TABLE(widget, stock_image) \
+#define ADD_TOGGLE_BUTTON_TO_GRID(widget, stock_image) \
 	widget = gtk_toggle_button_new(); \
 	img = stock_pixmap_widget(stock_image); \
 	gtk_button_set_image(GTK_BUTTON(widget), img); \
@@ -1652,7 +1657,7 @@ static void pdf_viewer_scroll_one_line(MimeViewer *_viewer, gboolean up)
 			col, 0, 1, 1); \
 	col++;
 
-#define ADD_SEP_TO_TABLE \
+#define ADD_SEP_TO_GRID \
 	sep = gtk_label_new(""); \
 	gtk_grid_attach(GTK_GRID(viewer->widgets_table), GTK_WIDGET(sep), \
 			col, 0, 1, 1); \
@@ -1756,6 +1761,7 @@ static MimeViewer *pdf_viewer_create(void)
 	viewer->mimeviewer.print = pdf_viewer_print;
 #endif
 	viewer->scrollwin = gtk_scrolled_window_new(NULL, NULL);
+	gtk_widget_set_name(GTK_WIDGET(viewer->scrollwin), "document");
 	viewer->scrollwin_index = gtk_scrolled_window_new(NULL, NULL);
 	viewer->pdf_view_ebox = gtk_event_box_new();
 	gtk_event_box_set_visible_window(GTK_EVENT_BOX(viewer->pdf_view_ebox), FALSE);
@@ -1780,15 +1786,17 @@ static MimeViewer *pdf_viewer_create(void)
 	viewer->widgets_table = gtk_grid_new();
 
 	viewer->doc_index_pane = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
+	gtk_widget_set_name(GTK_WIDGET(viewer->doc_index_pane), "document_pane");
 
 	viewer->frame_index = gtk_frame_new(NULL);
+	gtk_widget_set_name(GTK_WIDGET(viewer->frame_index), "document_index");
 	gtk_frame_set_shadow_type(GTK_FRAME(viewer->frame_index), GTK_SHADOW_IN);
 	gtk_widget_set_size_request(viewer->frame_index, 18, -1);
 	gtk_frame_set_label(GTK_FRAME(viewer->frame_index), _("Document Index"));
 
-	ADD_SEP_TO_TABLE
-	ADD_BUTTON_TO_TABLE(viewer->first_page, STOCK_PIXMAP_FIRST_ARROW)
-	ADD_BUTTON_TO_TABLE(viewer->prev_page, STOCK_PIXMAP_LEFT_ARROW)
+	ADD_SEP_TO_GRID
+	ADD_BUTTON_TO_GRID(viewer->first_page, STOCK_PIXMAP_FIRST_ARROW)
+	ADD_BUTTON_TO_GRID(viewer->prev_page, STOCK_PIXMAP_LEFT_ARROW)
 	viewer->cur_page = gtk_spin_button_new_with_range(0.0, 0.0, 1.0);
 	viewer->zoom_scroll = gtk_spin_button_new_with_range(0.20, 8.0, 0.20);
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON(viewer->zoom_scroll), 1.0);
@@ -1803,23 +1811,23 @@ static MimeViewer *pdf_viewer_create(void)
 			col, 0, 1, 1);
 	col++;
 
-	ADD_BUTTON_TO_TABLE(viewer->next_page, STOCK_PIXMAP_RIGHT_ARROW)
-	ADD_BUTTON_TO_TABLE(viewer->last_page, STOCK_PIXMAP_LAST_ARROW)
-	ADD_SEP_TO_TABLE
-	ADD_BUTTON_TO_TABLE(viewer->zoom_fit, STOCK_PIXMAP_ZOOM_FIT)
-	ADD_BUTTON_TO_TABLE(viewer->zoom_in, STOCK_PIXMAP_ZOOM_IN)
+	ADD_BUTTON_TO_GRID(viewer->next_page, STOCK_PIXMAP_RIGHT_ARROW)
+	ADD_BUTTON_TO_GRID(viewer->last_page, STOCK_PIXMAP_LAST_ARROW)
+	ADD_SEP_TO_GRID
+	ADD_BUTTON_TO_GRID(viewer->zoom_fit, STOCK_PIXMAP_ZOOM_FIT)
+	ADD_BUTTON_TO_GRID(viewer->zoom_in, STOCK_PIXMAP_ZOOM_IN)
 	gtk_grid_attach(GTK_GRID(viewer->widgets_table), GTK_WIDGET(viewer->zoom_scroll),
 			col, 0, 1, 1);
 	col++;
-	ADD_BUTTON_TO_TABLE(viewer->zoom_out, STOCK_PIXMAP_ZOOM_OUT)
-	ADD_BUTTON_TO_TABLE(viewer->zoom_width, STOCK_PIXMAP_ZOOM_WIDTH)
-	ADD_SEP_TO_TABLE
-	ADD_BUTTON_TO_TABLE(viewer->rotate_left, STOCK_PIXMAP_ROTATE_LEFT)
-	ADD_BUTTON_TO_TABLE(viewer->rotate_right, STOCK_PIXMAP_ROTATE_RIGHT)
-	ADD_SEP_TO_TABLE
-	ADD_BUTTON_TO_TABLE(viewer->print, STOCK_PIXMAP_PRINTER)
-	ADD_BUTTON_TO_TABLE(viewer->doc_info, STOCK_PIXMAP_DOC_INFO)
-	ADD_TOGGLE_BUTTON_TO_TABLE(viewer->doc_index, STOCK_PIXMAP_DOC_INDEX)
+	ADD_BUTTON_TO_GRID(viewer->zoom_out, STOCK_PIXMAP_ZOOM_OUT)
+	ADD_BUTTON_TO_GRID(viewer->zoom_width, STOCK_PIXMAP_ZOOM_WIDTH)
+	ADD_SEP_TO_GRID
+	ADD_BUTTON_TO_GRID(viewer->rotate_left, STOCK_PIXMAP_ROTATE_LEFT)
+	ADD_BUTTON_TO_GRID(viewer->rotate_right, STOCK_PIXMAP_ROTATE_RIGHT)
+	ADD_SEP_TO_GRID
+	ADD_BUTTON_TO_GRID(viewer->print, STOCK_PIXMAP_PRINTER)
+	ADD_BUTTON_TO_GRID(viewer->doc_info, STOCK_PIXMAP_DOC_INFO)
+	ADD_TOGGLE_BUTTON_TO_GRID(viewer->doc_index, STOCK_PIXMAP_DOC_INDEX)
 
 	gtk_scrolled_window_set_policy(
 			GTK_SCROLLED_WINDOW(viewer->scrollwin), 
@@ -1835,6 +1843,9 @@ static MimeViewer *pdf_viewer_create(void)
 
 	viewer->vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
 	viewer->hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
+
+	gtk_widget_set_name(GTK_WIDGET(viewer->vbox), "pdf_viewer");
+	gtk_widget_set_name(GTK_WIDGET(viewer->hbox), "buttons");
 
     /* treeview */
 	tree_store = gtk_tree_store_new(N_INDEX_COLUMNS,
@@ -2091,9 +2102,9 @@ static MimeViewer *pdf_viewer_create(void)
 	return(MimeViewer *) viewer;
 }
 
-#undef ADD_BUTTON_TO_TABLE
-#undef ADD_TOGGLE_BUTTON_TO_TABLE
-#undef ADD_SEP_TO_TABLE
+#undef ADD_BUTTON_TO_GRID
+#undef ADD_TOGGLE_BUTTON_TO_GRID
+#undef ADD_SEP_TO_GRID
 #undef BUTTON_H_PADDING
 #undef SEP_H_PADDING
 

@@ -147,10 +147,10 @@ static GtkWidget *ssl_manager_list_view_create	(void)
 
 	model = GTK_TREE_MODEL(ssl_manager_create_data_store());
 	list_view = GTK_TREE_VIEW(gtk_tree_view_new_with_model(model));
-	g_object_unref(model);	
 	
  	gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(model),
                                              0, GTK_SORT_ASCENDING);
+	g_object_unref(model);	
 	gtk_tree_view_set_rules_hint(list_view, prefs_common.use_stripes_everywhere);
 	
 	selector = gtk_tree_view_get_selection(list_view);
@@ -347,6 +347,7 @@ static void ssl_manager_load_certs (void)
 		debug_print("couldn't open dir '%s': %s (%d)\n", path,
 				error->message, error->code);
 		g_error_free(error);
+        g_free(path);
 		return;
 	}
 	
@@ -367,11 +368,13 @@ static void ssl_manager_load_certs (void)
 							server, port, cert);
 				}
 			}
-		
-			g_free(server);
-			g_free(port);
-			g_free(fp);
 		}
+		if (server)
+			g_free(server);
+		if (port)
+			g_free(port);
+		if (fp)
+			g_free(fp);
 		row++;
 	}
 	g_dir_close(dir);
@@ -445,7 +448,7 @@ static void ssl_manager_delete_cb(GtkWidget *widget,
 
 	val = alertpanel_full(_("Delete certificate"),
 			      _("Do you really want to delete this certificate?"),
-		 	      _("_Cancel"), "edit-delete", NULL, ALERTFOCUS_FIRST,
+		 	      _("_Cancel"), _("D_elete"), NULL, ALERTFOCUS_FIRST,
 						FALSE, NULL, ALERT_WARNING);
 
 			     

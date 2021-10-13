@@ -1,6 +1,6 @@
 /*
- * Sylpheed -- a GTK+ based, lightweight, and fast e-mail client
- * Copyright (C) 2003-2012 Hiroyuki Yamamoto & The Claws Mail Team
+ * Claws Mail -- a GTK+ based, lightweight, and fast e-mail client
+ * Copyright (C) 1999-2021 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,12 +14,27 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
- * 
  */
 
-#ifndef COLORSEL_H
-#define COLORSEL_H
+#ifndef __W32_REG_H__
+#define __W32_REG_H__
 
-GdkRGBA colorsel_select_color_rgb(gchar *title, GdkRGBA rgba);
+#include <windows.h>
+#include <glib.h>
 
-#endif /* COLORSEL_H */
+gboolean write_w32_registry_string(HKEY root,
+	const gchar *subkey,
+	const gchar *value,
+	const gchar *data);
+
+gboolean write_w32_registry_dword(HKEY root,
+	const gchar *subkey,
+	const gchar *value,
+	DWORD data);
+
+// Caller should deallocate the return value with g_free()
+gchar *read_w32_registry_string(HKEY root,
+	const gchar *subkey,
+	const gchar *value);
+
+#endif

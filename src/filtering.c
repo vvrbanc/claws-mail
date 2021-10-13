@@ -540,6 +540,8 @@ static gboolean filteringaction_apply(FilteringAction * action, MsgInfo * info)
 			} else {
 				g_warning("header '%s' not set or empty", action->header?action->header:"(null)");
 			}
+			if (header)
+				procheader_header_free(header);
 			return (errors == 0);
 		}
 	default:
@@ -951,9 +953,11 @@ gchar *filteringaction_to_string(FilteringAction *action)
 
 	command_str = get_matchparser_tab_str(action->type);
 
-	if (command_str == NULL)
+	if (command_str == NULL) {
+		g_string_free(dest, TRUE);
 		return NULL;
-
+	}
+    
 	switch(action->type) {
 	case MATCHACTION_MOVE:
 	case MATCHACTION_COPY:
@@ -1008,6 +1012,7 @@ gchar *filteringaction_to_string(FilteringAction *action)
 		break;
 
 	default:
+		g_string_free(dest, TRUE);
 		return NULL;
 	}
 	deststr = dest->str;
@@ -1077,8 +1082,8 @@ static void prefs_filtering_free(GSList * prefs_filtering)
  	while (prefs_filtering != NULL) {
  		FilteringProp * filtering = (FilteringProp *)
 			prefs_filtering->data;
- 		filteringprop_free(filtering);
  		prefs_filtering = g_slist_remove(prefs_filtering, filtering);
+ 		filteringprop_free(filtering);
  	}
 }
 

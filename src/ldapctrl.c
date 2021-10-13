@@ -581,8 +581,9 @@ gchar *ldapctl_format_criteria( LdapControl *ctl, const gchar *searchVal ) {
 	else {
 		/* We have something - free up previous result */
 		retVal = p2;
-		g_free( p1 );
 	}
+	if (p1)
+		g_free( p1 );
 	debug_print("current search string: %s\n", retVal);
 	return retVal;
 }

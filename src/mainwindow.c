@@ -98,7 +98,7 @@
 #include "printing.h"
 #include "send_message.h"
 #ifdef G_OS_WIN32
-#include "w32lib.h"
+#include "w32_reg.h"
 #endif
 
 #define AC_LABEL_WIDTH	240
@@ -435,7 +435,7 @@ static void sync_cb		 ( GtkAction	*action,
 static void forget_session_passwords_cb	(GtkAction	*action,
 					 gpointer	 data );
 #ifndef PASSWORD_CRYPTO_OLD
-static void forget_master_passphrase_cb	(GtkAction	*action,
+static void forget_primary_passphrase_cb	(GtkAction	*action,
 					 gpointer	 data );
 #endif
 static gboolean mainwindow_focus_in_event	(GtkWidget	*widget, 
@@ -592,7 +592,7 @@ static GtkActionEntry mainwin_entries[] =
 	{"View/Goto/PrevLabeled",       NULL, N_("Previous _labeled message"), NULL, NULL, G_CALLBACK(prev_labeled_cb) },
 	{"View/Goto/NextLabeled",       NULL, N_("Next la_beled message"), NULL, NULL, G_CALLBACK(next_labeled_cb) },
 	/* {"View/Goto/---",            NULL, "---", NULL, NULL, NULL }, */
-	{"View/Goto/PrevHistory",       NULL, N_("Previous opened message"), "<alt>Left", NULL, G_CALLBACK(prev_history_cb) },
+	{"View/Goto/PrevHistory",       NULL, N_("Previously opened message"), "<alt>Left", NULL, G_CALLBACK(prev_history_cb) },
 	{"View/Goto/NextHistory",       NULL, N_("Next opened message"), "<alt>Right", NULL, G_CALLBACK(next_history_cb) },
 	/* {"View/Goto/---",            NULL, "---", NULL, NULL, NULL }, */
 	{"View/Goto/ParentMessage",     NULL, N_("Parent message"), "<control>Up", NULL, G_CALLBACK(parent_cb) },
@@ -751,12 +751,14 @@ static GtkActionEntry mainwin_entries[] =
 	{"Tools/CreateFilterRule/ByFrom",            NULL, N_("By _From"), NULL, NULL, G_CALLBACK(create_filter_cb) }, /* FILTER_BY_FROM */
 	{"Tools/CreateFilterRule/ByTo",              NULL, N_("By _To"), NULL, NULL, G_CALLBACK(create_filter_cb) }, /* FILTER_BY_TO     */
 	{"Tools/CreateFilterRule/BySubject",         NULL, N_("By _Subject"), NULL, NULL, G_CALLBACK(create_filter_cb) }, /* FILTER_BY_SUBJECT */
+	{"Tools/CreateFilterRule/BySender",          NULL, N_("By S_ender"), NULL, NULL, G_CALLBACK(create_filter_cb) }, /* FILTER_BY_SENDER */
 
 	{"Tools/CreateProcessingRule",               NULL, N_("Create processing rule"), NULL, NULL, NULL },
 	{"Tools/CreateProcessingRule/Automatically", NULL, N_("_Automatically"), NULL, NULL, G_CALLBACK(create_processing_cb) }, 
 	{"Tools/CreateProcessingRule/ByFrom",        NULL, N_("By _From"), NULL, NULL, G_CALLBACK(create_processing_cb) }, 
 	{"Tools/CreateProcessingRule/ByTo",          NULL, N_("By _To"), NULL, NULL, G_CALLBACK(create_processing_cb) }, 
 	{"Tools/CreateProcessingRule/BySubject",     NULL, N_("By _Subject"), NULL, NULL, G_CALLBACK(create_processing_cb) }, 
+	{"Tools/CreateProcessingRule/BySender",      NULL, N_("By S_ender"), NULL, NULL, G_CALLBACK(create_processing_cb) },
 	/* {"Tools/---",                             NULL, "---", NULL, NULL, NULL }, */
 
 	{"Tools/ListUrls",                           NULL, N_("List _URLs..."), "<control><shift>U", NULL, G_CALLBACK(open_urls_cb) }, 
@@ -787,7 +789,7 @@ static GtkActionEntry mainwin_entries[] =
 	/* {"Tools/---",                             NULL, "---", NULL, NULL, NULL }, */
 	{"Tools/ForgetSessionPasswords",             NULL, N_("_Forget all session passwords"), NULL, NULL, G_CALLBACK(forget_session_passwords_cb) }, 
 #ifndef PASSWORD_CRYPTO_OLD
-	{"Tools/ForgetMasterPassphrase",             NULL, N_("Forget _master passphrase"), NULL, NULL, G_CALLBACK(forget_master_passphrase_cb) },
+	{"Tools/ForgetPrimaryPassphrase",             NULL, N_("Forget _primary passphrase"), NULL, NULL, G_CALLBACK(forget_primary_passphrase_cb) },
 #endif
 
 /* Configuration menu */	
@@ -1184,9 +1186,6 @@ static void mainwindow_colorlabel_menu_create(MainWindow *mainwin, gboolean refr
 	gtk_menu_item_set_accel_path(GTK_MENU_ITEM(item), accel_path);
 	g_free(accel_path);
 	gtk_accel_map_add_entry("<ClawsColorLabels>/None", GDK_KEY_0, GDK_CONTROL_MASK);
-	item = gtk_menu_item_new();
-	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
-	gtk_widget_show(item);
 
 	/* create pixmap/label menu items */
 	for (i = 0; i < N_COLOR_LABELS; i++) {
@@ -1227,7 +1226,7 @@ static void mainwindow_tags_menu_item_apply_tags_activate_cb(GtkWidget *widget,
 				"dont_toggle"))
 		return;
 	
-	tag_apply_open(summary_get_selection(mainwin->summaryview));	
+	tags_window_open(summary_get_selection(mainwin->summaryview));
 }
 
 static gint mainwin_tag_cmp_list(gconstpointer a, gconstpointer b)
@@ -1291,12 +1290,12 @@ static void mainwindow_tags_menu_create(MainWindow *mainwin, gboolean refresh)
 	}
 	if (existing_tags) {
 		/* separator */
-		item = gtk_menu_item_new();
+		item = gtk_separator_menu_item_new();
 		gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
 		gtk_widget_show(item);
 	}
 
-	item = gtk_menu_item_new_with_label(_("Apply tags..."));
+	item = gtk_menu_item_new_with_label(_("Modify tags..."));
 	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
 	g_signal_connect(G_OBJECT(item), "activate",
 			 G_CALLBACK(mainwindow_tags_menu_item_apply_tags_activate_cb),
@@ -1304,10 +1303,10 @@ static void mainwindow_tags_menu_create(MainWindow *mainwin, gboolean refresh)
 	g_object_set_data(G_OBJECT(item), "mainwin",
 			  mainwin);
 	gtk_widget_show(item);
-	accel_path = g_strdup_printf("<ClawsTags>/ApplyTags");
+	accel_path = g_strdup_printf("<ClawsTags>/ModifyTags");
 	gtk_menu_item_set_accel_path(GTK_MENU_ITEM(item), accel_path);
 	g_free(accel_path);
-	gtk_accel_map_add_entry("<ClawsTags>/ApplyTags", GDK_KEY_T, GDK_CONTROL_MASK|GDK_SHIFT_MASK);
+	gtk_accel_map_add_entry("<ClawsTags>/ModifyTags", GDK_KEY_T, GDK_CONTROL_MASK|GDK_SHIFT_MASK);
 	g_slist_free(orig);
 	gtk_widget_show(menu);
 	gtk_menu_item_set_submenu(GTK_MENU_ITEM(label_menuitem), menu);
@@ -1810,12 +1809,14 @@ MainWindow *main_window_create()
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menu/Tools/CreateFilterRule", "ByFrom", "Tools/CreateFilterRule/ByFrom", GTK_UI_MANAGER_MENUITEM)
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menu/Tools/CreateFilterRule", "ByTo", "Tools/CreateFilterRule/ByTo", GTK_UI_MANAGER_MENUITEM)
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menu/Tools/CreateFilterRule", "BySubject", "Tools/CreateFilterRule/BySubject", GTK_UI_MANAGER_MENUITEM)
+	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menu/Tools/CreateFilterRule", "BySender", "Tools/CreateFilterRule/BySender", GTK_UI_MANAGER_MENUITEM)
 
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menu/Tools", "CreateProcessingRule", "Tools/CreateProcessingRule", GTK_UI_MANAGER_MENU)
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menu/Tools/CreateProcessingRule", "Automatically", "Tools/CreateProcessingRule/Automatically", GTK_UI_MANAGER_MENUITEM)
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menu/Tools/CreateProcessingRule", "ByFrom", "Tools/CreateProcessingRule/ByFrom", GTK_UI_MANAGER_MENUITEM)
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menu/Tools/CreateProcessingRule", "ByTo", "Tools/CreateProcessingRule/ByTo", GTK_UI_MANAGER_MENUITEM)
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menu/Tools/CreateProcessingRule", "BySubject", "Tools/CreateProcessingRule/BySubject", GTK_UI_MANAGER_MENUITEM)
+	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menu/Tools/CreateProcessingRule", "BySender", "Tools/CreateProcessingRule/BySender", GTK_UI_MANAGER_MENUITEM)
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menu/Tools", "Separator2", "Tools/---", GTK_UI_MANAGER_SEPARATOR)
 	
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menu/Tools", "ListUrls", "Tools/ListUrls", GTK_UI_MANAGER_MENUITEM)
@@ -1846,7 +1847,7 @@ MainWindow *main_window_create()
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menu/Tools", "Separator8", "Tools/---", GTK_UI_MANAGER_SEPARATOR)
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menu/Tools", "ForgetSessionPasswords", "Tools/ForgetSessionPasswords", GTK_UI_MANAGER_MENUITEM)
 #ifndef PASSWORD_CRYPTO_OLD
-	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menu/Tools", "ForgetMasterPassphrase", "Tools/ForgetMasterPassphrase", GTK_UI_MANAGER_MENUITEM)
+	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menu/Tools", "ForgetPrimaryPassphrase", "Tools/ForgetPrimaryPassphrase", GTK_UI_MANAGER_MENUITEM)
 #endif
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menu/Tools", "Separator9", "Tools/---", GTK_UI_MANAGER_SEPARATOR)
 
@@ -1942,8 +1943,8 @@ MainWindow *main_window_create()
 	gtk_box_pack_start(GTK_BOX(hbox_stat), warning_btn, FALSE, FALSE, 0);
 
 	statusbar = statusbar_create();
-	gtk_widget_set_margin_left(statusbar, 2);
-	gtk_widget_set_margin_right(statusbar, 0);
+	gtk_widget_set_margin_start(statusbar, 2);
+	gtk_widget_set_margin_end(statusbar, 0);
 	gtk_widget_set_margin_top(statusbar, 0);
 	gtk_widget_set_margin_bottom(statusbar, 0);
 	gtk_box_pack_start(GTK_BOX(hbox_stat), statusbar, TRUE, TRUE, 0);
@@ -2299,6 +2300,7 @@ static gboolean reflect_prefs_timeout_cb(gpointer data)
 			messageview_reflect_prefs_pixmap_theme();
 			compose_reflect_prefs_pixmap_theme();
 			folderview_reinit_fonts(mainwin->folderview);
+			folderview_init(mainwin->folderview);
 			summary_reflect_prefs_pixmap_theme(mainwin->summaryview);
 			foldersel_reflect_prefs_pixmap_theme();
 #ifndef USE_ALT_ADDRBOOK
@@ -2760,7 +2762,7 @@ void main_window_toggle_message_view(MainWindow *mainwin)
 					      "pan-down-symbolic", GTK_ICON_SIZE_MENU);
 	else
 		gtk_image_set_from_icon_name(GTK_IMAGE(mainwin->summaryview->toggle_arrow),
-					     "pan-up-symbolic", GTK_ICON_SIZE_MENU);;
+					     "pan-up-symbolic", GTK_ICON_SIZE_MENU);
 
 	if (mainwin->messageview->visible == FALSE)
 		messageview_clear(mainwin->messageview);
@@ -2804,7 +2806,7 @@ void main_window_get_size(MainWindow *mainwin)
 		prefs_common.mainview_width = allocation.width;
 	}
 
-	gtk_window_get_size(mainwin->window, &allocation.width, &allocation.height);
+	gtk_window_get_size(GTK_WINDOW(mainwin->window), &allocation.width, &allocation.height);
 	if (allocation.width > 1 && allocation.height > 1 &&
 	    !prefs_common.mainwin_maximised && !prefs_common.mainwin_fullscreen) {
 		prefs_common.mainview_height = allocation.height;
@@ -2844,7 +2846,7 @@ void main_window_get_position(MainWindow *mainwin)
 	if (prefs_common.mainwin_maximised || prefs_common.mainwin_fullscreen)
 		return;
 
-	gtk_window_get_position(mainwin->window, &x, &y);
+	gtk_window_get_position(GTK_WINDOW(mainwin->window), &x, &y);
 
 	prefs_common.mainview_x = x;
 	prefs_common.mainview_y = y;
@@ -3082,7 +3084,7 @@ SensitiveCondMask main_window_get_current_state(MainWindow *mainwin)
 	}
 
 #ifndef PASSWORD_CRYPTO_OLD
-	if (master_passphrase_is_entered()) {
+	if (primary_passphrase_is_entered()) {
 		UPDATE_STATE(M_MASTER_PASSPHRASE);
 	}
 #endif
@@ -3220,7 +3222,7 @@ void main_window_set_menu_sensitive(MainWindow *mainwin)
 	SET_SENSITIVE("Menu/Tools/Expunge", M_DELETED_EXISTS);
 	SET_SENSITIVE("Menu/Tools/ForgetSessionPasswords", M_SESSION_PASSWORDS);
 #ifndef PASSWORD_CRYPTO_OLD
-	SET_SENSITIVE("Menu/Tools/ForgetMasterPassphrase", M_MASTER_PASSPHRASE);
+	SET_SENSITIVE("Menu/Tools/ForgetPrimaryPassphrase", M_MASTER_PASSPHRASE);
 #endif
 	SET_SENSITIVE("Menu/Tools/DeleteDuplicates/SelFolder", M_MSG_EXIST, M_ALLOW_DELETE);
 
@@ -3738,7 +3740,7 @@ static void main_window_set_widgets(MainWindow *mainwin, LayoutType layout_mode)
 
 		break;
 	default:
-		g_warning("Unknown layout");
+		g_warning("unknown layout");
 		return;
 	}
 
@@ -4260,7 +4262,7 @@ static void addressbook_open_cb(GtkAction *action, gpointer data)
 	
 	addressbook_dbus_open(FALSE, &error);
 	if (error) {
-		g_warning("Failed to open address book: %s", error->message);
+		g_warning("failed to open address book: %s", error->message);
 		g_error_free(error);
 	}
 #endif
@@ -4597,6 +4599,8 @@ static void thread_cb(GtkAction *action, gpointer data)
 	if (mainwin->menu_lock_count) return;
 	if (!mainwin->summaryview->folder_item) return;
 
+	main_window_cursor_wait(mainwin);
+
 	selected_msgnum = summary_get_msgnum(mainwin->summaryview, mainwin->summaryview->selected);
 
 	threaded = gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (action));
@@ -4608,6 +4612,8 @@ static void thread_cb(GtkAction *action, gpointer data)
 	summary_show(mainwin->summaryview, 
 			mainwin->summaryview->folder_item, FALSE);
 	summary_select_by_msgnum(mainwin->summaryview, selected_msgnum, FALSE);
+
+	main_window_cursor_normal(mainwin);
 }
 
 static void expand_threads_cb(GtkAction *action, gpointer data)
@@ -4985,6 +4991,7 @@ static void create_filter_cb(GtkAction *gaction, gpointer data)
 	DO_ACTION("Tools/CreateFilterRule/ByFrom", FILTER_BY_FROM);
 	DO_ACTION("Tools/CreateFilterRule/ByTo", FILTER_BY_TO);
 	DO_ACTION("Tools/CreateFilterRule/BySubject", FILTER_BY_SUBJECT);
+	DO_ACTION("Tools/CreateFilterRule/BySender", FILTER_BY_SENDER);
 	summary_filter_open(mainwin->summaryview, (PrefsFilterType)action, 0);
 }
 
@@ -4998,6 +5005,7 @@ static void create_processing_cb(GtkAction *gaction, gpointer data)
 	DO_ACTION("Tools/CreateProcessingRule/ByFrom", FILTER_BY_FROM);
 	DO_ACTION("Tools/CreateProcessingRule/ByTo", FILTER_BY_TO);
 	DO_ACTION("Tools/CreateProcessingRule/BySubject", FILTER_BY_SUBJECT);
+	DO_ACTION("Tools/CreateProcessingRule/BySender", FILTER_BY_SENDER);
 	summary_filter_open(mainwin->summaryview, (PrefsFilterType)action, 1);
 }
 
@@ -5038,9 +5046,7 @@ static void prefs_actions_open_cb(GtkAction *action, gpointer data)
 
 static void prefs_tags_open_cb(GtkAction *action, gpointer data)
 {
-	MainWindow *mainwin = (MainWindow *)data;
-	GSList * list = summary_get_selected_msg_list(mainwin->summaryview);
-	tag_apply_open(list);
+	tags_window_open(NULL);
 }
 #ifdef USE_GNUTLS
 static void ssl_manager_open_cb(GtkAction *action, gpointer data)
@@ -5133,7 +5139,7 @@ static void set_default_client_cb(GtkAction *action, gpointer data)
 	gchar *binary_icon = NULL;
 	gchar *binary_compose = NULL;
 	gchar *binary_run = NULL;
-	int r = 0;
+	gboolean r;
 	if ( !GetModuleFileNameA (0, exename, sizeof (exename)) ) {
 		alertpanel_error(_("Can not register as default client: impossible to get executable path."));
 		return;
@@ -5143,56 +5149,88 @@ static void set_default_client_cb(GtkAction *action, gpointer data)
 	binary_run = g_strconcat(exename, NULL);
 
 	/* Try to set the Mail Start menu item to Claws. It may fail if we're not root; we don't care */
-	r = write_w32_registry_string("HKLM", "Software\\Clients\\Mail", 
-			"", "Claws Mail");
+	r = write_w32_registry_string(HKEY_LOCAL_MACHINE,
+		"Software\\Clients\\Mail",
+		"",
+		"Claws Mail");
 	
-	r = write_w32_registry_string("HKCU", "Software\\Clients\\Mail\\Claws Mail", 
-				"", "Claws Mail");
-	if (!r)
-		r = write_w32_registry_string("HKCU", "Software\\Clients\\Mail\\Claws Mail", 
-				"DLLPath", "");
-	if (!r)
-		r = write_w32_registry_string("HKCU", "Software\\Clients\\Mail\\Claws Mail\\Protocols\\mailto", 
-				"", "URL:MailTo-Protocol");
-	if (!r)
-		r = write_w32_registry_string("HKCU", "Software\\Clients\\Mail\\Claws Mail\\Protocols\\mailto", 
-				"URL Protocol", "");
-	if (!r)
-		r = write_w32_registry_dword ("HKCU", "Software\\Clients\\Mail\\Claws Mail\\Protocols\\mailto", 
-				"EditFlags", 2);
-	if (!r)
-		r = write_w32_registry_string ("HKCU", "Software\\Clients\\Mail\\Claws Mail\\Protocols\\mailto", 
-				"FriendlyTypeName", "Claws-Mail URL");
-	if (!r)
-		r = write_w32_registry_string("HKCU", "Software\\Clients\\Mail\\Claws Mail\\Protocols\\mailto\\DefaultIcon", 
-				"", binary_icon);
-	if (!r)
-		r = write_w32_registry_string("HKCU", "Software\\Clients\\Mail\\Claws Mail\\Protocols\\mailto\\shell\\open\\command", 
-				"", binary_compose);
-	if (!r)
-		r = write_w32_registry_string("HKCU", "Software\\Clients\\Mail\\Claws Mail\\shell\\open\\command", 
-				"", binary_run);
+	r = write_w32_registry_string(HKEY_CURRENT_USER,
+		"Software\\Clients\\Mail\\Claws Mail",
+		"",
+		"Claws Mail");
+	if (r)
+		r = write_w32_registry_string(HKEY_CURRENT_USER,
+			"Software\\Clients\\Mail\\Claws Mail",
+			"DLLPath",
+			"");
+	if (r)
+		r = write_w32_registry_string(HKEY_CURRENT_USER,
+			"Software\\Clients\\Mail\\Claws Mail\\Protocols\\mailto",
+			"",
+			"URL:MailTo-Protocol");
+	if (r)
+		r = write_w32_registry_string(HKEY_CURRENT_USER,
+			"Software\\Clients\\Mail\\Claws Mail\\Protocols\\mailto",
+			"URL Protocol",
+			"");
+	if (r)
+		r = write_w32_registry_dword (HKEY_CURRENT_USER,
+			"Software\\Clients\\Mail\\Claws Mail\\Protocols\\mailto",
+			"EditFlags",
+			2);
+	if (r)
+		r = write_w32_registry_string(HKEY_CURRENT_USER,
+			"Software\\Clients\\Mail\\Claws Mail\\Protocols\\mailto",
+			"FriendlyTypeName",
+			"Claws-Mail URL");
+	if (r)
+		r = write_w32_registry_string(HKEY_CURRENT_USER,
+			"Software\\Clients\\Mail\\Claws Mail\\Protocols\\mailto\\DefaultIcon",
+			"",
+			binary_icon);
+	if (r)
+		r = write_w32_registry_string(HKEY_CURRENT_USER,
+			"Software\\Clients\\Mail\\Claws Mail\\Protocols\\mailto\\shell\\open\\command",
+			"",
+			binary_compose);
+	if (r)
+		r = write_w32_registry_string(HKEY_CURRENT_USER,
+			"Software\\Clients\\Mail\\Claws Mail\\shell\\open\\command",
+			"",
+			binary_run);
 	
-	if (!r)
-		r = write_w32_registry_string("HKCU", "Software\\Classes\\mailto", 
-				"", "URL:MailTo-Protocol");
-	if (!r)
-		r = write_w32_registry_string("HKCU", "Software\\Classes\\mailto", 
-				"URL Protocol", "");
-	if (!r)
-		r = write_w32_registry_dword ("HKCU", "Software\\Classes\\mailto", 
-				"EditFlags", 2);
-	if (!r)
-		r = write_w32_registry_string("HKCU", "Software\\Classes\\mailto", 
-				"FriendlyTypeName", "Claws-Mail URL");
-	if (!r)
-		r = write_w32_registry_string("HKCU", "Software\\Classes\\mailto\\DefaultIcon", 
-				"", binary_icon);
-	if (!r)
-		r = write_w32_registry_string("HKCU", "Software\\Classes\\mailto\\shell\\open\\command", 
-				"", binary_compose);
+	if (r)
+		r = write_w32_registry_string(HKEY_CURRENT_USER,
+			"Software\\Classes\\mailto",
+			"",
+			"URL:MailTo-Protocol");
+	if (r)
+		r = write_w32_registry_string(HKEY_CURRENT_USER,
+			"Software\\Classes\\mailto",
+			"URL Protocol",
+			"");
+	if (r)
+		r = write_w32_registry_dword (HKEY_CURRENT_USER,
+			"Software\\Classes\\mailto",
+			"EditFlags",
+			2);
+	if (r)
+		r = write_w32_registry_string(HKEY_CURRENT_USER,
+			"Software\\Classes\\mailto",
+			"FriendlyTypeName",
+			"Claws-Mail URL");
+	if (r)
+		r = write_w32_registry_string(HKEY_CURRENT_USER,
+			"Software\\Classes\\mailto\\DefaultIcon",
+			"",
+			binary_icon);
+	if (r)
+		r = write_w32_registry_string(HKEY_CURRENT_USER,
+			"Software\\Classes\\mailto\\shell\\open\\command",
+			"",
+			binary_compose);
 	
-	if (!r) {
+	if (r) {
 		SendMessage(HWND_BROADCAST, WM_SETTINGCHANGE, 0, (LPARAM)"Software\\Clients\\Mail");
 		alertpanel_notice(_("Claws Mail has been registered as default client."));
 	} else {
@@ -5360,12 +5398,12 @@ static void forget_session_passwords_cb(GtkAction *action, gpointer data)
 }
 
 #ifndef PASSWORD_CRYPTO_OLD
-static void forget_master_passphrase_cb(GtkAction *action, gpointer data)
+static void forget_primary_passphrase_cb(GtkAction *action, gpointer data)
 {
 	MainWindow *mainwin = (MainWindow *)data;
 
 	main_window_lock(mainwin);
-	master_passphrase_forget();
+	primary_passphrase_forget();
 	main_window_unlock(mainwin);
 }
 #endif

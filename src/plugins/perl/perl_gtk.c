@@ -29,8 +29,6 @@
 
 #include <string.h>
 
-#include <glib.h>
-#include <glib/gi18n.h>
 #include <gtk/gtk.h>
 
 #include "common/utils.h"
@@ -93,7 +91,7 @@ static void perl_filter_edit(GtkAction *action, gpointer callback_data)
   }
   else {
     if (prefs_common_get_ext_editor_cmd())
-      g_warning("Perl Plugin: External editor command-line is invalid: `%s'",
+      g_warning("Perl plugin: external editor command-line is invalid: `%s'",
 		prefs_common_get_ext_editor_cmd());
     g_snprintf(buf, sizeof(buf), "emacs %s", perlfilter);
   }

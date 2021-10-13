@@ -174,6 +174,19 @@ esac
 AC_MSG_RESULT([$env_cygwin])
 AM_CONDITIONAL(CYGWIN, test x"$env_cygwin" = x"yes")
 
+AC_MSG_CHECKING([for time_t format specifier])
+case "$host" in
+  x86_64-w64-mingw32)
+    time_t_fmt=lld
+    ;;
+  *)
+    time_t_fmt=ld
+    ;;
+esac
+AC_MSG_RESULT([$time_t_fmt])
+AC_DEFINE_UNQUOTED([CM_TIME_FORMAT], ["$time_t_fmt"],
+	[Define printf format specifier for time_t])
+
 if test "$GCC" = "yes"
 then
 	CFLAGS="$CFLAGS -Wno-unused-function"
@@ -251,7 +264,7 @@ AC_ARG_ENABLE(ipv6,
 		[enable_ipv6=$enableval], [enable_ipv6=yes])
 
 AC_ARG_ENABLE(gnutls,
-		[  --disable-gnutls                Do not build GnuTLS support for SSL/TLS],
+		[  --disable-gnutls                Do not build GnuTLS support for TLS],
 		    [enable_gnutls=$enableval], [enable_gnutls=yes])
 
 AC_ARG_ENABLE(enchant,
@@ -2117,6 +2130,7 @@ m4/Makefile
 po/Makefile.in
 src/common/version.h
 src/Makefile
+src/w32-resource.rc
 src/common/Makefile
 src/common/passcrypt.h
 src/common/tests/Makefile
@@ -2125,44 +2139,64 @@ src/etpan/Makefile
 src/plugins/Makefile
 src/plugins/acpi_notifier/Makefile
 src/plugins/address_keeper/Makefile
+src/plugins/address_keeper/version.rc
 src/plugins/archive/Makefile
 src/plugins/att_remover/Makefile
+src/plugins/att_remover/version.rc
 src/plugins/attachwarner/Makefile
+src/plugins/attachwarner/version.rc
 src/plugins/bogofilter/Makefile
 src/plugins/bsfilter/Makefile
+src/plugins/bsfilter/version.rc
 src/plugins/clamd/Makefile
 src/plugins/clamd/libclamd/Makefile
 src/plugins/demo/Makefile
 src/plugins/dillo/Makefile
 src/plugins/fancy/Makefile
+src/plugins/fancy/version.rc
 src/plugins/fetchinfo/Makefile
+src/plugins/fetchinfo/version.rc
 src/plugins/gdata/Makefile
 src/plugins/litehtml_viewer/Makefile
+src/plugins/litehtml_viewer/version.rc
 src/plugins/litehtml_viewer/litehtml/Makefile
 src/plugins/libravatar/Makefile
+src/plugins/libravatar/version.rc
 src/plugins/mailmbox/Makefile
+src/plugins/mailmbox/version.rc
 src/plugins/managesieve/Makefile
+src/plugins/managesieve/version.rc
 src/plugins/newmail/Makefile
 src/plugins/notification/Makefile
+src/plugins/notification/version.rc
 src/plugins/notification/gtkhotkey/Makefile
 src/plugins/pdf_viewer/Makefile
+src/plugins/pdf_viewer/version.rc
 src/plugins/perl/Makefile
 src/plugins/perl/tools/Makefile
 src/plugins/python/Makefile
 src/plugins/python/examples/Makefile
 src/plugins/pgpcore/Makefile
+src/plugins/pgpcore/version.rc
 src/plugins/pgpcore/tests/Makefile
 src/plugins/pgpmime/Makefile
+src/plugins/pgpmime/version.rc
 src/plugins/pgpinline/Makefile
+src/plugins/pgpinline/version.rc
 src/plugins/rssyl/Makefile
+src/plugins/rssyl/version.rc
 src/plugins/rssyl/tests/Makefile
 src/plugins/rssyl/libfeed/Makefile
 src/plugins/rssyl/libfeed/tests/Makefile
 src/plugins/smime/Makefile
+src/plugins/smime/version.rc
 src/plugins/spamassassin/Makefile
 src/plugins/spam_report/Makefile
+src/plugins/spam_report/version.rc
 src/plugins/tnef_parse/Makefile
+src/plugins/tnef_parse/version.rc
 src/plugins/vcalendar/Makefile
+src/plugins/vcalendar/version.rc
 src/tests/Makefile
 doc/Makefile
 doc/man/Makefile

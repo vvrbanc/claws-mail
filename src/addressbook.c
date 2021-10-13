@@ -1480,14 +1480,14 @@ static void addressbook_del_clicked(GtkButton *button, gpointer data)
 			aval = alertpanel( _("Delete group"),
 					_("Really delete the group(s)?\n"
 					  "The addresses it contains will not be lost."),
-					_("_Cancel"), "edit-delete", NULL, ALERTFOCUS_SECOND );
+					_("_Cancel"), _("D_elete"), NULL, ALERTFOCUS_SECOND );
 			if( aval != G_ALERTALTERNATE ) {
 				goto thaw_ret;
 			}
 		} else {
 			aval = alertpanel( _("Delete address(es)"),
 					_("Really delete the address(es)?"),
-					_("_Cancel"), "edit-delete", NULL, ALERTFOCUS_SECOND );
+					_("_Cancel"), _("D_elete"), NULL, ALERTFOCUS_SECOND );
 			if( aval != G_ALERTALTERNATE ) {
 				goto thaw_ret;
 			}
@@ -2954,7 +2954,7 @@ static void addressbook_treenode_delete_cb(GtkAction *action, gpointer data)
 				"results and addresses in '%s'?" ),
 				obj->name );
 			aval = alertpanel( _("Delete"), message,
-				_("_Cancel"), "edit-delete", NULL, ALERTFOCUS_SECOND );
+				_("_Cancel"), _("D_elete"), NULL, ALERTFOCUS_SECOND );
 			g_free(message);
 			if( aval == G_ALERTALTERNATE ) {
 				delType = ADDRTREE_DEL_FOLDER_ADDR;
@@ -2980,14 +2980,14 @@ static void addressbook_treenode_delete_cb(GtkAction *action, gpointer data)
 		message = g_strdup_printf(_("Do you want to delete '%s'?\n"
 					    "The addresses it contains will not be lost."), obj->name);
 		aval = alertpanel(_("Delete"), message, _("_Cancel"), 
-				"edit-delete", NULL, ALERTFOCUS_SECOND);
+				_("D_elete"), NULL, ALERTFOCUS_SECOND);
 		g_free(message);
 		if( aval == G_ALERTALTERNATE ) delType = ADDRTREE_DEL_FOLDER_ONLY;
 	} else {
 		message = g_strdup_printf(_("Do you want to delete '%s'?\n"
 					    "The addresses it contains will be lost."), obj->name);
 		aval = alertpanel(_("Delete"), message, _("_Cancel"), 
-				"edit-delete", NULL, ALERTFOCUS_SECOND);
+				_("D_elete"), NULL, ALERTFOCUS_SECOND);
 		g_free(message);
 		if( aval == G_ALERTALTERNATE ) delType = ADDRTREE_DEL_DATA;
 	}
@@ -3636,10 +3636,12 @@ gchar *addressbook_set_col_name_guard(gchar *value)
 {
 	gchar *ret = "<not set>";
 	gchar *tmp = g_strdup(value);
-	g_strstrip(tmp);
-	if (tmp !=NULL && *tmp != '\0')
-		ret = value;
-	g_free(tmp);
+	if (tmp) {
+		g_strstrip(tmp);
+		if (*tmp != '\0')
+			ret = value;
+		g_free(tmp);
+	}
 	return ret;
 }
 
@@ -4263,7 +4265,7 @@ void addressbook_read_file( void ) {
 	if ( !is_dir_exist(indexdir) ) {
 		if ( make_dir(indexdir) < 0 ) {
 			addrindex_set_file_path( addrIndex, get_rc_dir() );
-			g_warning( "couldn't create dir '%s'", indexdir);
+			g_warning("couldn't create dir '%s'", indexdir);
 		} else {
 			if (!migrate_addrbook(get_rc_dir(), indexdir)) {
 				remove_dir_recursive(indexdir);
@@ -4406,7 +4408,6 @@ static GtkCMCTreeNode *addressbook_node_add_folder(
 {
 	GtkCMCTree *ctree = GTK_CMCTREE(addrbook.ctree);
 	GtkCMCTreeNode *newNode = NULL;
-	AdapterFolder *adapter;
 	AddressTypeControlItem *atci = NULL;
 	GList *listItems = NULL;
 	gchar *name;
@@ -4431,7 +4432,7 @@ static GtkCMCTreeNode *addressbook_node_add_folder(
 		newNode = node;
 	}
 	else {
-		adapter = g_new0( AdapterFolder, 1 );
+		AdapterFolder *adapter = g_new0( AdapterFolder, 1 );
 		ADDRESS_OBJECT_TYPE(adapter) = ADDR_ITEM_FOLDER;
 		ADDRESS_OBJECT_NAME(adapter) = g_strdup( ADDRITEM_NAME(itemFolder) );
 		adapter->itemFolder = itemFolder;
@@ -4443,6 +4444,8 @@ static GtkCMCTreeNode *addressbook_node_add_folder(
 		if( newNode ) {
 			gtk_cmctree_node_set_row_data_full( ctree, newNode, adapter,
 				addressbook_free_treenode );
+		} else {
+			addrbookctl_free_folder(adapter);
 		}
 	}
 
@@ -4772,8 +4775,8 @@ static void addressbook_lup_clicked( GtkButton *button, gpointer data ) {
 				ldap_ctl->bindDN != NULL && strlen(ldap_ctl->bindDN) > 0) {
 #ifndef PASSWORD_CRYPTO_OLD
 			/* LDAP server is password-protected. */
-			if (master_passphrase() == NULL) {
-				/* User did not enter master passphrase, do not start a search. */
+			if (primary_passphrase() == NULL) {
+				/* User did not enter primary passphrase, do not start a search. */
 				return;
 			}
 #endif /* PASSWORD_CRYPTO_OLD */
@@ -5782,6 +5785,8 @@ static gboolean addressbook_drag_motion_cb(GtkWidget      *widget,
 
 		if (node != NULL) {
 			AddressObject *obj = gtk_cmctree_node_get_row_data(GTK_CMCTREE(widget), node );
+			if (obj == NULL)
+				return FALSE;
 			if( obj->type == ADDR_ITEM_FOLDER 
 			|| obj->type == ADDR_ITEM_GROUP)
 				acceptable = TRUE;
@@ -5789,7 +5794,6 @@ static gboolean addressbook_drag_motion_cb(GtkWidget      *widget,
 				AdapterDSource *ads = NULL;
 				AddressDataSource *ds = NULL;
 				ads = ADAPTER_DSOURCE(obj);
-				if (ads == NULL ){ return FALSE;}
 				ds = ads->dataSource;
 				if (ds == NULL ) { return FALSE;}
 

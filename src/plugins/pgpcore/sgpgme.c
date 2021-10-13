@@ -251,7 +251,7 @@ gchar *sgpgme_sigstat_info_short(gpgme_ctx_t ctx, gpgme_verify_result_t status)
 		if (!warned)
 			alertpanel_error(_("PGP Core: Can't get key - no gpg-agent running."));
 		else
-			g_warning("PGP Core: Can't get key - no gpg-agent running.");
+			g_warning("PGP Core: can't get key - no gpg-agent running");
 		warned = TRUE;
 	} else if (gpg_err_code(err) != GPG_ERR_NO_ERROR && gpg_err_code(err) != GPG_ERR_EOF) {
 		return g_strdup_printf(_("The signature can't be checked - %s"), 
@@ -401,8 +401,7 @@ gchar *sgpgme_sigstat_info_full(gpgme_ctx_t ctx, gpgme_verify_result_t status)
 				key->uids = key->uids ? key->uids->next : NULL;
 				while (key->uids != NULL) {
 					g_string_append_printf(siginfo,
-						g_strconcat("                    ",
-							    _("uid \"%s\" (Validity: %s)\n"), NULL),
+						_("                    uid \"%s\" (Validity: %s)\n"),
 						key->uids->uid,
 						key->uids->revoked==TRUE?_("Revoked"):get_validity_str(key->uids->validity));
 					j++;
@@ -560,11 +559,13 @@ gchar *sgpgme_get_encrypt_data(GSList *recp_names, gpgme_protocol_t proto)
 		gchar *fpr = skey->fpr;
 		gchar *tmp = NULL;
 		debug_print("adding %s\n", fpr);
-		tmp = g_strconcat(ret?ret:"", fpr, " ", NULL);
-		g_free(ret);
+		tmp = g_strconcat(ret ? ret : "", fpr, " ", NULL);
+		if (ret)
+			g_free(ret);
 		ret = tmp;
 		i++;
 	}
+	g_free(keys);
 	return ret;
 }
 

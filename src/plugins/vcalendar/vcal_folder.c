@@ -1170,7 +1170,7 @@ static void vcal_set_mtime(Folder *folder, FolderItem *item)
 	}
 
 	item->mtime = s.st_mtime;
-	debug_print("VCAL: forced mtime of %s to %"G_GSIZE_FORMAT"\n",
+	debug_print("VCAL: forced mtime of %s to %"CM_TIME_FORMAT"\n",
 			item->name?item->name:"(null)", item->mtime);
 	g_free(path);
 }
@@ -1296,7 +1296,8 @@ void vcal_folder_gtk_done(void)
 		if (!file)			
 			continue;
 		debug_print("removing %s\n", file);
-		g_unlink(file);
+		if (g_unlink(file) < 0)
+                        FILE_OP_ERROR(file, "g_unlink");
 		g_free(file);
 	}
 	g_slist_free(created_files);
@@ -1745,7 +1746,7 @@ gboolean vcal_curl_put(gchar *url, FILE *fp, gint filesize, const gchar *user, c
 
 	curl_easy_getinfo(curl_ctx, CURLINFO_RESPONSE_CODE, &response_code);
 	if (response_code < 200 || response_code >= 300) {
-		g_warning("Can't export calendar, got code %ld", response_code);
+		g_warning("can't export calendar, got code %ld", response_code);
 		res = FALSE;
 	}
 	curl_easy_cleanup(curl_ctx);
@@ -2486,8 +2487,10 @@ gchar* vcal_add_event(const gchar *vevent)
 	VCalEvent *event = vcal_get_event_from_ical(vevent, NULL);
 	gchar *retVal = NULL;
 	Folder *folder = folder_find_from_name (PLUGIN_NAME, vcal_folder_get_class());
-	if (!folder)
+	if (!folder) {
+		vcal_manager_free_event(event);
 		return NULL;
+	}
 
 	if (event) {
 		if (vcal_event_exists(event->uid)) {

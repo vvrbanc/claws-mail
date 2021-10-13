@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK+ based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2020 the Claws Mail team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2021 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -84,7 +84,7 @@ static void image_viewer_load_image(ImageViewer *imageviewer)
 
 	stream = procmime_get_part_as_inputstream(imageviewer->mimeinfo);
 	if (stream == NULL) {
-		g_warning("Couldn't get image MIME part");
+		g_warning("couldn't get image MIME part");
 		return;
 	}
 
@@ -95,15 +95,19 @@ static void image_viewer_load_image(ImageViewer *imageviewer)
 #endif
 	g_object_unref(stream);
 
-	if (error != NULL) {
-		g_warning("Couldn't load image: %s\n", error->message);
+	if (error) {
+		g_warning("couldn't load image: %s", error->message);
+		gtk_label_set_text(GTK_LABEL(imageviewer->error_lbl), _("Error:"));
+		gtk_label_set_text(GTK_LABEL(imageviewer->error_msg), error->message);
+		gtk_notebook_set_current_page(GTK_NOTEBOOK(imageviewer->notebook), 0);
+		gtk_widget_hide(imageviewer->load_button);
 		g_error_free(error);
 		return;
 	}
 
 #if GDK_PIXBUF_MINOR >= 28
-	if (gdk_pixbuf_animation_is_static_image(animation)
-	    || imageviewer->resize_img || imageviewer->fit_img_height) {
+	if ((animation && gdk_pixbuf_animation_is_static_image(animation)) ||
+	    imageviewer->resize_img || imageviewer->fit_img_height) {
 		pixbuf = gdk_pixbuf_animation_get_static_image(animation);
 		g_object_ref(pixbuf);
 		g_object_unref(animation);
@@ -111,27 +115,20 @@ static void image_viewer_load_image(ImageViewer *imageviewer)
 #else
 	if (imageviewer->resize_img || imageviewer->fit_img_height) {
 #endif
-
 		if (imageviewer->resize_img) {
 			gtk_widget_get_allocation(imageviewer->scrolledwin, &allocation);
 			pixbuf = claws_load_pixbuf_fitting(pixbuf, FALSE,
-				imageviewer->fit_img_height,
-				allocation.width,
-				allocation.height);
-		}
-		else
-			pixbuf = claws_load_pixbuf_fitting(pixbuf, FALSE, imageviewer->fit_img_height, -1, -1);
+							   imageviewer->fit_img_height,
+				      			   allocation.width,
+				      			   allocation.height);
+		} else
+			pixbuf = claws_load_pixbuf_fitting(pixbuf, FALSE,
+							   imageviewer->fit_img_height,
+							   -1, -1);
 	}
 
-	if (error && !pixbuf && !animation) {
-		gtk_label_set_text(GTK_LABEL(imageviewer->error_lbl), _("Error:"));
-		gtk_label_set_text(GTK_LABEL(imageviewer->error_msg), error->message);
-		gtk_notebook_set_current_page(GTK_NOTEBOOK(imageviewer->notebook), 0);
-		gtk_widget_hide(imageviewer->load_button);
-		g_error_free(error);
-	}
 	if (!pixbuf && !animation) {
-		g_warning("Can't load the image.");	
+		g_warning("couldn't load the image");	
 		return;
 	}
 
@@ -301,6 +298,7 @@ static MimeViewer *image_viewer_create(void)
 	GtkWidget *error_msg;
 
 	notebook = gtk_notebook_new();
+	gtk_widget_set_name(GTK_WIDGET(notebook), "image_viewer");
 	gtk_widget_show(notebook);
 	gtk_widget_set_can_focus(notebook, FALSE);
 	gtk_notebook_set_show_tabs(GTK_NOTEBOOK(notebook), FALSE);

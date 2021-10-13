@@ -959,9 +959,12 @@ static ChildInfo *fork_child(gchar *cmd, const gchar *msg_str,
 	ret_str = g_locale_from_utf8(cmd, strlen(cmd),
 				     &by_read, &by_written,
 				     NULL);
-	if (!ret_str || !by_written)
+	if (!ret_str || !by_written) {
+		if (ret_str)
+			g_free(ret_str);
 		ret_str = g_strdup(cmd);
-
+	}
+    
 	trim_cmd = ret_str;
 
 	while (g_ascii_isspace(trim_cmd[0]))
@@ -1042,11 +1045,13 @@ static ChildInfo *fork_child(gchar *cmd, const gchar *msg_str,
 		int r;
 		ret_str = g_locale_from_utf8(msg_str, strlen(msg_str),
 					     &by_read, &by_written, NULL);
-		if (ret_str && by_written) {
+		if (ret_str && by_written)
 			r = write(chld_in, ret_str, strlen(ret_str));
-			g_free(ret_str);
-		} else
+		else
 			r = write(chld_in, msg_str, strlen(msg_str));
+		if (ret_str)
+			g_free(ret_str);
+
 		if (!(children->action_type &
 		      (ACTION_USER_IN | ACTION_USER_HIDDEN_IN)))
 			r = close(chld_in);
@@ -1290,7 +1295,6 @@ static void create_io_dialog(Children *children)
 	GtkWidget *label;
 	GtkWidget *text;
 	GtkWidget *scrolledwin;
-	GtkWidget *hbox;
 	GtkWidget *progress_bar = NULL;
 	GtkWidget *abort_button;
 	GtkWidget *close_button;
@@ -1299,8 +1303,6 @@ static void create_io_dialog(Children *children)
 	debug_print("Creating action IO dialog\n");
 
 	dialog = gtk_dialog_new();
-	gtk_container_set_border_width
-		(GTK_CONTAINER(gtk_dialog_get_action_area(GTK_DIALOG(dialog))), 5);
 	gtk_window_set_position(GTK_WINDOW(dialog), GTK_WIN_POS_CENTER);
 	gtk_window_set_title(GTK_WINDOW(dialog), _("Action's input/output"));
 	gtk_window_set_modal(GTK_WINDOW(dialog), TRUE);
@@ -1401,19 +1403,18 @@ static void create_io_dialog(Children *children)
 		gtk_widget_show(progress_bar);
 	}
 
-	gtkut_stock_button_set_create(&hbox, &abort_button, "process-stop",
-				      &close_button, _("_Close"), NULL, NULL);
+	abort_button = gtk_dialog_add_button(GTK_DIALOG(dialog), _("_Stop"),
+					     GTK_RESPONSE_NONE);
+	close_button = gtk_dialog_add_button(GTK_DIALOG(dialog),_("_Close"),
+					     GTK_RESPONSE_NONE);
+	gtk_widget_grab_default(close_button);
 	g_signal_connect(G_OBJECT(abort_button), "clicked",
 			 G_CALLBACK(kill_children_cb), children);
 	g_signal_connect(G_OBJECT(close_button), "clicked",
 			 G_CALLBACK(hide_io_dialog_cb), children);
-	gtk_widget_show(hbox);
 
 	if (children->nb)
 		gtk_widget_set_sensitive(close_button, FALSE);
-
-	gtk_container_add(GTK_CONTAINER(
-			gtk_dialog_get_action_area(GTK_DIALOG(dialog))), hbox);
 
 	if (!geometry.min_height) {
 		geometry.min_width = 582;
@@ -1520,9 +1521,12 @@ static void catch_input(gpointer data, gint source, GIOCondition cond)
 				       0, -1);
 	ret_str = g_locale_from_utf8(input, strlen(input), &by_read,
 				     &by_written, NULL);
-	if (ret_str && by_written) {
-		g_free(input);
-		input = ret_str;
+	if (ret_str) {
+		if (by_written) {
+			g_free(input);
+			input = ret_str;
+		} else
+			g_free(ret_str);
 	}
 
 	len = strlen(input);
@@ -1573,18 +1577,18 @@ static void catch_output(gpointer data, gint source, GIOCondition cond)
 			gchar *ret_str;
 
 			c = read(source, buf, sizeof(buf) - 1);
-			if (c == 0)
+			if (c <= 0)
 				break;
 
+			buf[c] = 0;
 			ret_str = g_locale_to_utf8
-				(buf, c - 1, &bytes_read, &bytes_written, NULL);
-			if (ret_str && bytes_written > 0) {
-				gtk_text_buffer_insert
-					(textbuf, &iter, ret_str,
-					 -1);
+				(buf, c, &bytes_read, &bytes_written, NULL);
+			if (ret_str && bytes_written > 0)
+				gtk_text_buffer_insert(textbuf, &iter, ret_str, -1);
+			else
+				gtk_text_buffer_insert(textbuf, &iter, buf, c);
+			if (ret_str)
 				g_free(ret_str);
-			} else
-				gtk_text_buffer_insert(textbuf, &iter, buf, c - 1);
 		}
 
 		if (child_info->children->is_selection) {
@@ -1600,12 +1604,15 @@ static void catch_output(gpointer data, gint source, GIOCondition cond)
 			gsize bytes_read = 0, bytes_written = 0;
 			gchar *ret_str;
 
+			buf[c] = 0;
 			ret_str = g_locale_to_utf8
 				(buf, c, &bytes_read, &bytes_written, NULL);
-			if (ret_str && bytes_written > 0) {
-				g_string_append_len
-					(child_info->output, ret_str,
-					 bytes_written);
+			if (ret_str) {
+				if (bytes_written) {
+					g_string_append_len
+						(child_info->output, ret_str,
+						bytes_written);
+				}
 				g_free(ret_str);
 			} else
 				g_string_append_len(child_info->output, buf, c);
@@ -1655,7 +1662,7 @@ static gchar *get_user_string(const gchar *action, ActionType type)
 			(_("Action's user argument"), message, NULL);
 		break;
 	default:
-		g_warning("Unsupported action type %d", type);
+		g_warning("unsupported action type %d", type);
 	}
 
 	return user_str;

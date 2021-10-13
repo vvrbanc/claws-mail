@@ -164,7 +164,7 @@ static void sieve_editor_append_status(SieveEditorPage *page,
 	GtkLabel *label = GTK_LABEL(page->status_text);
 	const gchar *prev_status = gtk_label_get_text(label);
 	const gchar *sep = prev_status && prev_status[0] ? "\n" : "";
-	gchar *status = g_strconcat(prev_status, sep, new_status, NULL);
+	gchar *status = g_strconcat(prev_status ? prev_status : "", sep, new_status, NULL);
 	gtk_label_set_text(label, status);
 	g_free(status);
 }
@@ -422,8 +422,8 @@ static void sieve_editor_destroy(SieveEditorPage *page)
 void sieve_editor_close(SieveEditorPage *page)
 {
 	editors = g_slist_remove(editors, (gconstpointer)page);
-	sieve_editor_destroy(page);
 	sieve_sessions_discard_callbacks(page);
+	sieve_editor_destroy(page);
 }
 
 static gboolean sieve_editor_confirm_close(SieveEditorPage *page)
@@ -489,7 +489,7 @@ static void sieve_editor_undo_state_changed(UndoMain *undostruct,
 		cm_menu_set_sensitive_full(page->ui_manager, "Menu/Edit/Undo", undostruct->undo_state);
 		break;
 	default:
-		g_warning("Undo state not recognized");
+		g_warning("undo state not recognized");
 		break;
 	}
 
@@ -512,7 +512,7 @@ static void sieve_editor_undo_state_changed(UndoMain *undostruct,
 		cm_menu_set_sensitive_full(page->ui_manager, "Menu/Edit/Redo", undostruct->redo_state);
 		break;
 	default:
-		g_warning("Redo state not recognized");
+		g_warning("redo state not recognized");
 		break;
 	}
 }

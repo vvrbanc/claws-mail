@@ -2,7 +2,7 @@
  * Claws Mail -- a GTK+ based, lightweight, and fast e-mail client
  *
  * Copyright (c) 2007-2008 Juha Kautto (juha at xfce.org)
- * Copyright (c) 2008 Colin Leroy (colin@colino.net)
+ * Copyright (c) 2008-2021 the Claws Mail team and Colin Leroy
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,7 +35,6 @@
 #include <string.h>
 #include <time.h>
 
-#include <glib.h>
 #include <glib/gprintf.h>
 #include <gdk/gdkkeysyms.h>
 #include <gdk/gdk.h>
@@ -304,7 +303,7 @@ static void on_button_press_event_cb(GtkWidget *widget
         , GdkEventButton *event, gpointer *user_data)
 {
     month_win *mw = (month_win *)user_data;
-    gchar *uid = g_object_get_data(G_OBJECT(widget), "UID");;
+    gchar *uid = g_object_get_data(G_OBJECT(widget), "UID");
     gpointer offset = g_object_get_data(G_OBJECT(widget), "offset");
 
     if (event->button == 1) {
@@ -967,6 +966,7 @@ month_win *create_month_win(FolderItem *item, struct tm tmdate)
     mw->startdate = tmdate;
 
     mw->Vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+	gtk_widget_set_name(GTK_WIDGET(mw->Vbox), "vcal_month_win");
 
     mw->item = item;
     build_month_view_colours(mw);

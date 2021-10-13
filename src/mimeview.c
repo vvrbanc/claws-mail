@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK+ based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2019 the Claws Mail team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2021 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1543,8 +1543,20 @@ static gboolean mimeview_scrolled(GtkWidget *widget, GdkEventScroll *event,
 	GtkVScrollbutton *scrollbutton = (GtkVScrollbutton *)mimeview->scrollbutton;
 	if (event->direction == GDK_SCROLL_UP) {
 		scrollbutton->scroll_type = GTK_SCROLL_STEP_BACKWARD;
-	} else {
+	} else if (event->direction == GDK_SCROLL_DOWN) {
 		scrollbutton->scroll_type = GTK_SCROLL_STEP_FORWARD;
+	} else {
+		gdouble x, y;
+
+		if ((event->direction == GDK_SCROLL_SMOOTH) &&
+				gdk_event_get_scroll_deltas((GdkEvent*)event, &x, &y)) {
+			if (y < 0)
+				scrollbutton->scroll_type = GTK_SCROLL_STEP_BACKWARD;
+			else
+				if (y >0)
+					scrollbutton->scroll_type = GTK_SCROLL_STEP_FORWARD;
+		} else
+			return FALSE; /* Scrolling left or right */
 	}
 	gtk_vscrollbutton_scroll(scrollbutton);
 	return TRUE;
@@ -1738,7 +1750,7 @@ static void mimeview_drag_data_get(GtkWidget	    *widget,
 				   guint	     time,
 				   MimeView	    *mimeview)
 {
-	gchar *filename = NULL, *uriname, *tmp;
+	gchar *filename = NULL, *uriname, *tmp = NULL;
 	MimeInfo *partinfo;
 	gint err;
 	gint count = 0;
@@ -1751,7 +1763,12 @@ static void mimeview_drag_data_get(GtkWidget	    *widget,
 
 	if (strlen(get_part_name(partinfo)) > 0) {
 		filename = g_path_get_basename(get_part_name(partinfo));
-		if (*filename == '\0') return;
+		if (filename) {
+			if (*filename == '\0') {
+				g_free(filename);
+				return;
+			}
+		}
 	} else if (partinfo->type == MIMETYPE_MESSAGE 
 		   && !g_ascii_strcasecmp(partinfo->subtype, "rfc822")) {
 		gchar *name = NULL;
@@ -1787,13 +1804,12 @@ static void mimeview_drag_data_get(GtkWidget	    *widget,
 		tmp = conv_codeset_strdup(filename,
 				conv_get_locale_charset_str(),
 				CS_UTF_8);
-	else
-		tmp = g_strdup(filename);
 
 	if (tmp == NULL) {
 		g_warning("filename not in UTF-8");
-		tmp = g_strdup("Unnamed part");
+		tmp = g_strdup(filename);
 	}
+	g_free(filename);
 	filename = g_strconcat(get_mime_tmp_dir(), G_DIR_SEPARATOR_S,
 			       tmp, NULL);
 

@@ -2011,7 +2011,7 @@ static void addrindex_add_obj( XMLFile *file, AddressCvtNode *node ) {
 			node->list = g_list_append( node->list, newNode );
 		}
 		else {
-			g_warning("Invalid tag");
+			g_warning("invalid tag");
 		}
 	}
 }
@@ -3178,7 +3178,7 @@ gchar *addrindex_get_picture_file(const gchar *emailaddr)
 			/* Get all persons */
 			listP = addrindex_ds_get_all_persons( ds );
 			nodeP = listP;
-			while( nodeP ) {
+			while( nodeP && !found) {
 				GList *nodeM;
 				ItemPerson *person = nodeP->data;
 				nodeM = person->listEMail;

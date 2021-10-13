@@ -380,12 +380,15 @@ static gboolean migrate_old_config(const gchar *old_cfg_dir, const gchar *new_cf
 {
 	gchar *message = g_strdup_printf(_("Configuration for %s found.\n"
 			 "Do you want to migrate this configuration?"), oldversion);
-	gchar *message2 = g_strdup_printf(_("\n\nYour Sylpheed filtering rules can be converted by a\n"
-			     "script available at %s."), TOOLS_URI);
 
-	if (!strcmp(oldversion, "Sylpheed"))
-		message = g_strconcat(message, message2, NULL);
-	g_free(message2);
+	if (!strcmp(oldversion, "Sylpheed")) {
+		gchar *message2 = g_strdup_printf(_("\n\nYour Sylpheed filtering rules can be converted by a\n"
+			     "script available at %s."), TOOLS_URI);
+		gchar *tmp = g_strconcat(message, message2, NULL);
+		g_free(message2);
+		g_free(message);
+        message = tmp;
+	}
 
 	gint r = 0;
 	GtkWidget *window = NULL;
@@ -658,7 +661,7 @@ static void sc_session_manager_connect(MainWindow *mainwin)
 			g_free(client_id);
 
 		if (error_string_ret[0] || mainwin->smc_conn == NULL)
-			g_warning ("While connecting to session manager: %s.",
+			g_warning("while connecting to session manager: %s",
 				error_string_ret);
 		else {
 			SmPropValue *vals;
@@ -1024,14 +1027,14 @@ static void install_dbus_status_handler(void)
 			"com.google.code.Awn");
 	dbus_item_hook_id = hooks_register_hook (FOLDER_ITEM_UPDATE_HOOKLIST, dbus_status_update_item_hook, NULL);
 	if (dbus_item_hook_id == HOOK_NONE) {
-		g_warning("Failed to register folder item update hook");
+		g_warning("failed to register folder item update hook");
 		uninstall_dbus_status_handler();
 		return;
 	}
 
 	dbus_folder_hook_id = hooks_register_hook (FOLDER_UPDATE_HOOKLIST, dbus_status_update_folder_hook, NULL);
 	if (dbus_folder_hook_id == HOOK_NONE) {
-		g_warning("Failed to register folder update hook");
+		g_warning("failed to register folder update hook");
 		uninstall_dbus_status_handler();
 		return;
 	}
@@ -1180,9 +1183,11 @@ int main(int argc, char *argv[])
 	/* Create container for all the menus we will be adding */
 	MENUITEM_ADDUI("/", "Menus", NULL, GTK_UI_MANAGER_MENUBAR);
 
+#if !GLIB_CHECK_VERSION(2,32,0)
 	if (!g_thread_supported()) {
-		g_error(_("g_thread is not supported by glib.\n"));
+		g_error("g_thread is not supported by glib");
 	}
+#endif
 
 #ifdef G_OS_WIN32
 	CHDIR_EXEC_CODE_RETURN_VAL_IF_FAIL(get_home_dir(), 1, win32_close_log(););
@@ -1491,7 +1496,7 @@ int main(int argc, char *argv[])
 	}
 	/* make the crash-indicator file */
 	if (str_write_to_file("foo", get_crashfile_name(), FALSE) < 0) {
-		g_warning("Can't create the crash-indicator file.");
+		g_warning("can't create the crash-indicator file");
 	}
 
 	inc_autocheck_timer_init(mainwin);
@@ -1824,10 +1829,9 @@ static void exit_claws(MainWindow *mainwin)
 		exit(1);	\
 	}
 
-static GString * parse_cmd_compose_from_file(const gchar *fn)
+static void parse_cmd_compose_from_file(const gchar *fn, GString *body)
 {
 	GString *headers = g_string_new(NULL);
-	GString *body = g_string_new(NULL);
 	gchar *to = NULL;
 	gchar *h;
 	gchar *v;
@@ -1884,8 +1888,6 @@ static GString * parse_cmd_compose_from_file(const gchar *fn)
 	/* append the remaining headers */
 	g_string_append(body, headers->str);
 	g_string_free(headers, TRUE);
-
-	return body;
 }
 
 #undef G_PRINT_EXIT
@@ -1901,6 +1903,8 @@ static void parse_cmd_opt_error(char *errstr, char* optstr)
 	g_print(_("%s. Try -h or --help for usage.\n"), tmp);
 	exit(1);
 }
+
+static GString mailto; /* used to feed cmd.compose_mailto when --compose-from-file is used */
 
 static void parse_cmd_opt(int argc, char *argv[])
 {
@@ -1920,9 +1924,9 @@ static void parse_cmd_opt(int argc, char *argv[])
 		    if (i+1 < argc) {
 				const gchar *p = argv[i+1];
 
-				GString *mailto = parse_cmd_compose_from_file(p);
+				parse_cmd_compose_from_file(p, &mailto);
 				cmd.compose = TRUE;
-				cmd.compose_mailto = mailto->str;
+				cmd.compose_mailto = mailto.str;
 				i++;
 		    } else {
                 parse_cmd_opt_error(_("Missing file argument for option %s"), argv[i]);
@@ -2349,6 +2353,7 @@ gchar *claws_get_socket_name(void)
 			/* old versions used a sock in $TMPDIR/claws-mail-$UID */
 			debug_print("Using legacy socket %s\n", socket_dir);
 			filename = g_strdup(socket_dir);
+			g_free(socket_dir);
 			return filename;
 		}
 
@@ -2535,7 +2540,7 @@ static gint prohibit_duplicate_launch(int *argc, char ***argv)
 			buf[sizeof(buf) - 1] = '\0';
  			if (!STRNCMP(buf, ".\n")) break;
 			if (claws_fputs(buf, stdout) == EOF) {
-				g_warning("writing to stdout failed.");
+				g_warning("writing to stdout failed");
 				break;
 			}
  		}
@@ -2549,7 +2554,7 @@ static gint prohibit_duplicate_launch(int *argc, char ***argv)
 			buf[sizeof(buf) - 1] = '\0';
  			if (!STRNCMP(buf, ".\n")) break;
 			if (claws_fputs(buf, stdout) == EOF) {
-				g_warning("writing to stdout failed.");
+				g_warning("writing to stdout failed");
 				break;
 			}
  		}
@@ -2572,7 +2577,7 @@ static gint prohibit_duplicate_launch(int *argc, char ***argv)
 			buf[sizeof(buf) - 1] = '\0';
 			if (!STRNCMP(buf, ".\n")) break;
 			if (claws_fputs(buf, stdout) == EOF) {
-				g_warning("writing to stdout failed.");
+				g_warning("writing to stdout failed");
 				break;
 			}
 		}
@@ -2627,7 +2632,8 @@ static gint lock_socket_remove(void)
 #ifdef G_OS_UNIX
 	filename = claws_get_socket_name();
 	dirname = g_path_get_dirname(filename);
-	claws_unlink(filename);
+	if (claws_unlink(filename) < 0)
+                FILE_OP_ERROR(filename, "claws_unlink");
 	g_rmdir(dirname);
 	g_free(dirname);
 #endif

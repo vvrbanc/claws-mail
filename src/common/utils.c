@@ -80,7 +80,6 @@
 #ifdef G_OS_WIN32
 #  include <direct.h>
 #  include <io.h>
-#  include <w32lib.h>
 #endif
 
 #include "utils.h"
@@ -1335,6 +1334,11 @@ gboolean is_uri_string(const gchar *str)
 	return (g_ascii_strncasecmp(str, "http://", 7) == 0 ||
 		g_ascii_strncasecmp(str, "https://", 8) == 0 ||
 		g_ascii_strncasecmp(str, "ftp://", 6) == 0 ||
+		g_ascii_strncasecmp(str, "ftps://", 7) == 0 ||
+		g_ascii_strncasecmp(str, "sftp://", 7) == 0 ||
+		g_ascii_strncasecmp(str, "ftp.", 4) == 0 ||
+		g_ascii_strncasecmp(str, "webcal://", 9) == 0 ||
+		g_ascii_strncasecmp(str, "webcals://", 10) == 0 ||
 		g_ascii_strncasecmp(str, "www.", 4) == 0);
 }
 
@@ -1348,6 +1352,14 @@ gchar *get_uri_path(const gchar *uri)
 		return (gchar *)(uri + 8);
 	else if (g_ascii_strncasecmp(uri, "ftp://", 6) == 0)
 		return (gchar *)(uri + 6);
+	else if (g_ascii_strncasecmp(uri, "ftps://", 7) == 0)
+		return (gchar *)(uri + 7);
+	else if (g_ascii_strncasecmp(uri, "sftp://", 7) == 0)
+		return (gchar *)(uri + 7);
+	else if (g_ascii_strncasecmp(uri, "webcal://", 9) == 0)
+		return (gchar *)(uri + 7);
+	else if (g_ascii_strncasecmp(uri, "webcals://", 10) == 0)
+		return (gchar *)(uri + 7);
 	else
 		return (gchar *)uri;
 }
@@ -1509,7 +1521,7 @@ gint scan_mailto_url(const gchar *mailto, gchar **from, gchar **to, gchar **cc, 
 
 			if (tmp) {
 				if (!is_file_entry_regular(tmp)) {
-					g_warning("Refusing to insert '%s', not a regular file\n", tmp);
+					g_warning("refusing to insert '%s', not a regular file", tmp);
 				} else if (!g_file_get_contents(tmp, body, NULL, NULL)) {
 					g_warning("couldn't set insert file '%s' in body", value);
 				}
@@ -1528,7 +1540,6 @@ gint scan_mailto_url(const gchar *mailto, gchar **from, gchar **to, gchar **cc, 
 					g_print("Refusing to attach '%s', potential private data leak\n",
 							tmp);
 					g_free(tmp);
-					g_free(my_att);
 					tmp = NULL;
 					break;
 				}
@@ -1541,6 +1552,8 @@ gint scan_mailto_url(const gchar *mailto, gchar **from, gchar **to, gchar **cc, 
 				my_att[num_attach] = NULL;
 				*attach = my_att;
 			}
+            else
+				g_free(my_att);
 		} else if (inreplyto && !*inreplyto &&
 			   !g_ascii_strcasecmp(field, "in-reply-to")) {
 			*inreplyto = decode_uri_gdup(value);
@@ -2372,6 +2385,7 @@ gint remove_dir_recursive(const gchar *dir)
 
 			if ((ret = remove_dir_recursive(dir_name)) < 0) {
 				g_warning("can't remove directory: %s", dir_name);
+				g_dir_close(dp);
 				return ret;
 			}
 		} else {
@@ -2617,7 +2631,7 @@ gint execute_command_line(const gchar *cmdline, gboolean async,
 
 	cm_return_val_if_fail(cmdline != NULL, -1);
 
-	debug_print("execute_command_line(): executing: %s\n", cmdline?cmdline:"(null)");
+	debug_print("execute_command_line(): executing: %s\n", cmdline);
 
 	argv = strsplit_with_quote(cmdline, " ", 0);
 
@@ -2662,7 +2676,7 @@ FILE *get_command_output_stream(const char* cmdline)
 
 	/* turn the command-line string into an array */
 	if (!g_shell_parse_argv(cmdline, NULL, &argv, &err)) {
-		g_warning("could not parse command line from '%s': %s\n", cmdline, err->message);
+		g_warning("could not parse command line from '%s': %s", cmdline, err->message);
         g_error_free(err);
 		return NULL;
 	}
@@ -2671,7 +2685,7 @@ FILE *get_command_output_stream(const char* cmdline)
                                   NULL, NULL, &pid, NULL, &fd, NULL, &err)
         && err)
     {
-        g_warning("could not spawn '%s': %s\n", cmdline, err->message);
+        g_warning("could not spawn '%s': %s", cmdline, err->message);
         g_error_free(err);
 		g_strfreev(argv);
         return NULL;
@@ -4010,6 +4024,7 @@ void mailcap_update_default(const gchar *type, const gchar *command)
 		else {
 			if(claws_fputs(buf, outfp) == EOF) {
 				err = TRUE;
+				g_strfreev(parts);
 				break;
 			}
 		}
@@ -4528,6 +4543,7 @@ static GSList *cm_split_path(const gchar *filename, int depth)
 		else if (!strcmp(path_parts[i], "..")) {
 			if (i == 0) {
 				errno =ENOTDIR;
+				g_strfreev(path_parts);
 				return NULL;
 			}
 			else /* Remove the last inserted element */
@@ -4642,7 +4658,7 @@ guchar *g_base64_decode_zero(const gchar *text, gsize *out_len)
 	g_free(tmp);
 
 	if (strlen(out) != *out_len) {
-		g_warning ("strlen(out) %"G_GSIZE_FORMAT" != *out_len %"G_GSIZE_FORMAT, strlen(out), *out_len);
+		g_warning("strlen(out) %"G_GSIZE_FORMAT" != *out_len %"G_GSIZE_FORMAT, strlen(out), *out_len);
 	}
 
 	return out;

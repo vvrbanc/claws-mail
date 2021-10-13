@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK+ based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2020 the Claws Mail team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2021 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -56,7 +56,6 @@
 #include "folder.h"
 #include "socket.h"
 #include "filesel.h"
-#include "folderview.h"
 #include "stock_pixmap.h"
 #include "prefswindow.h"
 #include "colorlabel.h"
@@ -897,6 +896,8 @@ static PrefParam param[] = {
 	 NULL, NULL, NULL},
 #endif
 
+	{"run_processingrules_before_mark_all", "FALSE", &prefs_common.run_processingrules_before_mark_all, P_BOOL,
+	 NULL, NULL, NULL},
 	{"ask_mark_all_read", "TRUE", &prefs_common.ask_mark_all_read, P_BOOL,
 	 NULL, NULL, NULL},
 	{"ask_override_colorlabel", "TRUE", &prefs_common.ask_override_colorlabel, P_BOOL,
@@ -1289,10 +1290,10 @@ static PrefParam param[] = {
 	 NULL, NULL, NULL},
 	{"enable_avatars", "3", &prefs_common.enable_avatars, P_INT, NULL, NULL, NULL},
 #ifndef PASSWORD_CRYPTO_OLD
-	{"use_master_passphrase", FALSE, &prefs_common.use_master_passphrase, P_BOOL, NULL, NULL, NULL },
-	{"master_passphrase", "", &prefs_common.master_passphrase, P_STRING, NULL, NULL, NULL },
-	{"master_passphrase_salt", "", &prefs_common.master_passphrase_salt, P_STRING, NULL, NULL, NULL },
-	{"master_passphrase_pbkdf2_rounds", "50000", &prefs_common.master_passphrase_pbkdf2_rounds, P_INT, NULL, NULL, NULL},
+	{"use_master_passphrase", FALSE, &prefs_common.use_primary_passphrase, P_BOOL, NULL, NULL, NULL },
+	{"master_passphrase", "", &prefs_common.primary_passphrase, P_STRING, NULL, NULL, NULL },
+	{"master_passphrase_salt", "", &prefs_common.primary_passphrase_salt, P_STRING, NULL, NULL, NULL },
+	{"master_passphrase_pbkdf2_rounds", "50000", &prefs_common.primary_passphrase_pbkdf2_rounds, P_INT, NULL, NULL, NULL},
 #endif
 
 	{"use_proxy", "FALSE", &prefs_common.use_proxy, P_BOOL, NULL, NULL, NULL},

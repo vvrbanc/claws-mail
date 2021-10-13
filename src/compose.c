@@ -44,7 +44,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <time.h>
-#include <stdlib.h>
 #if HAVE_SYS_WAIT_H
 #  include <sys/wait.h>
 #endif
@@ -203,6 +202,12 @@ typedef enum {
 			   "Signing and encrypting have been disabled for this "	\
 			   "message."));						\
 }
+
+#ifdef G_OS_WIN32
+#define INVALID_PID INVALID_HANDLE_VALUE
+#else
+#define INVALID_PID -1
+#endif
 
 static GdkRGBA default_header_bgcolor =
 	{0, 0, 0, 1};
@@ -2318,8 +2323,9 @@ Compose *compose_reedit(MsgInfo *msginfo, gboolean batch)
 				if (orig_item != NULL) {
 					replyinfo = folder_item_get_msginfo_by_msgid(orig_item, tokens[2]);
 				}
-				g_strfreev(tokens);
 			}
+			if (tokens)
+				g_strfreev(tokens);
 			g_free(queueheader_buf);
 		}
 		if (!procheader_get_header_from_msginfo(msginfo, &queueheader_buf, 
@@ -2330,8 +2336,9 @@ Compose *compose_reedit(MsgInfo *msginfo, gboolean batch)
 				if (orig_item != NULL) {
 					fwdinfo = folder_item_get_msginfo_by_msgid(orig_item, tokens[2]);
 				}
-				g_strfreev(tokens);
 			}
+			if (tokens)
+				g_strfreev(tokens);
 			g_free(queueheader_buf);
 		}
 		/* Get manual headers */
@@ -2341,8 +2348,9 @@ Compose *compose_reedit(MsgInfo *msginfo, gboolean batch)
 			if (listmh && *listmh != '\0') {
 				debug_print("Got manual headers: %s\n", listmh);
 				manual_headers = procheader_entries_from_str(listmh);
-				g_free(listmh);
 			}
+			if (listmh)
+				g_free(listmh);
 			g_free(queueheader_buf);
 		}
 	} else {
@@ -2354,13 +2362,19 @@ Compose *compose_reedit(MsgInfo *msginfo, gboolean batch)
 		if (!procheader_get_header_from_msginfo(msginfo, &from, "FROM:")) {
 			extract_address(from);
 			account = account_find_from_address(from, FALSE);
-			g_free(from);
 		}
+		if (from)
+			g_free(from);
 	}
 	if (!account) {
 		account = cur_account;
 	}
-	cm_return_val_if_fail(account != NULL, NULL);
+	if (!account) {
+		g_warning("can't select account");
+		if (manual_headers)
+			procheader_entries_free(manual_headers);
+		return NULL;
+	}
 
 	compose = compose_create(account, msginfo->folder, COMPOSE_REEDIT, batch);
 
@@ -2417,6 +2431,8 @@ Compose *compose_reedit(MsgInfo *msginfo, gboolean batch)
 	if (compose_parse_header(compose, msginfo) < 0) {
 		compose->updating = FALSE;
 		compose_destroy(compose);
+		if (manual_headers)
+			procheader_entries_free(manual_headers);
 		return NULL;
 	}
 	compose_reedit_set_entry(compose, msginfo);
@@ -2441,7 +2457,7 @@ Compose *compose_reedit(MsgInfo *msginfo, gboolean batch)
 		fp = procmime_get_first_text_content(msginfo);
 	}
 	if (fp == NULL) {
-		g_warning("Can't get text part");
+		g_warning("can't get text part");
 	}
 
 	if (fp != NULL) {
@@ -3262,6 +3278,10 @@ static void compose_set_folder_prefs(Compose *compose, FolderItem *folder,
 	if (!folder || !folder->prefs)
 		return;
 
+	if (folder->prefs->enable_default_from) {
+		gtk_entry_set_text(GTK_ENTRY(compose->from_name), folder->prefs->default_from);
+		compose_entry_indicate(compose, folder->prefs->default_from);
+	}
 	if (respect_default_to && folder->prefs->enable_default_to) {
 		compose_entry_append(compose, folder->prefs->default_to,
 					COMPOSE_TO, PREF_FOLDER);
@@ -3982,7 +4002,7 @@ static void compose_attach_parts(Compose *compose, MsgInfo *msginfo)
 
 		outfile = procmime_get_tmp_file_name(child);
 		if ((err = procmime_get_part(outfile, child)) < 0)
-			g_warning("Can't get the part of multipart message. (%s)", g_strerror(-err));
+			g_warning("can't get the part of multipart message. (%s)", g_strerror(-err));
 		else {
 			gchar *content_type;
 
@@ -4158,8 +4178,10 @@ static gchar * compose_get_itemized_chars(GtkTextBuffer *buffer,
 	GString *item_chars = g_string_new("");
 	gchar *str = NULL;
 
-	if (gtk_text_iter_ends_line(&iter))
+	if (gtk_text_iter_ends_line(&iter)) {
+		g_string_free(item_chars, FALSE);
 		return NULL;
+	}
 
 	while (1) {
 		len++;
@@ -4527,9 +4549,12 @@ static gboolean compose_beautify_paragraph(Compose *compose, GtkTextIter *par_it
 			{"http://",  strcasestr, get_uri_part,   make_uri_string},
 			{"https://", strcasestr, get_uri_part,   make_uri_string},
 			{"ftp://",   strcasestr, get_uri_part,   make_uri_string},
+			{"ftps://",  strcasestr, get_uri_part,   make_uri_string},
 			{"sftp://",  strcasestr, get_uri_part,   make_uri_string},
 			{"gopher://",strcasestr, get_uri_part,   make_uri_string},
 			{"www.",     strcasestr, get_uri_part,   make_http_string},
+			{"webcal://",strcasestr, get_uri_part,   make_uri_string},
+			{"webcals://",strcasestr, get_uri_part,  make_uri_string},
 			{"mailto:",  strcasestr, get_uri_part,   make_uri_string},
 			{"@",        strcasestr, get_email_part, make_email_string}
 		};
@@ -5680,7 +5705,7 @@ static gint compose_write_to_file(Compose *compose, FILE *fp, gint action, gbool
 {
 	GtkTextBuffer *buffer;
 	GtkTextIter start, end, tmp;
-	gchar *chars, *tmp_enc_file, *content;
+	gchar *chars, *tmp_enc_file = NULL, *content;
 	gchar *buf, *msg;
 	const gchar *out_codeset;
 	EncodingType encoding = ENC_UNKNOWN;
@@ -5838,11 +5863,7 @@ static gint compose_write_to_file(Compose *compose, FILE *fp, gint action, gbool
 		encoding = ENC_QUOTED_PRINTABLE;
 	}
 
-#ifdef G_OS_WIN32
-	debug_print("main text: %Id bytes encoded as %s in %d\n",
-#else
-	debug_print("main text: %zd bytes encoded as %s in %d\n",
-#endif
+	debug_print("main text: %" G_GSIZE_FORMAT " bytes encoded as %s in %d\n",
 		strlen(buf), out_codeset, encoding);
 
 	/* check for line length limit */
@@ -5958,7 +5979,7 @@ static gint compose_write_to_file(Compose *compose, FILE *fp, gint action, gbool
 						procmsg_save_to_outbox(outbox, tmp_enc_file, TRUE);
 						claws_unlink(tmp_enc_file);
 					} else {
-						g_warning("Can't open file '%s'", tmp_enc_file);
+						g_warning("can't open file '%s'", tmp_enc_file);
 					}
 				} else {
 					g_warning("couldn't get tempfile");
@@ -5967,10 +5988,14 @@ static gint compose_write_to_file(Compose *compose, FILE *fp, gint action, gbool
 			if (!privacy_encrypt(compose->privacy_system, mimemsg, compose->encdata)) {
 				debug_print("Couldn't encrypt mime structure: %s.\n",
 						privacy_get_error());
+				if (tmp_enc_file)
+					g_free(tmp_enc_file);
 				return COMPOSE_QUEUE_ERROR_ENCRYPT_FAILED;
 			}
 		}
 	}
+	if (tmp_enc_file)
+		g_free(tmp_enc_file);
 
 	procmime_write_mimeinfo(mimemsg, fp);
 	
@@ -6127,7 +6152,7 @@ static ComposeQueueResult compose_queue_sub(Compose *compose, gint *msgnum, Fold
 	}
 
 	if (!compose->to_list && !compose->newsgroup_list) {
-	        g_warning("can't get recipient list.");
+	        g_warning("can't get recipient list");
                 return COMPOSE_QUEUE_ERROR_NO_MSG;
         }
 
@@ -6520,10 +6545,12 @@ static gchar *compose_quote_list_of_addresses(gchar *str)
 		if (result == NULL)
 			result = g_strdup((faddr != NULL)? faddr: spec);
 		else {
-			result = g_strconcat(result,
+			gchar *tmp = g_strconcat(result,
 					     ", ",
 					     (faddr != NULL)? faddr: spec,
 					     NULL);
+			g_free(result);
+			result = tmp;
 		}
 		if (faddr != NULL) {
 			g_free(faddr);
@@ -7257,11 +7284,11 @@ static void compose_create_header_entry(Compose *compose)
 #ifdef USE_LDAP
 #ifndef PASSWORD_CRYPTO_OLD
 	GSList *pwd_servers = addrindex_get_password_protected_ldap_servers();
-	if (pwd_servers != NULL && master_passphrase() == NULL) {
+	if (pwd_servers != NULL && primary_passphrase() == NULL) {
 		gboolean enable = FALSE;
-		debug_print("Master passphrase not available, disabling password-protected LDAP servers for this compose window.\n");
+		debug_print("Primary passphrase not available, disabling password-protected LDAP servers for this compose window.\n");
 		/* Temporarily disable password-protected LDAP servers,
-		 * because user did not provide a master passphrase.
+		 * because user did not provide a primary passphrase.
 		 * We can safely enable searchFlag on all servers in this list
 		 * later, since addrindex_get_password_protected_ldap_servers()
 		 * includes servers which have it enabled initially. */
@@ -8252,7 +8279,7 @@ static Compose *compose_create(PrefsAccount *account,
 	compose->sig_str = NULL;
 
 	compose->exteditor_file    = NULL;
-	compose->exteditor_pid     = -1;
+	compose->exteditor_pid     = INVALID_PID;
 	compose->exteditor_tag     = -1;
 	compose->exteditor_socket  = NULL;
 	compose->draft_timeout_tag = COMPOSE_DRAFT_TIMEOUT_FORBIDDEN; /* inhibit auto-drafting while loading */
@@ -9167,7 +9194,8 @@ static void compose_destroy(Compose *compose)
 #endif
 
 	if (!compose->batch) {
-		gtk_window_get_size(compose->window, &allocation.width, &allocation.height);
+		gtk_window_get_size(GTK_WINDOW(compose->window),
+			&allocation.width, &allocation.height);
 		prefs_common.compose_width = allocation.width;
 		prefs_common.compose_height = allocation.height;
 	}
@@ -9596,14 +9624,14 @@ static gboolean compose_can_autosave(Compose *compose)
 static void compose_exec_ext_editor(Compose *compose)
 {
 	gchar *tmp;
-	GtkWidget *socket;
 #ifndef G_OS_WIN32
+	GtkWidget *socket;
 	Window socket_wid = 0;
+	gchar *p, *s;
 #endif /* G_OS_WIN32 */
 	GPid pid;
 	GError *error = NULL;
 	gchar *cmd;
-	gchar *p, *s;
 	gchar **argv;
 
 	tmp = g_strdup_printf("%s%ctmpmsg.%p", get_tmp_dir(),
@@ -9658,7 +9686,7 @@ static void compose_exec_ext_editor(Compose *compose)
 		}
 	} else {
 		if (prefs_common_get_ext_editor_cmd())
-			g_warning("External editor command-line is invalid: '%s'",
+			g_warning("external editor command-line is invalid: '%s'",
 				  prefs_common_get_ext_editor_cmd());
 		cmd = g_strdup_printf(DEFAULT_EDITOR_CMD, tmp);
 	}
@@ -9738,7 +9766,7 @@ static void compose_ext_editor_closed_cb(GPid pid, gint exit_status, gpointer da
 
 	g_free(compose->exteditor_file);
 	compose->exteditor_file    = NULL;
-	compose->exteditor_pid     = -1;
+	compose->exteditor_pid     = INVALID_PID;
 	compose->exteditor_tag     = -1;
 	if (compose->exteditor_socket) {
 		gtk_widget_destroy(compose->exteditor_socket);
@@ -9774,7 +9802,6 @@ static gboolean compose_get_ext_editor_cmd_valid()
 static gboolean compose_ext_editor_kill(Compose *compose)
 {
 	GPid pid = compose->exteditor_pid;
-	gint ret;
 
 	if (pid > 0) {
 		AlertValue val;
@@ -9783,7 +9810,7 @@ static gboolean compose_ext_editor_kill(Compose *compose)
 		msg = g_strdup_printf
 			(_("The external editor is still working.\n"
 			   "Force terminating the process?\n"
-			   "process id: %d"), pid);
+			   "process id: %" G_PID_FORMAT), pid);
 		val = alertpanel_full(_("Notice"), msg, _("_No"), _("_Yes"),
 		      		      NULL, ALERTFOCUS_FIRST, FALSE, NULL,
 				      ALERT_WARNING);
@@ -9801,15 +9828,15 @@ static gboolean compose_ext_editor_kill(Compose *compose)
 			waitpid(compose->exteditor_pid, NULL, 0);
 #endif /* G_OS_WIN32 */
 
-			g_warning("Terminated process id: %d. "
-				  "Temporary file: %s", pid, compose->exteditor_file);
+			g_warning("terminated process id: %" G_PID_FORMAT ", "
+				  "temporary file: %s", pid, compose->exteditor_file);
 			g_spawn_close_pid(compose->exteditor_pid);
 
 			compose_set_ext_editor_sensitive(compose, TRUE);
 
 			g_free(compose->exteditor_file);
 			compose->exteditor_file    = NULL;
-			compose->exteditor_pid     = -1;
+			compose->exteditor_pid     = INVALID_PID;
 			compose->exteditor_tag     = -1;
 		} else
 			return FALSE;
@@ -9931,7 +9958,7 @@ static void compose_undo_state_changed(UndoMain *undostruct, gint undo_state,
 		cm_menu_set_sensitive_full(compose->ui_manager, "Menu/Edit/Undo", undostruct->undo_state);
 		break;
 	default:
-		g_warning("Undo state not recognized");
+		g_warning("undo state not recognized");
 		break;
 	}
 
@@ -9954,7 +9981,7 @@ static void compose_undo_state_changed(UndoMain *undostruct, gint undo_state,
 		cm_menu_set_sensitive_full(compose->ui_manager, "Menu/Edit/Redo", undostruct->redo_state);
 		break;
 	default:
-		g_warning("Redo state not recognized");
+		g_warning("redo state not recognized");
 		break;
 	}
 }
@@ -10228,8 +10255,9 @@ static void compose_register_draft(MsgInfo *info)
 	FILE *fp = claws_fopen(filepath, "ab");
 	
 	if (fp) {
-		fprintf(fp, "%s\t%d\n", folder_item_get_identifier(info->folder), 
-				info->msgnum);
+		gchar *name = folder_item_get_identifier(info->folder);
+		fprintf(fp, "%s\t%d\n", name, info->msgnum);
+		g_free(name);
 		claws_fclose(fp);
 	}
 		
@@ -11350,7 +11378,7 @@ static void compose_advanced_action_cb(GtkAction *gaction, gpointer data)
 		if (action_table[action].do_action)
 			action_table[action].do_action(text);
 		else
-			g_warning("Not implemented yet.");
+			g_warning("not implemented yet");
 	}
 }
 

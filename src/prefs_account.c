@@ -3591,11 +3591,15 @@ static gint prefs_basic_apply(void)
 	
 	if (strchr(gtk_entry_get_text(GTK_ENTRY(basic_page.uid_entry)), '\n') != NULL) {
 		alertpanel_error(_("User ID cannot contain a newline character."));
+		if (old_id)
+			g_free(old_id);
 		return -1;
 	}
 
 	if (strchr(gtk_entry_get_text(GTK_ENTRY(basic_page.pass_entry)), '\n') != NULL) {
 		alertpanel_error(_("Password cannot contain a newline character."));
+		if (old_id)
+			g_free(old_id);
 		return -1;
 	}
 
@@ -3616,8 +3620,10 @@ static gint prefs_basic_apply(void)
 				tmp_ac_prefs.account_name);
 		if (old_id != NULL && new_id != NULL)
 			prefs_filtering_rename_path(old_id, new_id);
-		g_free(old_id);
-		g_free(new_id);
+		if (old_id)
+			g_free(old_id);
+		if (new_id)
+			g_free(new_id);
 	}
 	
 	return 0;
@@ -4462,7 +4468,8 @@ static void create_privacy_prefs(gpointer key, gpointer _value, gpointer user_da
 			prefs_file_close_revert(pfile); \
 			g_free(privacy_prefs); \
 			privacy_prefs = NULL; \
-		    	return; \
+			g_free(rcpath); \
+			return; \
  		}
 
 void prefs_account_write_config_all(GList *account_list)
@@ -4476,16 +4483,18 @@ void prefs_account_write_config_all(GList *account_list)
 		g_free(rcpath);
 		return;
 	}
-	g_free(rcpath);
 
 	for (cur = account_list; cur != NULL; cur = cur->next) {
 		GString *str;
 
 		tmp_ac_prefs = *(PrefsAccount *)cur->data;
 		if (fprintf(pfile->fp, "[Account: %d]\n",
-			    tmp_ac_prefs.account_id) <= 0)
+			    tmp_ac_prefs.account_id) <= 0) {
+			g_free(pfile);
+			g_free(rcpath);
 			return;
-
+        }
+        
 		str = g_string_sized_new(32);
 		g_hash_table_foreach(tmp_ac_prefs.privacy_prefs, create_privacy_prefs, str);
 		privacy_prefs = str->str;		    
@@ -4509,10 +4518,12 @@ void prefs_account_write_config_all(GList *account_list)
 			if (claws_fputc('\n', pfile->fp) == EOF) {
 				FILE_OP_ERROR(rcpath, "claws_fputc");
 				prefs_file_close_revert(pfile);
+				g_free(rcpath);
 				return;
 			}
 		}
 	}
+	g_free(rcpath);
 
 	if (prefs_file_close(pfile) < 0)
 		g_warning("failed to write configuration to file");
@@ -4831,7 +4842,7 @@ static void prefs_account_signature_browse_cb(GtkWidget *widget, gpointer data)
 
 	utf8_filename = g_filename_to_utf8(filename, -1, NULL, NULL, NULL);
 	if (!utf8_filename) {
-		g_warning("prefs_account_signature_browse_cb(): failed to convert character set.");
+		g_warning("prefs_account_signature_browse_cb(): failed to convert character set");
 		utf8_filename = g_strdup(filename);
 	}
 	gtk_entry_set_text(GTK_ENTRY(entry_sigpath), utf8_filename);
@@ -4849,7 +4860,7 @@ static void prefs_account_in_cert_browse_cb(GtkWidget *widget, gpointer data)
 
 	utf8_filename = g_filename_to_utf8(filename, -1, NULL, NULL, NULL);
 	if (!utf8_filename) {
-		g_warning("prefs_account_cert_browse_cb(): failed to convert character set.");
+		g_warning("prefs_account_cert_browse_cb(): failed to convert character set");
 		utf8_filename = g_strdup(filename);
 	}
 	gtk_entry_set_text(GTK_ENTRY(entry_in_cert_file), utf8_filename);
@@ -4866,7 +4877,7 @@ static void prefs_account_out_cert_browse_cb(GtkWidget *widget, gpointer data)
 
 	utf8_filename = g_filename_to_utf8(filename, -1, NULL, NULL, NULL);
 	if (!utf8_filename) {
-		g_warning("prefs_account_cert_browse_cb(): failed to convert character set.");
+		g_warning("prefs_account_cert_browse_cb(): failed to convert character set");
 		utf8_filename = g_strdup(filename);
 	}
 	gtk_entry_set_text(GTK_ENTRY(entry_out_cert_file), utf8_filename);

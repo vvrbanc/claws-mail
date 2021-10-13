@@ -1,7 +1,7 @@
 /* gtkaspell - a spell-checking addon for GtkText
  * Copyright (c) 2000 Evan Martin (original code for ispell).
  * Copyright (c) 2002 Melvin Hadasht.
- * Copyright (C) 2001-2019 the Claws Mail Team
+ * Copyright (C) 2001-2021 the Claws Mail Team
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -1421,12 +1421,10 @@ static void replace_with_create_dialog_cb(GtkWidget *w, gpointer data)
 	GtkWidget *entry;
 	GtkWidget *ok_button;
 	GtkWidget *cancel_button;
-	GtkWidget *confirm_area;
 	GtkWidget *icon;
 	GtkWidget *parent_window;
 	GtkWidget *content_area;
-	GtkWidget *action_area;
-	gchar *utf8buf, *thelabel;
+	gchar *utf8buf, *thelabel, *format;
 	gint xx, yy;
 	GtkAspell *gtkaspell = (GtkAspell *) data;
 
@@ -1439,7 +1437,6 @@ static void replace_with_create_dialog_cb(GtkWidget *w, gpointer data)
 
 	dialog = gtk_dialog_new();
 	content_area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-	action_area = gtk_dialog_get_action_area(GTK_DIALOG(dialog));
 
 	gtk_window_set_resizable(GTK_WINDOW(dialog), FALSE);
 	gtk_window_set_title(GTK_WINDOW(dialog),_("Replace unknown word"));
@@ -1457,9 +1454,10 @@ static void replace_with_create_dialog_cb(GtkWidget *w, gpointer data)
 
 	utf8buf  = g_strdup(gtkaspell->theword);
 
-	thelabel = g_strdup_printf(g_strconcat("<span weight=\"bold\" size=\"larger\">",
-					_("Replace \"%s\" with: "), "</span>", NULL),
-				   utf8buf);
+	format = g_strconcat("<span weight=\"bold\" size=\"larger\">",
+					_("Replace \"%s\" with: "), "</span>", NULL);
+	thelabel = g_strdup_printf(format, utf8buf);
+	g_free(format);
 	
 	icon = gtk_image_new_from_icon_name("dialog-question",
 					GTK_ICON_SIZE_DIALOG);
@@ -1509,14 +1507,10 @@ static void replace_with_create_dialog_cb(GtkWidget *w, gpointer data)
 	gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
 	gtk_widget_show(label);
 
-	gtkut_stock_button_set_create(&confirm_area,
-				      &cancel_button, _("_Cancel"),
-				      &ok_button, _("_OK"),
-				      NULL, NULL);
-
-	gtk_box_pack_end(GTK_BOX(action_area), confirm_area, FALSE, FALSE, 0);
-	gtk_container_set_border_width(GTK_CONTAINER(confirm_area), 5);
-
+	cancel_button = gtk_dialog_add_button(GTK_DIALOG(dialog), _("_Cancel"),
+					     GTK_RESPONSE_NONE);
+	ok_button = gtk_dialog_add_button(GTK_DIALOG(dialog),_("_OK"),
+					     GTK_RESPONSE_NONE);
 	g_signal_connect(G_OBJECT(ok_button), "clicked",
 			 G_CALLBACK(replace_with_supplied_word_cb), 
 			 gtkaspell);
@@ -2012,7 +2006,7 @@ static GSList *populate_submenu(GtkAspell *gtkaspell)
 	gtk_widget_show(item);
 	list = g_slist_append(list, item);
 
-	item = gtk_menu_item_new();
+	item = gtk_separator_menu_item_new();
         gtk_widget_show(item);
         list = g_slist_append(list, item);
 		
@@ -2040,7 +2034,7 @@ static GSList *populate_submenu(GtkAspell *gtkaspell)
 	gtk_widget_show(both_dicts_item);
 	list = g_slist_append(list, both_dicts_item);
 	
-	item = gtk_menu_item_new();
+	item = gtk_separator_menu_item_new();
         gtk_widget_show(item);
         list = g_slist_append(list, item);
 	
@@ -2238,12 +2232,17 @@ static void set_point_continue(GtkAspell *gtkaspell)
 static void allocate_color(GtkAspell *gtkaspell, GdkRGBA rgba)
 {
 	GtkTextBuffer *buffer = gtk_text_view_get_buffer(gtkaspell->gtktext);
+	static const gchar *col = NULL;
 
 	gtkaspell->highlight = rgba;
+	col = gtkut_gdk_rgba_to_string(&rgba);
 
-	gtk_text_buffer_create_tag(buffer, "misspelled",
+	if (strcmp(col,"#000000") == 0)
+		gtk_text_buffer_create_tag(buffer, "misspelled",
+				   "underline", PANGO_UNDERLINE_ERROR, NULL);
+	else
+		gtk_text_buffer_create_tag(buffer, "misspelled",
 			   "foreground-rgba", &(gtkaspell->highlight), NULL);
-
 }
 
 static void change_color(GtkAspell * gtkaspell, 

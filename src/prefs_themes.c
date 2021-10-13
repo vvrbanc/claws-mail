@@ -242,7 +242,7 @@ static void prefs_themes_file_remove(const gchar *filename, gpointer data)
 	base = g_path_get_basename(filename);
 	if (TRUE == is_dir_exist(filename)) {
 		if (strcmp(base, ".") != 0 && strcmp(base, "..") != 0)
-			g_warning("prefs_themes_file_remove(): subdir in theme dir skipped: '%s'.",
+			g_warning("prefs_themes_file_remove(): subdir in theme dir skipped: '%s'",
 						base);
 	}
 	else if (0 != claws_unlink(filename)) {
@@ -262,7 +262,7 @@ static void prefs_themes_file_install(const gchar *filename, gpointer data)
 	base = g_path_get_basename(filename);
 	if (TRUE == is_dir_exist(filename)) {
 		if (strcmp(base, ".") != 0 && strcmp(base, "..") !=0 )
-			g_warning("prefs_themes_file_install(): subdir in theme dir skipped: '%s'.",
+			g_warning("prefs_themes_file_install(): subdir in theme dir skipped: '%s'",
 						base);
 	}
 	else {
@@ -973,7 +973,7 @@ static void prefs_themes_create_widget(PrefsPage *page, GtkWindow *window, gpoin
 	gtk_box_pack_start (GTK_BOX (hbox3), btn_install, FALSE, FALSE, 0);
 	gtk_widget_set_can_default (btn_install, TRUE);
 
-	btn_more = gtkut_get_link_btn((GtkWidget *)window, THEMES_URI, _("Get more..."));
+	btn_more = gtk_link_button_new_with_label(THEMES_URI, _("Get more..."));
 	gtk_widget_show (btn_more);
 	gtk_box_pack_start (GTK_BOX (hbox3), btn_more, FALSE, FALSE, 0);
 

@@ -194,13 +194,17 @@ static void import_ok_cb(GtkWidget *widget, gpointer data)
 	utf8mbox = gtk_entry_get_text(GTK_ENTRY(file_entry));
 	destdir = gtk_entry_get_text(GTK_ENTRY(dest_entry));
 
-	if (utf8mbox && !*utf8mbox) {
+	cm_return_if_fail(utf8mbox);
+	cm_return_if_fail(destdir);
+
+	if (!*utf8mbox) {
 		alertpanel_error(_("Source mbox filename can't be left empty."));
 		gtk_widget_grab_focus(file_entry);
 		return;
 	}
-	if (destdir && !*destdir) {
-		if (alertpanel(_("Import mbox file"), _("Destination folder is not set.\nImport mbox file to the Inbox folder?"),
+	if (!*destdir) {
+		if (alertpanel(_("Import mbox file"),
+						_("Destination folder is not set.\nImport mbox file to the Inbox folder?"),
 						_("_OK"), _("_Cancel"), NULL, ALERTFOCUS_FIRST)
 			== G_ALERTALTERNATE) {
 			gtk_widget_grab_focus(dest_entry);
@@ -210,15 +214,14 @@ static void import_ok_cb(GtkWidget *widget, gpointer data)
 
 	mbox = g_filename_from_utf8(utf8mbox, -1, NULL, NULL, NULL);
 	if (!mbox) {
-		g_warning("import_ok_cb(): failed to convert character set.");
+		g_warning("import_ok_cb(): failed to convert character set");
 		mbox = g_strdup(utf8mbox);
 	}
 
-	if (!destdir || !*destdir) {
+	if (!*destdir) {
 		dest = folder_find_item_from_path(INBOX_DIR);
 	} else {
-		dest = folder_find_item_from_identifier
-			(destdir);
+		dest = folder_find_item_from_identifier(destdir);
 	}
 
 	if (!dest) {
@@ -254,7 +257,7 @@ static void import_filesel_cb(GtkWidget *widget, gpointer data)
 
 	utf8_filename = g_filename_to_utf8(filename, -1, NULL, NULL, NULL);
 	if (!utf8_filename) {
-		g_warning("import_filesel_cb(): failed to convert character set.");
+		g_warning("import_filesel_cb(): failed to convert character set");
 		utf8_filename = g_strdup(filename);
 	}
 	gtk_entry_set_text(GTK_ENTRY(file_entry), utf8_filename);

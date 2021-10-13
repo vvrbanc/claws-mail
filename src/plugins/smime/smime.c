@@ -41,7 +41,6 @@
 
 #include "alertpanel.h"
 #include "prefs_common.h"
-#include "procmime.h"
 #include "plugin.h"
 #include "file-utils.h"
 
@@ -596,6 +595,7 @@ gboolean smime_sign(MimeInfo *mimeinfo, PrefsAccount *account, const gchar *from
 	fp = my_tmpfile();
 	if (fp == NULL) {
 		perror("my_tmpfile");
+		g_free(boundary);
 		return FALSE;
 	}
 	procmime_write_mimeinfo(sigmultipart, fp);
@@ -744,6 +744,7 @@ gboolean smime_encrypt(MimeInfo *mimeinfo, const gchar *encrypt_data)
 
 	if ((err = gpgme_new(&ctx)) != GPG_ERR_NO_ERROR) {
 		debug_print ("gpgme_new failed: %s\n", gpgme_strerror(err));
+		g_free(fprs);
 		return FALSE;
 	}
 
@@ -752,6 +753,7 @@ gboolean smime_encrypt(MimeInfo *mimeinfo, const gchar *encrypt_data)
 	if (err) {
 		debug_print ("gpgme_set_protocol failed: %s\n",
                    gpgme_strerror (err));
+		g_free(fprs);
 		return FALSE;
 	}
 
@@ -771,7 +773,8 @@ gboolean smime_encrypt(MimeInfo *mimeinfo, const gchar *encrypt_data)
 		kset[i] = key;
 		i++;
 	}
-	
+	g_free(fprs);
+
 	debug_print("Encrypting message content\n");
 
 	/* remove content node from message */
@@ -801,6 +804,7 @@ gboolean smime_encrypt(MimeInfo *mimeinfo, const gchar *encrypt_data)
 	if (fp == NULL) {
 		FILE_OP_ERROR(tmpfile, "create");
 		g_free(kset);
+		g_free(tmpfile);
 		return FALSE;
 	}
 	procmime_decode_content(msgcontent);
@@ -812,6 +816,7 @@ gboolean smime_encrypt(MimeInfo *mimeinfo, const gchar *encrypt_data)
 	if (fp == NULL) {
 		FILE_OP_ERROR(tmpfile, "open");
 		g_free(kset);
+		g_free(tmpfile);
 		return FALSE;
 	}
 	g_free(tmpfile);
@@ -844,9 +849,6 @@ gboolean smime_encrypt(MimeInfo *mimeinfo, const gchar *encrypt_data)
 			FILE_OP_ERROR(tmpfile, "claws_fwrite");
 			claws_fclose(fp);
 			claws_unlink(tmpfile);
-			g_free(tmpfile);
-			g_free(enccontent);
-			return FALSE;
 		}
 		if (claws_safe_fclose(fp) == EOF) {
 			FILE_OP_ERROR(tmpfile, "claws_fclose");

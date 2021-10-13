@@ -26,7 +26,9 @@
 //#include <unistd.h>
 #include <stdio.h>
 #include <gtk/gtk.h>
+#ifndef G_OS_WIN32
 #include <gdk/gdkx.h>
+#endif
 #include <gdk/gdkkeysyms.h>
 #include <poppler.h>
 #include <version.h>
@@ -34,7 +36,6 @@
 #include <messageview.h>
 #include <mimeview.h>
 #include <alertpanel.h>
-#include <mimeview.h>
 
 /*#ifdef USE_PTHREAD
  *#include <pthread.h>
@@ -89,7 +90,7 @@ struct _PdfViewer
 	GtkWidget			*doc_info;
 	GtkWidget			*doc_index;
 	/* end GtkButtons */
-	GtkTable			*table_doc_info;
+	GtkWidget			*table_doc_info;
 
 	PopplerDocument		*pdf_doc;
 	PopplerPage			*pdf_page;

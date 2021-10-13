@@ -35,7 +35,6 @@
 #include <string.h>
 #include <time.h>
 
-#include <glib.h>
 #include <glib/gprintf.h>
 #include <gdk/gdkkeysyms.h>
 #include <gdk/gdk.h>
@@ -883,6 +882,7 @@ day_win *create_day_win(FolderItem *item, struct tm tmdate)
     dw->startdate.tm_min = 0;
     dw->startdate.tm_sec = 0;
     dw->Vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+	gtk_widget_set_name(GTK_WIDGET(dw->Vbox), "vcal_day_win");
 
     dw->item = item;
     build_day_view_colours(dw);

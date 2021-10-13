@@ -105,7 +105,7 @@ static gchar* edit_person_get_common_name_from_widgets(void)
 		}
 		if ( cn == NULL || *cn == '\0' ) {
 			g_free(cn);
-			cn = gtk_editable_get_chars( GTK_EDITABLE(personeditdlg.entry_nick), 0, -1 );;
+			cn = gtk_editable_get_chars( GTK_EDITABLE(personeditdlg.entry_nick), 0, -1 );
 		}
 	}
 #else
@@ -850,7 +850,7 @@ static void addressbook_edit_person_dialog_create( gboolean *cancelled ) {
 	/* gtk_container_set_border_width(GTK_CONTAINER(window), 0); */
 	gtk_window_set_title(GTK_WINDOW(window), _("Edit Person Data"));
 	gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
-	gtk_window_set_modal(GTK_WINDOW(window), FALSE);
+	gtk_window_set_modal(GTK_WINDOW(window), TRUE);
 	gtk_window_set_type_hint(GTK_WINDOW(window), GDK_WINDOW_TYPE_HINT_DIALOG);
 	g_signal_connect(G_OBJECT(window), "delete_event",
 			 G_CALLBACK(edit_person_delete_event),
@@ -877,7 +877,8 @@ static void addressbook_edit_person_dialog_create( gboolean *cancelled ) {
 
 	gtk_window_set_geometry_hints(GTK_WINDOW(window), NULL, &geometry,
 				      GDK_HINT_MIN_SIZE);
-	gtk_window_set_default_size(window, prefs_common.addressbookeditpersonwin_width,
+	gtk_window_set_default_size(GTK_WINDOW(window),
+				    prefs_common.addressbookeditpersonwin_width,
 				    prefs_common.addressbookeditpersonwin_height);
 
 	personeditdlg.container  = window;
@@ -1710,12 +1711,12 @@ static gboolean addressbook_edit_person_close( gboolean cancelled )
 	listEMail = edit_person_build_email_list();
 	listAttrib = edit_person_build_attrib_list();
 	if( cancelled ) {
-		addritem_free_list_email( listEMail );
-		addritem_free_list_attribute( listAttrib );
 		model = gtk_tree_view_get_model(GTK_TREE_VIEW(personeditdlg.view_email));
 		gtk_list_store_clear(GTK_LIST_STORE(model));
 		model = gtk_tree_view_get_model(GTK_TREE_VIEW(personeditdlg.view_attrib));
 		gtk_list_store_clear(GTK_LIST_STORE(model));
+		addritem_free_list_email( listEMail );
+		addritem_free_list_attribute( listAttrib );
 
 		if (!prefs_common.addressbook_use_editaddress_dialog)
 			gtk_widget_hide( personeditdlg.container );

@@ -1367,11 +1367,11 @@ static GtkTreePath *folderview_find_next_with_flag(GtkTreeView *treeview,
 			continue;
 		switch (flag) {
 		case MSG_UNREAD:
-			if(item->unread_msgs > 0)
+			if((item->unread_msgs > 0) && (!item->prefs || !item->prefs->skip_on_goto_unread_or_new))
 				goto out;
 			break;
 		case MSG_NEW:
-			if(item->new_msgs > 0)
+			if((item->new_msgs > 0) && (!item->prefs || !item->prefs->skip_on_goto_unread_or_new))
 				goto out;
 			break;
 		case MSG_MARKED:
@@ -2687,7 +2687,6 @@ static void folderview_drag_received_cb(GtkWidget        *widget,
 
 			source = (char *)gtk_selection_data_get_data(data) + 17;
 			src_item = folder_find_item_from_identifier(source);
-
 			folder_is_normal =
 				src_item != NULL &&
 				src_item->stype == F_NORMAL &&
@@ -3304,6 +3303,16 @@ static void folderview_run_processing_cb(GtkAction *action, gpointer data)
 	FolderItem *item;
 
 	item = folderview->menu_item;
+	cm_return_if_fail(item != NULL);
+	cm_return_if_fail(item->folder != NULL);
+
+	item->processing_pending = TRUE;
+	folder_item_apply_processing(item);
+	item->processing_pending = FALSE;
+}
+
+void folderview_run_processing(FolderItem *item)
+{
 	cm_return_if_fail(item != NULL);
 	cm_return_if_fail(item->folder != NULL);
 

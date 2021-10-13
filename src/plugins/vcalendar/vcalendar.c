@@ -227,7 +227,7 @@ static gchar *get_tmpfile(VCalViewer *vcalviewer)
 		debug_print("creating %s\n", tmpfile);
 
 		if (procmime_get_part(tmpfile, vcalviewer->mimeinfo) < 0) {
-			g_warning("Can't get mimepart file");	
+			g_warning("can't get mimepart file");	
 			g_free(tmpfile);
 			return NULL;
 		}
@@ -552,17 +552,14 @@ void vcalviewer_display_event (VCalViewer *vcalviewer, VCalEvent *event)
 /* start */
 	if (event->start && *(event->start)) {
 		if (event->recur && *(event->recur)) {
-			gchar *tmp = g_strdup_printf(g_strconcat("%s <span weight=\"bold\">",
-							_("(this event recurs)"),"</span>", NULL),
-					event->start);
+			gchar *tmp = g_strdup_printf("%s <span weight=\"bold\">%s</span>",
+							_("(this event recurs)"), event->start);
 			GTK_LABEL_SET_TEXT_TRIMMED(GTK_LABEL(vcalviewer->start), tmp);
 			gtk_label_set_use_markup(GTK_LABEL(vcalviewer->start), TRUE);
 			g_free(tmp);
 		} else if (event->rec_occurrence) {
-			gchar *tmp = g_strdup_printf(g_strconcat("%s <span weight=\"bold\">",
-							_("(this event is part of a recurring event)"),
-							"</span>", NULL),
-					event->start);
+			gchar *tmp = g_strdup_printf("%s <span weight=\"bold\">%s</span>",
+							_("(this event is part of a recurring event)"), event->start);
 			GTK_LABEL_SET_TEXT_TRIMMED(GTK_LABEL(vcalviewer->start), tmp);
 			gtk_label_set_use_markup(GTK_LABEL(vcalviewer->start), TRUE);
 			g_free(tmp);
@@ -732,6 +729,8 @@ static void vcalviewer_get_reply_values(VCalViewer *vcalviewer, MimeInfo *mimein
 		vcalviewer_display_event(vcalviewer, saved_event);
 		vcal_manager_free_event(saved_event);
 		return;
+	} else if (saved_event) {
+		vcal_manager_free_event(saved_event);
 	}
 
 	if (vcalviewer->event->organizer) {
@@ -1246,6 +1245,7 @@ MimeViewer *vcal_viewer_create(void)
 	TABLE_ADD_LINE(_("Action:"), vbox);
 	
 	vcalviewer->scrolledwin = gtk_scrolled_window_new(NULL, NULL);
+	gtk_widget_set_name(GTK_WIDGET(vcalviewer->scrolledwin), "vcalendar_viewer");
 	gtk_container_add(GTK_CONTAINER(vcalviewer->scrolledwin),
 			vcalviewer->table);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(vcalviewer->scrolledwin),

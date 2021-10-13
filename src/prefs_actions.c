@@ -43,7 +43,6 @@
 #include "prefs_actions.h"
 #include "action.h"
 #include "description_window.h"
-#include "gtkutils.h"
 #include "manual.h"
 #include "menu.h"
 #include "filtering.h"
@@ -97,10 +96,10 @@ static void prefs_actions_delete_cb	(gpointer gtk_action, gpointer data);
 static void prefs_actions_delete_all_cb	(gpointer gtk_action, gpointer data);
 static void prefs_actions_clear_cb	(gpointer gtk_action, gpointer data);
 static void prefs_actions_duplicate_cb	(gpointer gtk_action, gpointer data);
-static void prefs_actions_up		(GtkWidget	*w,
-					 gpointer	 data);
-static void prefs_actions_down		(GtkWidget	*w,
-					 gpointer	 data);
+static void prefs_actions_top_cb		(GtkWidget *w, gpointer data);
+static void prefs_actions_up_cb		(GtkWidget *w, gpointer data);
+static void prefs_actions_down_cb	(GtkWidget *w, gpointer data);
+static void prefs_actions_bottom_cb	(GtkWidget *w, gpointer data);
 static gint prefs_actions_deleted	(GtkWidget	*widget,
 					 GdkEventAny	*event,
 					 gpointer	*data);
@@ -196,8 +195,11 @@ static void prefs_actions_create(MainWindow *mainwin)
 	GtkWidget *info_btn;
 
 	GtkWidget *btn_vbox;
+    GtkWidget *spc_vbox;
+	GtkWidget *top_btn;
 	GtkWidget *up_btn;
 	GtkWidget *down_btn;
+	GtkWidget *bottom_btn;
 	static GdkGeometry geometry;
 
 	debug_print("Creating actions configuration window...\n");
@@ -378,11 +380,21 @@ static void prefs_actions_create(MainWindow *mainwin)
 	gtk_widget_show(btn_vbox);
 	gtk_box_pack_start(GTK_BOX(cond_hbox), btn_vbox, FALSE, FALSE, 0);
 
+	top_btn = gtkut_stock_button("go-top", _("_Top"));
+	gtk_widget_show(top_btn);
+	gtk_box_pack_start(GTK_BOX(btn_vbox), top_btn, FALSE, FALSE, 0);
+	g_signal_connect(G_OBJECT(top_btn), "clicked",
+			 G_CALLBACK(prefs_actions_top_cb), NULL);
+	CLAWS_SET_TIP(top_btn,
+			_("Move the selected action to the top"));
+
+	PACK_SPACER(btn_vbox, spc_vbox, VSPACING_NARROW_2);
+
 	up_btn = gtkut_stock_button("go-up", _("_Up"));
 	gtk_widget_show(up_btn);
 	gtk_box_pack_start(GTK_BOX(btn_vbox), up_btn, FALSE, FALSE, 0);
 	g_signal_connect(G_OBJECT(up_btn), "clicked",
-			 G_CALLBACK(prefs_actions_up), NULL);
+			 G_CALLBACK(prefs_actions_up_cb), NULL);
 	CLAWS_SET_TIP(up_btn,
 			_("Move the selected action up"));
 
@@ -390,9 +402,19 @@ static void prefs_actions_create(MainWindow *mainwin)
 	gtk_widget_show(down_btn);
 	gtk_box_pack_start(GTK_BOX(btn_vbox), down_btn, FALSE, FALSE, 0);
 	g_signal_connect(G_OBJECT(down_btn), "clicked",
-			 G_CALLBACK(prefs_actions_down), NULL);
+			 G_CALLBACK(prefs_actions_down_cb), NULL);
 	CLAWS_SET_TIP(down_btn,
 			_("Move selected action down"));
+
+	PACK_SPACER(btn_vbox, spc_vbox, VSPACING_NARROW_2);
+
+	bottom_btn = gtkut_stock_button("go-bottom", _("_Bottom"));
+	gtk_widget_show(bottom_btn);
+	gtk_box_pack_start(GTK_BOX(btn_vbox), bottom_btn, FALSE, FALSE, 0);
+	g_signal_connect(G_OBJECT(bottom_btn), "clicked",
+			 G_CALLBACK(prefs_actions_bottom_cb), NULL);
+	CLAWS_SET_TIP(bottom_btn,
+			_("Move the selected action to the bottom"));
 
 	if (!geometry.min_height) {
 		geometry.min_width = 486;
@@ -457,7 +479,7 @@ void prefs_actions_read_config(void)
 
 		tmp = conv_codeset_strdup(buf, src_codeset, dest_codeset);
 		if (!tmp) {
-			g_warning("Failed to convert character set of action configuration");
+			g_warning("failed to convert character set of action configuration");
 			tmp = g_strdup(buf);
 		}
 
@@ -497,7 +519,7 @@ void prefs_actions_write_config(void)
 
 		act = conv_codeset_strdup(tmp, src_codeset, dest_codeset);
 		if (!act) {
-			g_warning("Failed to convert character set of action configuration");
+			g_warning("failed to convert character set of action configuration");
 			act = g_strdup(act);
 		}
 
@@ -699,7 +721,7 @@ static void prefs_actions_delete_cb(gpointer gtk_action, gpointer data)
 
 	if (alertpanel(_("Delete action"),
 		       _("Do you really want to delete this action?"),
-		       _("_Cancel"), "edit-delete", NULL, ALERTFOCUS_FIRST) != G_ALERTALTERNATE)
+		       _("_Cancel"), _("D_elete"), NULL, ALERTFOCUS_FIRST) != G_ALERTALTERNATE)
 		return;
 
 	/* XXX: Here's the reason why we need to store the original 
@@ -720,7 +742,7 @@ static void prefs_actions_delete_all_cb(gpointer gtk_action, gpointer data)
 
 	if (alertpanel(_("Delete all actions"),
 			  _("Do you really want to delete all the actions?"),
-			  _("_Cancel"), "edit-delete", NULL, ALERTFOCUS_FIRST) != G_ALERTDEFAULT)
+			  _("_Cancel"), _("D_elete"), NULL, ALERTFOCUS_FIRST) != G_ALERTDEFAULT)
 	   return;
 
 	list_store = GTK_LIST_STORE(gtk_tree_view_get_model(GTK_TREE_VIEW(actions.actions_list_view)));
@@ -754,83 +776,87 @@ static void prefs_actions_duplicate_cb(gpointer gtk_action, gpointer data)
 	modified_list = !prefs_actions_clist_set_row(-row-2);
 }
 
-static void prefs_actions_up(GtkWidget *w, gpointer data)
+static void prefs_actions_top_cb(GtkWidget *w, gpointer data)
 {
-	GtkTreePath *prev, *sel, *try;
-	GtkTreeIter isel;
-	GtkListStore *store = NULL;
-	GtkTreeModel *model = NULL;
-	GtkTreeIter iprev;
+	gint row;
+	GtkTreeIter top, sel;
+	GtkTreeModel *model;
+
+	row = gtkut_list_view_get_selected_row(actions.actions_list_view);
+	if (row <= 1) 
+		return;
+
+	model = gtk_tree_view_get_model(GTK_TREE_VIEW(actions.actions_list_view));		
 	
-	if (!gtk_tree_selection_get_selected
-		(gtk_tree_view_get_selection
-			(GTK_TREE_VIEW(actions.actions_list_view)),
-		 &model,	
-		 &isel))
+	if (!gtk_tree_model_iter_nth_child(model, &top, NULL, 0)
+	||  !gtk_tree_model_iter_nth_child(model, &sel, NULL, row))
 		return;
-	store = (GtkListStore *)model;
-	sel = gtk_tree_model_get_path(GTK_TREE_MODEL(store), &isel);
-	if (!sel)
-		return;
-	
-	/* no move if we're at row 0 or 1, looks phony, but other
-	 * solutions are more convoluted... */
-	try = gtk_tree_path_copy(sel);
-	if (!gtk_tree_path_prev(try) || !gtk_tree_path_prev(try)) {
-		gtk_tree_path_free(try);
-		gtk_tree_path_free(sel);
-		return;
-	}
-	gtk_tree_path_free(try);
 
-	prev = gtk_tree_path_copy(sel);		
-	if (!gtk_tree_path_prev(prev)) {
-		gtk_tree_path_free(prev);
-		gtk_tree_path_free(sel);
-		return;
-	}
-
-	gtk_tree_model_get_iter(GTK_TREE_MODEL(store),
-				&iprev, prev);
-	gtk_tree_path_free(sel);
-	gtk_tree_path_free(prev);
-
-	gtk_list_store_swap(store, &iprev, &isel);
-	prefs_actions_set_list();
+	gtk_list_store_move_after(GTK_LIST_STORE(model), &sel, &top);
+	gtkut_list_view_select_row(actions.actions_list_view, 1);
 	modified_list = TRUE;
 }
 
-static void prefs_actions_down(GtkWidget *w, gpointer data)
+static void prefs_actions_up_cb(GtkWidget *w, gpointer data)
 {
-	GtkListStore *store = NULL;
-	GtkTreeModel *model = NULL;
-	GtkTreeIter next, sel;
-	GtkTreePath *try;
-	
-	if (!gtk_tree_selection_get_selected
-		(gtk_tree_view_get_selection
-			(GTK_TREE_VIEW(actions.actions_list_view)),
-		 &model,
-		 &sel))
+	gint row;
+	GtkTreeIter top, sel;
+	GtkTreeModel *model;
+
+	row = gtkut_list_view_get_selected_row(actions.actions_list_view);
+	if (row <= 1) 
 		return;
-	store = (GtkListStore *)model;
-	try = gtk_tree_model_get_path(GTK_TREE_MODEL(store), &sel);
-	if (!try) 
+		
+	model = gtk_tree_view_get_model(GTK_TREE_VIEW(actions.actions_list_view));	
+
+	if (!gtk_tree_model_iter_nth_child(model, &top, NULL, row - 1)
+	||  !gtk_tree_model_iter_nth_child(model, &sel, NULL, row))
 		return;
 
-	/* no move when we're at row 0 */
-	if (!gtk_tree_path_prev(try)) {
-		gtk_tree_path_free(try);
-		return;
-	}
-	gtk_tree_path_free(try);
+	gtk_list_store_swap(GTK_LIST_STORE(model), &top, &sel);
+	gtkut_list_view_select_row(actions.actions_list_view, row - 1);
+	modified_list = TRUE;
+}
 
-	next = sel;
-	if (!gtk_tree_model_iter_next(GTK_TREE_MODEL(store), &next)) 
+static void prefs_actions_down_cb(GtkWidget *w, gpointer data)
+{
+	gint row, n_rows;
+	GtkTreeIter top, sel;
+	GtkTreeModel *model;
+
+	model = gtk_tree_view_get_model(GTK_TREE_VIEW(actions.actions_list_view));	
+	n_rows = gtk_tree_model_iter_n_children(model, NULL);
+	row = gtkut_list_view_get_selected_row(actions.actions_list_view);
+	if (row < 1 || row >= n_rows - 1)
 		return;
 
-	gtk_list_store_swap(store, &next, &sel);
-	prefs_actions_set_list();
+	if (!gtk_tree_model_iter_nth_child(model, &top, NULL, row)
+	||  !gtk_tree_model_iter_nth_child(model, &sel, NULL, row + 1))
+		return;
+			
+	gtk_list_store_swap(GTK_LIST_STORE(model), &top, &sel);
+	gtkut_list_view_select_row(actions.actions_list_view, row + 1);
+	modified_list = TRUE;
+}
+
+static void prefs_actions_bottom_cb(GtkWidget *w, gpointer data)
+{
+	gint row, n_rows;
+	GtkTreeIter top, sel;
+	GtkTreeModel *model;
+
+	model = gtk_tree_view_get_model(GTK_TREE_VIEW(actions.actions_list_view));	
+	n_rows = gtk_tree_model_iter_n_children(model, NULL);
+	row = gtkut_list_view_get_selected_row(actions.actions_list_view);
+	if (row < 1 || row >= n_rows - 1)
+		return;
+
+	if (!gtk_tree_model_iter_nth_child(model, &top, NULL, row)
+	||  !gtk_tree_model_iter_nth_child(model, &sel, NULL, n_rows - 1))
+		return;
+
+	gtk_list_store_move_after(GTK_LIST_STORE(model), &top, &sel);		
+	gtkut_list_view_select_row(actions.actions_list_view, n_rows - 1);
 	modified_list = TRUE;
 }
 
@@ -1074,7 +1100,7 @@ static GtkWidget *prefs_actions_popup_menu = NULL;
 static GtkActionEntry prefs_actions_popup_entries[] =
 {
  	{"PrefsActionsPopup",			NULL, "PrefsActionsPopup", NULL, NULL, NULL },
-	{"PrefsActionsPopup/Delete",		NULL, N_("_Delete"), NULL, NULL, G_CALLBACK(prefs_actions_delete_cb) },
+	{"PrefsActionsPopup/Delete",	NULL, N_("_Delete"), NULL, NULL, G_CALLBACK(prefs_actions_delete_cb) },
 	{"PrefsActionsPopup/DeleteAll",	NULL, N_("Delete _all"), NULL, NULL, G_CALLBACK(prefs_actions_delete_all_cb) },
 	{"PrefsActionsPopup/Duplicate",	NULL, N_("D_uplicate"), NULL, NULL, G_CALLBACK(prefs_actions_duplicate_cb) },
 };
@@ -1278,16 +1304,15 @@ static void prefs_action_filterbtn_cb(GtkWidget *widget, gpointer data)
 	gchar *action_str, **tokens;
 	GSList *action_list = NULL, *cur;
 
-/* I think this warning is useless - it's logical to clear the field when
-   changing its type.
-
-	if(modified && alertpanel(_("Entry was modified"),
-			_("Opening the filter action dialog will clear current modifications "
-			"of the command line."),
-			_("_Cancel"), _("_Continue editing"), NULL, ALERTFOCUS_SECOND) != G_ALERTDEFAULT)
-		return;
-*/
 	action_str = gtk_editable_get_chars(GTK_EDITABLE(actions.cmd_entry), 0, -1);
+	if(modified &&
+	   *action_str != '\0' &&
+	   alertpanel(_("Entry was modified"),
+			_("Opening the filter action dialog will clear current modifications "
+			"of the command-line."),
+			_("_Cancel"), _("_Continue editing"), NULL, ALERTFOCUS_SECOND) != G_ALERTDEFAULT) {
+		return;
+	}
 	tokens = g_strsplit_set(action_str, "{}", 5);
 
 	if (tokens[0] && tokens[1] && *tokens[1] != '\0') {
@@ -1300,8 +1325,8 @@ static void prefs_action_filterbtn_cb(GtkWidget *widget, gpointer data)
 
 	if (action_list != NULL) {
 		for(cur = action_list ; cur != NULL ; cur = cur->next)
-                        filteringaction_free(cur->data);
-        }
+			filteringaction_free(cur->data);
+	}
         
 	g_free(action_str);
 	g_strfreev(tokens);
@@ -1345,10 +1370,12 @@ void prefs_actions_rename_path(const gchar *old_path, const gchar *new_path)
 		if (action_list &&
 		    filtering_action_list_rename_path(action_list,
 						old_path, new_path)) {
+			gchar *str = filteringaction_list_to_string(action_list);
 			g_free(action->data);
 			action->data = g_strconcat(tokens[0], "{",
-				filteringaction_list_to_string(action_list),
-				"}", NULL);
+				str ? str : "", "}", NULL);
+			if (str)
+				g_free(str);
 		}
 
 		g_strfreev(tokens);

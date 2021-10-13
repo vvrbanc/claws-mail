@@ -120,6 +120,8 @@ void folderview_rescan_tree		(Folder		*folder,
 gint folderview_check_new		(Folder		*folder);
 void folderview_check_new_all		(void);
 
+void folderview_run_processing(FolderItem *item);
+
 void folderview_move_folder		(FolderView 	*folderview,
 					 FolderItem 	*from_folder,
 					 FolderItem 	*to_folder,

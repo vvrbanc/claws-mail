@@ -91,7 +91,7 @@ static void lh_show_mimepart(MimeViewer *_viewer, const gchar *infile,
 	const gchar *charset;
 
 	if (string == NULL) {
-		g_warning("LH: couldn't get MIME part file\n");
+		g_warning("LH: couldn't get MIME part file");
 		return;
 	}
 
@@ -144,24 +144,26 @@ static void lh_print_viewer (MimeViewer *_viewer)
 static gboolean lh_scroll_page(MimeViewer *_viewer, gboolean up)
 {
 	LHViewer *viewer = (LHViewer *)_viewer;
-	GtkAdjustment *vadj = gtk_scrolled_window_get_vadjustment(
-					GTK_SCROLLED_WINDOW(lh_widget_get_widget(viewer->widget)));
+	GtkAdjustment *vadj = NULL;
 
-	if (viewer->widget == NULL)
+	if (!viewer || (viewer->widget == NULL))
 		return FALSE;
 
+	vadj = gtk_scrolled_window_get_vadjustment(
+				GTK_SCROLLED_WINDOW(lh_widget_get_widget(viewer->widget)));
 	return gtkutils_scroll_page(lh_widget_get_widget(viewer->widget), vadj, up);
 }
 
 static void lh_scroll_one_line(MimeViewer *_viewer, gboolean up)
 {
 	LHViewer *viewer = (LHViewer *)_viewer;
-	GtkAdjustment *vadj = gtk_scrolled_window_get_vadjustment(
-					GTK_SCROLLED_WINDOW(lh_widget_get_widget(viewer->widget)));
+	GtkAdjustment *vadj = NULL;
 
-	if (viewer->widget == NULL)
+	if (!viewer || (viewer->widget == NULL))
 		return;
 
+	vadj = gtk_scrolled_window_get_vadjustment(
+					GTK_SCROLLED_WINDOW(lh_widget_get_widget(viewer->widget)));
 	gtkutils_scroll_one_line(lh_widget_get_widget(viewer->widget), vadj, up);
 }
 
@@ -184,6 +186,7 @@ MimeViewer *lh_viewer_create()
 	viewer->mimeviewer.scroll_one_line = lh_scroll_one_line;
 
 	viewer->vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+	gtk_widget_set_name(GTK_WIDGET(viewer->vbox), "litehtml_viewer");
 
 	GtkWidget *w = lh_widget_get_widget(viewer->widget);
 	gtk_box_pack_start(GTK_BOX(viewer->vbox), w,

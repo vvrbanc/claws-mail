@@ -108,19 +108,17 @@ void rssyl_deleted_update(RFolderItem *ritem)
 	g_file_get_contents(deleted_file, &contents, NULL, &error);
 
 	if (error) {
-		g_warning("GError: '%s'", error->message);
+		g_warning("error: '%s'", error->message);
 		g_error_free(error);
 	}
 
 	if (contents != NULL) {
 		lines = strsplit_no_copy(contents, '\n');
 	} else {
-		g_warning("Couldn't read '%s', ignoring", deleted_file);
+		g_warning("couldn't read '%s', ignoring", deleted_file);
 		g_free(deleted_file);
 		return;
 	}
-
-	g_free(deleted_file);
 
 	while (lines[i]) {
 		line = g_strsplit(lines[i], ": ", 2);
@@ -140,6 +138,10 @@ void rssyl_deleted_update(RFolderItem *ritem)
 		g_strfreev(line);
 		i++;
 	}
+	if (ditem)
+		g_warning("short read while parsing the list of deleted items for '%s'\n",
+				deleted_file);
+	g_free(deleted_file);
 
 	g_free(lines);
 	g_free(contents);

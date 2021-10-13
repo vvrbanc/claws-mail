@@ -417,7 +417,7 @@ void inc_all_account_mail(MainWindow *mainwin, gboolean autocheck,
 			  gboolean check_at_startup, gboolean notify)
 {
 	GList *list, *list2 = NULL;
-	gboolean condition;
+	gboolean condition = FALSE;
 	gboolean hide_dialog = FALSE;
 
 	debug_print("INC: inc_all_account_mail(), autocheck: %s\n",
@@ -681,9 +681,9 @@ static gint inc_start(IncProgressDialog *inc_dialog)
 
 		if (pop3_session->pass == NULL) {
 			SET_PIXMAP_AND_TEXT(okpix, _("Cancelled"));
-			inc_session_destroy(session);
 			inc_dialog->queue_list =
 				g_list_remove(inc_dialog->queue_list, session);
+			inc_session_destroy(session);
 			continue;
 		}
 
@@ -1486,9 +1486,12 @@ static void inc_notify_cmd(gint new_msgs, gboolean notify)
 
 	ret_str = g_locale_from_utf8(buf, strlen(buf), &by_read, &by_written,
 				     NULL);
-	if (ret_str && by_written) {
-		g_free(buf);
-		buf = ret_str;
+	if (ret_str) {
+		if (by_written) {
+			g_free(buf);
+			buf = ret_str;
+		} else
+			g_free(ret_str);
 	}
 	debug_print("executing new mail notification command: %s\n", buf);
 	execute_command_line(buf, TRUE, NULL);

@@ -39,7 +39,6 @@
 #include "summaryview.h"
 #include "folder.h"
 #include "version.h"
-#include "summaryview.h"
 #include "procmime.h"
 #include "alertpanel.h"
 #include "inc.h"
@@ -562,7 +561,7 @@ gboolean plugin_done(void)
         	return TRUE;
         
 	if (prefs_write_param(prefs, pref_file->fp) < 0) {
-		g_warning("failed to write AttRemover Plugin configuration");
+		g_warning("failed to write AttRemover plugin configuration");
 		prefs_file_close_revert(pref_file);
 		return TRUE;
         }
