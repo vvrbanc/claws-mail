@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK+ based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2020 The Claws Mail Team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2021 The Claws Mail Team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -280,6 +280,21 @@ gchar *strcrchomp(gchar *str)
 		*(s - 1) = '\n';
 		*s = '\0';
 	}
+
+	return str;
+}
+
+/* truncates string at first CR (carriage return) or LF (line feed) */
+gchar *strcrlftrunc(gchar *str)
+{
+	gchar *p = NULL;
+
+	if ((str == NULL) || (!*str)) return str;
+
+	if ((p = strstr(str, "\r")) != NULL)
+		*p = '\0';
+	if ((p = strstr(str, "\n")) != NULL)
+		*p = '\0';
 
 	return str;
 }
@@ -2680,6 +2695,7 @@ FILE *get_command_output_stream(const char* cmdline)
 	return fdopen(fd, "r");
 }
 
+#ifndef G_OS_WIN32
 static gint is_unchanged_uri_char(char c)
 {
 	switch (c) {
@@ -2715,6 +2731,7 @@ static void encode_uri(gchar *encoded_uri, gint bufsize, const gchar *uri)
 	}
 	encoded_uri[k] = 0;
 }
+#endif
 
 gint open_uri(const gchar *uri, const gchar *cmdline)
 {
@@ -3475,19 +3492,6 @@ void g_auto_pointer_free(GAuto *auto_ptr)
 		G_PRINT_REF ("XXXX DEREF(%lx) -- REF (%d)\n", ref->pointer, ref->cnt);
 #endif
 	g_free(ptr);
-}
-
-void replace_returns(gchar *str)
-{
-	if (!str)
-		return;
-
-	while (strstr(str, "\n")) {
-		*strstr(str, "\n") = ' ';
-	}
-	while (strstr(str, "\r")) {
-		*strstr(str, "\r") = ' ';
-	}
 }
 
 /* get_uri_part() - retrieves a URI starting from scanpos.

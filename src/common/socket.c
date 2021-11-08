@@ -21,10 +21,6 @@
 #include "claws-features.h"
 #endif
 
-#if (defined (_XOPEN_SOURCE) && !defined (_BSD_SOURCE))
-#define _BSD_SOURCE
-#endif
-
 /* This can probably be handled better, e.g. define it in config.h. */
 #define _WIN32_WINNT _WIN32_WINNT_WIN6
 #include <glib.h>
@@ -1428,6 +1424,7 @@ gint sock_write_all(SockInfo *sock, const gchar *buf, gint len)
 	return ret;
 }
 
+#ifndef G_OS_WIN32
 static gint fd_recv(gint fd, gchar *buf, gint len, gint flags)
 {
 	if (fd_check_io(fd, G_IO_IN) < 0)
@@ -1435,6 +1432,7 @@ static gint fd_recv(gint fd, gchar *buf, gint len, gint flags)
 
 	return recv(fd, buf, len, flags);
 }
+#endif
 
 gint fd_gets(gint fd, gchar *buf, gint len)
 {
