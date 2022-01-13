@@ -1681,7 +1681,7 @@ static void receive_create_widget_func(PrefsPage * _page,
 	gtk_widget_show (size_limit_spinbtn);
 	gtk_box_pack_start (GTK_BOX (hbox1), size_limit_spinbtn, FALSE, FALSE, 0);
 
-	label = gtk_label_new (_("KB"));
+	label = gtk_label_new (_("KiB"));
 	gtk_widget_show (label);
 	gtk_box_pack_start (GTK_BOX (hbox1), label, FALSE, FALSE, 0);
 
@@ -3266,7 +3266,7 @@ static void proxy_create_widget_func(PrefsPage * _page,
 
 	if (new_account) {
 		prefs_set_dialog_to_default(proxy_param);
-	} else
+	} else {
 		prefs_set_dialog(proxy_param);
 
 		/* Passwords are handled outside of PrefParams. */
@@ -3278,6 +3278,7 @@ static void proxy_create_widget_func(PrefsPage * _page,
 			memset(buf, 0, strlen(buf));
 			g_free(buf);
 		}
+	}
 
 	page->vbox = vbox1;
 
@@ -5108,7 +5109,7 @@ static void prefs_account_oauth2_copy_url(GtkButton *button, gpointer data)
 	gtk_clipboard_set_text (clip, url, len);
 	gtk_clipboard_set_text (clip2, url, len);
 
-	if (!strcmp(gtk_button_get_label(button), "Copy link") == 0)
+	if (strcmp(gtk_button_get_label(button), "Copy link") != 0)
 		open_uri(url, prefs_common_get_uri_cmd());
 
 	g_free(url);

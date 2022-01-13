@@ -6956,7 +6956,12 @@ static gchar *compose_get_header(Compose *compose)
 		g_free(tmp);
 		
 		entry_str = gtk_entry_get_text(GTK_ENTRY(headerentry->entry));
-		Xstrdup_a(headervalue, entry_str, return NULL);
+		Xstrdup_a(headervalue, entry_str, {
+                        g_free(headername);
+                        g_free(headername_wcolon);
+                        g_string_free(header, TRUE);
+                        return NULL;
+                });
 		subst_char(headervalue, '\r', ' ');
 		subst_char(headervalue, '\n', ' ');
 		g_strstrip(headervalue);
@@ -6974,7 +6979,7 @@ static gchar *compose_get_header(Compose *compose)
 				g_string_append_printf(header, "%s %s\n",
 						compose_untranslated_header_name(headername_wcolon), headervalue);
 			}
-		}				
+		}
 		g_free(headername);
 		g_free(headername_wcolon);		
 	}
@@ -9600,7 +9605,8 @@ static gboolean attach_property_key_pressed(GtkWidget *widget,
 		*cancelled = TRUE;
 		gtk_main_quit();
 	}
-	if (event && event->keyval == GDK_KEY_Return) {
+	if (event && (event->keyval == GDK_KEY_KP_Enter ||
+	    event->keyval == GDK_KEY_Return)) {
 		*cancelled = FALSE;
 		gtk_main_quit();
 		return TRUE;
@@ -9631,7 +9637,7 @@ static void compose_exec_ext_editor(Compose *compose)
 #endif /* G_OS_WIN32 */
 	GPid pid;
 	GError *error = NULL;
-	gchar *cmd;
+	gchar *cmd = NULL;
 	gchar **argv;
 
 	tmp = g_strdup_printf("%s%ctmpmsg.%p", get_tmp_dir(),
@@ -9666,6 +9672,10 @@ static void compose_exec_ext_editor(Compose *compose)
 		gtk_widget_realize(socket);
 		socket_wid = gtk_socket_get_id(GTK_SOCKET (socket));
 		compose->exteditor_socket = socket;
+#else
+		alertpanel_error(_("Socket communication with an external editor is not available on Windows."));
+		g_free(tmp);
+		return;
 #endif /* G_OS_WIN32 */
 	}
 
@@ -10875,7 +10885,12 @@ static void entry_paste_clipboard(Compose *compose, GtkWidget *entry,
  
 		if (contents == NULL)
 			return;
-	
+
+                glong len = g_utf8_strlen(contents, -1);
+                if (len > MAX_ALLOCA_MEM_SIZE) {
+                        alertpanel_error(_("Number of pages '%ld' exceeds limit '%d' for paste.\nAttach as file instead."), (len / 1800), (MAX_ALLOCA_MEM_SIZE / 1800));
+                        return;
+                }
 		/* we shouldn't delete the selection when middle-click-pasting, or we
 		 * can't mid-click-paste our own selection */
 		if (clip != GDK_SELECTION_PRIMARY) {

@@ -182,9 +182,9 @@ gchar *to_human_readable(goffset size)
 	register int t = 0, r = 0;
 	if (b_format == NULL) {
 		b_format  = _("%dB");
-		kb_format = _("%d.%02dKB");
-		mb_format = _("%d.%02dMB");
-		gb_format = _("%.2fGB");
+		kb_format = _("%d.%02dKiB");
+		mb_format = _("%d.%02dMiB");
+		gb_format = _("%.2fGiB");
 	}
 
 	if (size < (goffset)1024) {
@@ -4350,7 +4350,7 @@ size_t fast_strftime(gchar *buf, gint buflen, const gchar *format, struct tm *lt
 				*curpos++ = '0'+(lt->tm_min % 10);
 				break;
 			case 's':
-				snprintf(subbuf, 64, "%lld", (long long)mktime(lt));
+				snprintf(subbuf, 64, "%" CM_TIME_FORMAT, mktime(lt));
 				len = strlen(subbuf); CHECK_SIZE();
 				strncpy2(curpos, subbuf, buflen - total_done);
 				break;

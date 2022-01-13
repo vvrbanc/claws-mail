@@ -177,7 +177,7 @@ AM_CONDITIONAL(CYGWIN, test x"$env_cygwin" = x"yes")
 
 AC_MSG_CHECKING([for time_t format specifier])
 _gcc_cflags_save=$CFLAGS
-CFLAGS="-Wall -Werror"
+CFLAGS="-Wformat -Werror"
 AC_COMPILE_IFELSE([
 	AC_LANG_PROGRAM([[
 		#include <stdio.h>
@@ -2206,24 +2206,6 @@ doc/man/Makefile
 tools/Makefile
 config/Makefile
 manual/Makefile
-manual/dtd/Makefile
-manual/dist/Makefile
-manual/dist/pdf/Makefile
-manual/dist/ps/Makefile
-manual/dist/html/Makefile
-manual/dist/txt/Makefile
-manual/fr/Makefile
-manual/fr/dist/Makefile
-manual/fr/dist/pdf/Makefile
-manual/fr/dist/ps/Makefile
-manual/fr/dist/html/Makefile
-manual/fr/dist/txt/Makefile
-manual/es/Makefile
-manual/es/dist/Makefile
-manual/es/dist/pdf/Makefile
-manual/es/dist/ps/Makefile
-manual/es/dist/html/Makefile
-manual/es/dist/txt/Makefile
 claws-mail.pc
 ])
 
