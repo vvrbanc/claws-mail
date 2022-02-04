@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK+ based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2021 the Claws Mail team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2022 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -243,8 +243,8 @@ static void prefs_display_header_create(void)
 	gtk_widget_show (btn_hbox);
 	gtk_box_pack_end (GTK_BOX (vbox), btn_hbox, FALSE, FALSE, 0);
 
-	gtkut_stock_button_set_create(&confirm_area, &cancel_btn, _("_Cancel"),
-				      &ok_btn, _("_OK"), NULL, NULL);
+	gtkut_stock_button_set_create(&confirm_area, &cancel_btn, NULL, _("_Cancel"),
+				      &ok_btn, NULL, _("_OK"), NULL, NULL, NULL);
 	gtk_widget_show (confirm_area);
 	gtk_box_pack_end (GTK_BOX(btn_hbox), confirm_area, FALSE, FALSE, 0);
 	gtk_widget_grab_default (ok_btn);
@@ -325,7 +325,7 @@ static void prefs_display_header_create(void)
 			    G_CALLBACK
 			    (prefs_display_header_register_cb),
 			    GINT_TO_POINTER(TRUE));
-	del_btn = gtkut_stock_button("list-add", _("_Delete"));
+	del_btn = gtkut_stock_button("edit-delete", _("_Delete"));
 	gtk_widget_show (del_btn);
 	gtk_box_pack_start (GTK_BOX (btn_vbox), del_btn, FALSE, TRUE, 0);
 	g_signal_connect (G_OBJECT	 (del_btn), "clicked",
