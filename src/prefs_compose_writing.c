@@ -1,5 +1,5 @@
 /*
- * Claws Mail -- a GTK+ based, lightweight, and fast e-mail client
+ * Claws Mail -- a GTK based, lightweight, and fast e-mail client
  * Copyright (C) 2005-2021 the Claws Mail Team and Colin Leroy <colin@colino.net>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -202,7 +202,7 @@ static void prefs_compose_writing_create_widget(PrefsPage *_page, GtkWindow *win
 	gtk_spin_button_set_numeric (GTK_SPIN_BUTTON (spinbtn_warn_large_insert_size),
 			TRUE);
 
- 	label_warn_large_insert_size = gtk_label_new(_("KiB into message body "));
+	label_warn_large_insert_size = gtk_label_new(_("KiB into message body"));
 	gtk_widget_show (label_warn_large_insert_size);
 	gtk_box_pack_start (GTK_BOX (hbox_warn_large_insert),
 			label_warn_large_insert_size, FALSE, FALSE, 0);

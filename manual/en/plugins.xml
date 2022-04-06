@@ -136,7 +136,7 @@
 	<term>Fancy</term>
 	<listitem>
 	  <para>
-	Enables the rendering of HTML messages using the GTK+ port of the
+	Enables the rendering of HTML messages using the GTK port of the
 	WebKit library. By default, no remote content is loaded.
 	  </para><para>
 	Plugin preferences can be found in 
@@ -160,6 +160,15 @@
 	Provides an interface to Google services using the gdata library.
 	Currently, the only implemented functionality is to include Google
 	Contacts in the Tab-address completion.
+	  </para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>Keyword Warner</term>
+	<listitem>
+	  <para>
+	Shows a warning when sending or queueing a message and a reference
+	to one or more keywords is found in the message text.
 	  </para>
 	</listitem>
       </varlistentry>

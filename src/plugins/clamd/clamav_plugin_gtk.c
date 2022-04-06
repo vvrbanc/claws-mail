@@ -1,5 +1,5 @@
 /*
- * Claws Mail -- a GTK+ based, lightweight, and fast e-mail client
+ * Claws Mail -- a GTK based, lightweight, and fast e-mail client
  * Copyright (C) 2003-2021 the Claws Mail Team
  *
  * This program is free software; you can redistribute it and/or modify
@@ -124,7 +124,7 @@ static void folder_permission_cb(GtkWidget *widget, gpointer data) {
 			".claws-mail/mimetmp",
 			".claws-mail/tmp",
 			NULL};
-	const gchar* home = g_get_home_dir();
+	const gchar* home = get_home_dir();
 	int i;
 
 	check_permission((gchar *) home);

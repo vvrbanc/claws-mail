@@ -1,6 +1,6 @@
 /*
- * Claws Mail -- a GTK+ based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2021 the Claws Mail team and Hiroyuki Yamamoto
+ * Claws Mail -- a GTK based, lightweight, and fast e-mail client
+ * Copyright (C) 1999-2022 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -832,8 +832,8 @@ void gtkut_widget_set_app_icon(GtkWidget *widget)
 	cm_return_if_fail(gtk_widget_get_window(widget) != NULL);
 	if (!icon_list) {
 		GdkPixbuf *icon = NULL, *big_icon = NULL;
-		stock_pixbuf_gdk(STOCK_PIXMAP_CLAWS_MAIL_ICON, &icon);
-		stock_pixbuf_gdk(STOCK_PIXMAP_CLAWS_MAIL_LOGO, &big_icon);
+		priv_pixbuf_gdk(PRIV_PIXMAP_CLAWS_MAIL_ICON, &icon);
+		priv_pixbuf_gdk(PRIV_PIXMAP_CLAWS_MAIL_LOGO, &big_icon);
 		if (icon)
 			icon_list = g_list_append(icon_list, icon);
 		if (big_icon)
@@ -1020,7 +1020,7 @@ GtkWidget *gtkut_get_focused_child(GtkContainer *parent)
 }
 
 /*!
- *\brief	Create a Browse (file) button based on GTK+ stock
+ *\brief	Create a Browse (file) button based on GTK stock
  */
 GtkWidget *gtkut_get_browse_file_btn(const gchar *button_label)
 {
@@ -1034,7 +1034,7 @@ GtkWidget *gtkut_get_browse_file_btn(const gchar *button_label)
 }
 
 /*!
- *\brief	Create a Browse (directory) button based on GTK+ stock
+ *\brief	Create a Browse (directory) button based on GTK stock
  */
 GtkWidget *gtkut_get_browse_directory_btn(const gchar *button_label)
 {
