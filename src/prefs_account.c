@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2021 the Claws Mail team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2022 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,6 +22,14 @@
 #endif
 
 #include "defs.h"
+
+#ifdef G_OS_WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
+#include <sys/socket.h>
+#include <netinet/in.h>
+#endif
 
 #include <glib.h>
 #include <glib/gi18n.h>
@@ -54,7 +62,9 @@
 #include "smtp.h"
 #include "imap.h"
 #include "pop.h"
+#ifdef USE_OAUTH2
 #include "oauth2.h"
+#endif
 #include "remotefolder.h"
 #include "combobox.h"
 #include "setup.h"
@@ -94,6 +104,12 @@ struct AutocheckWidgets {
 };
 
 static GSList *prefs_pages = NULL;
+
+#ifdef USE_OAUTH2
+static GTask *oauth2_listener_task;
+static int oauth2_listener_cancel = 0;
+static int oauth2_listener_closed = 0;
+#endif
 
 typedef struct BasicPage
 {
@@ -200,12 +216,13 @@ typedef struct SendPage
 	GtkWidget *pop_auth_minutes_lbl;
 } SendPage;
 
+#ifdef USE_OAUTH2
 typedef struct Oauth2Page
 {
-        PrefsPage page;
+	PrefsPage page;
 
-        GtkWidget *vbox;
-        GtkWidget *oauth2_sensitive;
+	GtkWidget *vbox;
+	GtkWidget *oauth2_sensitive;
 
 	GtkWidget *oauth2_authorise_btn;
 	GtkWidget *oauth2_deauthorise_btn;
@@ -213,16 +230,16 @@ typedef struct Oauth2Page
 	GtkWidget *oauth2_auth_optmenu;	
  	GtkWidget *oauth2_link_button;
  	GtkWidget *oauth2_link_copy_button;
-        gpointer *protocol_optmenu;
-        GtkWidget *oauth2_client_id_entry;
-        GtkWidget *oauth2_client_secret_entry;
-
+	gpointer *protocol_optmenu;
+	GtkWidget *oauth2_client_id_entry;
+	GtkWidget *oauth2_client_secret_entry;
 } Oauth2Page;
+#endif
 
 typedef struct
 {
-        gchar *auth_uri;
-        GtkWidget *entry;
+	gchar *auth_uri;
+	GtkWidget *entry;
 } AuthCodeQueryButtonData;
 
 typedef struct ComposePage
@@ -373,7 +390,9 @@ typedef struct AdvancedPage
 static BasicPage basic_page;
 static ReceivePage receive_page;
 static SendPage send_page;
+#ifdef USE_OAUTH2
 static Oauth2Page oauth2_page;
+#endif
 static ComposePage compose_page;
 static TemplatesPage templates_page;
 static PrivacyPage privacy_page;
@@ -399,32 +418,39 @@ static char *protocol_names[] = {
 	N_("None (SMTP only)")
 };
 
+#ifdef USE_OAUTH2
+struct Oauth2Listener {
+	int success;
+  	Oauth2Service service;
+	OAUTH2Data *OAUTH2Data;
+	gchar *trim_text;
+};
+#endif
+
 static void prefs_account_protocol_set_data_from_optmenu(PrefParam *pparam);
 static void prefs_account_protocol_set_optmenu		(PrefParam *pparam);
-static void prefs_account_protocol_changed		(GtkComboBox *combobox,
-							gpointer data);
+static void prefs_account_protocol_changed		(GtkComboBox *combobox, gpointer data);
 
 static void prefs_account_set_string_from_combobox (PrefParam *pparam);
 static void prefs_account_set_privacy_combobox_from_string (PrefParam *pparam);
 
-static void prefs_account_imap_auth_type_set_data_from_optmenu
-							(PrefParam *pparam);
+static void prefs_account_imap_auth_type_set_data_from_optmenu	(PrefParam *pparam);
 static void prefs_account_imap_auth_type_set_optmenu	(PrefParam *pparam);
-static void prefs_account_smtp_auth_type_set_data_from_optmenu
-							(PrefParam *pparam);
+static void prefs_account_smtp_auth_type_set_data_from_optmenu (PrefParam *pparam);
 static void prefs_account_smtp_auth_type_set_optmenu	(PrefParam *pparam);
-static void prefs_account_pop_auth_type_set_data_from_optmenu
-							(PrefParam *pparam);
+static void prefs_account_pop_auth_type_set_data_from_optmenu (PrefParam *pparam);
 static void prefs_account_pop_auth_type_set_optmenu	(PrefParam *pparam);
- 
-static void prefs_account_oauth2_provider_set_data_from_optmenu
-							(PrefParam *pparam);
+#ifdef USE_OAUTH2
+static void prefs_account_oauth2_provider_set_data_from_optmenu	(PrefParam *pparam);
 static void prefs_account_oauth2_provider_set_optmenu	(PrefParam *pparam);
-static void prefs_account_oauth2_copy_url                       (GtkButton *button, 
-							 gpointer data);
+static void prefs_account_oauth2_copy_url                       (GtkButton *button, gpointer data);
+static void prefs_account_oauth2_listener(GTask *task, gpointer source, gpointer task_data, GCancellable *cancellable);
+static void prefs_account_oauth2_callback(GObject *source, GAsyncResult *res, gpointer user_data);
+static int  prefs_account_oauth2_get_line(int sock, char *buf, int size);
 static void prefs_account_oauth2_set_sensitivity(void);
 static void prefs_account_oauth2_set_auth_sensitivity(void);
 static void prefs_account_oauth2_obtain_tokens(GtkButton *button, gpointer data);
+#endif
 static void prefs_account_set_autochk_interval_from_widgets(PrefParam *pparam);
 static void prefs_account_set_autochk_interval_to_widgets(PrefParam *pparam);
 
@@ -435,22 +461,15 @@ static void crosspost_color_toggled(void);
 static void prefs_account_crosspost_set_data_from_colormenu(PrefParam *pparam);
 static void prefs_account_crosspost_set_colormenu(PrefParam *pparam);
 
-static void prefs_account_nntpauth_toggled(GtkToggleButton *button,
-					   gpointer user_data);
-static void prefs_account_mailcmd_toggled(GtkToggleButton *button,
-					  gpointer user_data);
-static void prefs_account_showpwd_checkbtn_toggled(GtkToggleButton *button,
-					  gpointer user_data);
-static void prefs_account_entry_changed_newline_check_cb(GtkWidget *entry,
-						gpointer user_data);
-static void prefs_account_filter_on_recv_toggled(GtkToggleButton *button,
-					  gpointer user_data);
+static void prefs_account_nntpauth_toggled(GtkToggleButton *button, gpointer user_data);
+static void prefs_account_mailcmd_toggled(GtkToggleButton *button,  gpointer user_data);
+static void prefs_account_showpwd_checkbtn_toggled(GtkToggleButton *button, gpointer user_data);
+static void prefs_account_entry_changed_newline_check_cb(GtkWidget *entry, gpointer user_data);
+static void prefs_account_filter_on_recv_toggled(GtkToggleButton *button, gpointer user_data);
 
 #if USE_ENCHANT
-static void prefs_account_compose_default_dictionary_set_string_from_optmenu
-							(PrefParam *pparam);
-static void prefs_account_compose_default_dictionary_set_optmenu_from_string
-							(PrefParam *pparam);
+static void prefs_account_compose_default_dictionary_set_string_from_optmenu (PrefParam *pparam);
+static void prefs_account_compose_default_dictionary_set_optmenu_from_string (PrefParam *pparam);
 #endif
 
 static gchar *privacy_prefs;
@@ -652,6 +671,7 @@ static PrefParam send_param[] = {
 };
 
 static PrefParam oauth2_param[] = {
+#ifdef USE_OAUTH2
 	{"oauth2_auth_provider", "0", &tmp_ac_prefs.oauth2_provider, P_ENUM,
 	 &oauth2_page.oauth2_auth_optmenu,
 	 prefs_account_oauth2_provider_set_data_from_optmenu,
@@ -668,6 +688,23 @@ static PrefParam oauth2_param[] = {
 
 	{"oauth2_client_secret", NULL, &tmp_ac_prefs.oauth2_client_secret, P_STRING,
 	 &oauth2_page.oauth2_client_secret_entry, prefs_set_data_from_entry, prefs_set_entry},
+#else
+	{"oauth2_auth_provider", "0", &tmp_ac_prefs.oauth2_provider, P_ENUM,
+	 NULL, NULL, NULL},
+
+	{"oauth2_date", 0, &tmp_ac_prefs.oauth2_date, P_INT,
+	 NULL, NULL, NULL},
+
+	{"oauth2_authcode", NULL, &tmp_ac_prefs.oauth2_authcode, P_PASSWORD,
+	 NULL, NULL, NULL},
+
+	{"oauth2_client_id", NULL, &tmp_ac_prefs.oauth2_client_id, P_STRING,
+	 NULL, NULL, NULL},
+
+	{"oauth2_client_secret", NULL, &tmp_ac_prefs.oauth2_client_secret, P_STRING,
+	 NULL, NULL, NULL},
+
+#endif
 
 	{NULL, NULL, NULL, P_OTHER, NULL, NULL, NULL}
 };
@@ -1051,39 +1088,29 @@ static PrefParam advanced_param[] = {
 
 static gint prefs_account_get_new_id		(void);
 
-static void prefs_account_select_folder_cb	(GtkWidget	*widget,
-						 gpointer	 data);
+static void prefs_account_select_folder_cb	(GtkWidget	*widget, gpointer	 data);
 
-static void prefs_account_sigfile_radiobtn_cb	(GtkWidget	*widget,
-						 gpointer	 data);
+static void prefs_account_sigfile_radiobtn_cb	(GtkWidget	*widget, gpointer	 data);
 
-static void prefs_account_sigcmd_radiobtn_cb	(GtkWidget	*widget,
-						 gpointer	 data);
+static void prefs_account_sigcmd_radiobtn_cb	(GtkWidget	*widget, gpointer	 data);
 
-static void prefs_account_signature_browse_cb	(GtkWidget	*widget,
-						 gpointer	 data);
+static void prefs_account_signature_browse_cb	(GtkWidget	*widget, gpointer	 data);
 #ifdef USE_GNUTLS
-static void prefs_account_in_cert_browse_cb	(GtkWidget	*widget,
-						 gpointer	 data);
+static void prefs_account_in_cert_browse_cb	(GtkWidget	*widget, gpointer	 data);
 
-static void prefs_account_out_cert_browse_cb	(GtkWidget	*widget,
-						 gpointer	 data);
+static void prefs_account_out_cert_browse_cb	(GtkWidget	*widget, gpointer	 data);
 #endif
-static void prefs_account_signature_edit_cb	(GtkWidget	*widget,
-						 gpointer	 data);
+static void prefs_account_signature_edit_cb	(GtkWidget	*widget, gpointer	 data);
 
-static void pop_bfr_smtp_tm_set_sens		(GtkWidget	*widget,
-						 gpointer	 data);
+static void pop_bfr_smtp_tm_set_sens		(GtkWidget	*widget, gpointer	 data);
 
 #if (defined USE_GNUTLS)
-static void auto_configure_cb			(GtkWidget	*widget,
-						 gpointer	 data);
+static void auto_configure_cb			(GtkWidget	*widget, gpointer	 data);
 
 #endif
 static void prefs_account_edit_custom_header	(void);
 
-static void prefs_account_receive_itv_spinbutton_value_changed_cb(GtkWidget *w,
-					  gpointer data);
+static void prefs_account_receive_itv_spinbutton_value_changed_cb(GtkWidget *w, gpointer data);
 
 #define COMBOBOX_PRIVACY_PLUGIN_ID 3
 
@@ -1625,6 +1652,9 @@ static void receive_create_widget_func(PrefsPage * _page,
 	COMBOBOX_ADD (menu2, NULL, 0);
 	COMBOBOX_ADD (menu2, "APOP", POPAUTH_APOP);
 	COMBOBOX_ADD (menu2, "OAuth2", POPAUTH_OAUTH2);
+#ifndef USE_OAUTH2
+	gtk_list_store_set(menu2, &iter, COMBOBOX_SENS, FALSE, -1);
+#endif
 
 	SET_TOGGLE_SENSITIVITY (pop_auth_checkbtn, vbox5);
 
@@ -1763,6 +1793,9 @@ static void receive_create_widget_func(PrefsPage * _page,
 	COMBOBOX_ADD (menu, "PLAIN", IMAP_AUTH_PLAIN);
 	COMBOBOX_ADD (menu, "LOGIN", IMAP_AUTH_LOGIN);
 	COMBOBOX_ADD (menu, "OAUTH2", IMAP_AUTH_OAUTH2);
+#ifndef USE_OAUTH2
+	gtk_list_store_set(menu, &iter, COMBOBOX_SENS, FALSE, -1);
+#endif
 
 	hbox1 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
 	gtk_widget_show (hbox1);
@@ -2020,6 +2053,9 @@ static void send_create_widget_func(PrefsPage * _page,
 	COMBOBOX_ADD (menu, "LOGIN", SMTPAUTH_LOGIN);
 	COMBOBOX_ADD (menu, "CRAM-MD5", SMTPAUTH_CRAM_MD5);
 	COMBOBOX_ADD (menu, "OAUTH2", SMTPAUTH_OAUTH2);
+#ifndef USE_OAUTH2
+	gtk_list_store_set(menu, &iter, COMBOBOX_SENS, FALSE, -1);
+#endif
 	COMBOBOX_ADD (menu, "DIGEST-MD5", SMTPAUTH_DIGEST_MD5);
 	gtk_list_store_set(menu, &iter, COMBOBOX_SENS, FALSE, -1);
 
@@ -2165,6 +2201,7 @@ static void send_create_widget_func(PrefsPage * _page,
 	page->page.widget = vbox1;
 }
 
+#ifdef USE_OAUTH2
 static void oauth2_create_widget_func(PrefsPage * _page,
                                            GtkWindow * window,
                                            gpointer data)
@@ -2379,6 +2416,7 @@ static void oauth2_create_widget_func(PrefsPage * _page,
 	/* 	oauth2_encode(OAUTH2info[0][OA2_CLIENT_ID]); */
 
 }
+#endif
 
 static void compose_create_widget_func(PrefsPage * _page,
                                            GtkWindow * window,
@@ -3612,8 +3650,10 @@ static gint prefs_basic_apply(void)
 			gtk_entry_get_text(GTK_ENTRY(basic_page.pass_entry)),
 			FALSE);
 
+#ifdef USE_OAUTH2
 	/* Manual password change - reset expiry on OAUTH2 tokens*/
 	passwd_store_set_account(tmp_ac_prefs.account_id, PWS_ACCOUNT_OAUTH2_EXPIRY, "0", FALSE);
+#endif
 
 	if (protocol == A_IMAP4 || protocol == A_NNTP) {
 		new_id = g_strdup_printf("#%s/%s",
@@ -3656,13 +3696,15 @@ static gint prefs_send_apply(void)
 			PWS_ACCOUNT_SEND,
 			gtk_entry_get_text(GTK_ENTRY(send_page.smtp_pass_entry)),
 			FALSE);
-
+#ifdef USE_OAUTH2
 	/* Manual password change - reset expiry on OAUTH2 tokens*/
 	passwd_store_set_account(tmp_ac_prefs.account_id, PWS_ACCOUNT_OAUTH2_EXPIRY, "0", FALSE);
+#endif
 
 	return 0;
 }
 
+#ifdef USE_OAUTH2
 static gint prefs_oauth2_apply(void)
 {
 	prefs_set_data_from_dialog(oauth2_param);
@@ -3675,6 +3717,7 @@ static gint prefs_oauth2_apply(void)
 
  	return 0;
 }
+#endif
 
 static gint prefs_compose_apply(void)
 {
@@ -3773,10 +3816,17 @@ static void send_destroy_widget_func(PrefsPage *_page)
 	/* SendPage *page = (SendPage *) _page; */
 }
 
+#ifdef USE_OAUTH2
 static void oauth2_destroy_widget_func(PrefsPage *_page)
 {
 	/* Oauth2Page *page = (Oauth2Page *) _page; */
+
+	if(oauth2_listener_task){
+		debug_print("Closing oauth2 listener task\n");
+		oauth2_listener_cancel = 1;
+	}
 }
+#endif
 
 static void compose_destroy_widget_func(PrefsPage *_page)
 {
@@ -3840,6 +3890,7 @@ static gboolean send_can_close_func(PrefsPage *_page)
 	return prefs_send_apply() >= 0;
 }
 
+#ifdef USE_OAUTH2
 static gboolean oauth2_can_close_func(PrefsPage *_page)
 {	
 	Oauth2Page *page = (Oauth2Page *) _page;
@@ -3849,6 +3900,7 @@ static gboolean oauth2_can_close_func(PrefsPage *_page)
 
 	return prefs_oauth2_apply() >= 0;
 }
+#endif
 
 static gboolean compose_can_close_func(PrefsPage *_page)
 {	
@@ -3945,6 +3997,7 @@ static void send_save_func(PrefsPage *_page)
 		cancelled = FALSE;
 }
 
+#ifdef USE_OAUTH2
 static void oauth2_save_func(PrefsPage *_page)
 {
 	Oauth2Page *page = (Oauth2Page *) _page;
@@ -3955,6 +4008,7 @@ static void oauth2_save_func(PrefsPage *_page)
 	if (prefs_oauth2_apply() >= 0)
 		cancelled = FALSE;
 }
+#endif
 
 static void compose_save_func(PrefsPage *_page)
 {
@@ -4077,7 +4131,7 @@ static void register_send_page(void)
 	static gchar *path[3];
 
 	path[0] = _("Account");
-	path[1] = _("Send");
+	path[1] = C_("Preferences menu item", "Send");
 	path[2] = NULL;
         
 	send_page.page.path = path;
@@ -4090,6 +4144,7 @@ static void register_send_page(void)
 	prefs_account_register_page((PrefsPage *) &send_page);
 }
 
+#ifdef USE_OAUTH2
 static void register_oauth2_page(void)
 {
 	static gchar *path[3];
@@ -4104,9 +4159,10 @@ static void register_oauth2_page(void)
 	oauth2_page.page.destroy_widget = oauth2_destroy_widget_func;
 	oauth2_page.page.save_page = oauth2_save_func;
 	oauth2_page.page.can_close = oauth2_can_close_func;
-
+	  
 	prefs_account_register_page((PrefsPage *) &oauth2_page);
 }
+#endif
 
 static void register_compose_page(void)
 {
@@ -4296,7 +4352,9 @@ void prefs_account_init()
 	hooks_register_hook(SSL_CERT_GET_PASSWORD, sslcert_get_password, NULL);
 #endif
 	register_proxy_page();
+#ifdef USE_OAUTH2
 	register_oauth2_page();
+#endif
 	register_advanced_page();
 }
 
@@ -5043,6 +5101,7 @@ static void prefs_account_pop_auth_type_set_optmenu(PrefParam *pparam)
 	combobox_select_by_data(optmenu, type);
 }
 
+#ifdef USE_OAUTH2
 static void prefs_account_oauth2_provider_set_data_from_optmenu(PrefParam *pparam)
 {
 	*((Oauth2Service *)pparam->data) =
@@ -5075,9 +5134,9 @@ static void prefs_account_oauth2_set_sensitivity(void)
 	service = combobox_get_active_data(GTK_COMBO_BOX(optmenu));
 
 	if(service == OAUTH2AUTH_NONE)
-	  gtk_widget_set_sensitive(oauth2_page.oauth2_sensitive, FALSE);
+		gtk_widget_set_sensitive(oauth2_page.oauth2_sensitive, FALSE);
 	else
-	  gtk_widget_set_sensitive(oauth2_page.oauth2_sensitive, TRUE);
+		gtk_widget_set_sensitive(oauth2_page.oauth2_sensitive, TRUE);
 }
 
 static void prefs_account_oauth2_copy_url(GtkButton *button, gpointer data)
@@ -5093,10 +5152,9 @@ static void prefs_account_oauth2_copy_url(GtkButton *button, gpointer data)
 	url = g_malloc(OAUTH2BUFSIZE+1);
 	Oauth2Service service;
 	const gchar * custom_client_id = NULL;
-	
+	struct Oauth2Listener *oauth2_listener_data;
+		
 	service = combobox_get_active_data(GTK_COMBO_BOX(optmenu));
-	
-
 	custom_client_id = gtk_entry_get_text((GtkEntry *)oauth2_page.oauth2_client_id_entry);
 	
 	oauth2_authorisation_url(service, &url, custom_client_id);
@@ -5113,6 +5171,36 @@ static void prefs_account_oauth2_copy_url(GtkButton *button, gpointer data)
 		open_uri(url, prefs_common_get_uri_cmd());
 
 	g_free(url);
+
+	//Start listener task for authorisation reply using a separate task
+	//Avoids hanging while we wait, and to allow cancellation of the process
+	//If task already exists gracefully close it
+	if(oauth2_listener_task){
+		debug_print("Closing oauth2 listener task\n");
+		oauth2_listener_cancel = 1;
+		while (oauth2_listener_closed == 0)
+			gtk_main_iteration();
+	}
+		
+	debug_print("Starting oauth2 listener task\n");
+
+	oauth2_listener_data = g_new(struct Oauth2Listener, 1);
+	oauth2_listener_data->success = FALSE;
+	oauth2_listener_data->trim_text = NULL;
+	oauth2_listener_data->service = combobox_get_active_data(GTK_COMBO_BOX(optmenu));
+	oauth2_listener_data->OAUTH2Data = g_malloc(sizeof(* oauth2_listener_data->OAUTH2Data));
+	oauth2_init (oauth2_listener_data->OAUTH2Data);
+	oauth2_listener_data->OAUTH2Data->custom_client_secret = 
+		g_strdup(gtk_entry_get_text((GtkEntry *)oauth2_page.oauth2_client_secret_entry));
+	oauth2_listener_data->OAUTH2Data->custom_client_id = 
+		g_strdup(gtk_entry_get_text((GtkEntry *)oauth2_page.oauth2_client_id_entry));
+
+	oauth2_listener_cancel = 0;
+	oauth2_listener_closed = 0;
+	
+	oauth2_listener_task = g_task_new(NULL, NULL, prefs_account_oauth2_callback, oauth2_listener_data);
+	g_task_set_task_data(oauth2_listener_task, oauth2_listener_data, NULL);
+	g_task_run_in_thread(oauth2_listener_task, prefs_account_oauth2_listener);
 }
 
 static void prefs_account_oauth2_obtain_tokens(GtkButton *button, gpointer data)
@@ -5121,7 +5209,7 @@ static void prefs_account_oauth2_obtain_tokens(GtkButton *button, gpointer data)
 
 	GtkWidget *optmenu = protocol_optmenu->combobox;
 	Oauth2Service service;
-        OAUTH2Data *OAUTH2Data = g_malloc(sizeof(* OAUTH2Data));
+	OAUTH2Data *OAUTH2Data = g_malloc(sizeof(* OAUTH2Data));
 	const gchar *authcode = gtk_entry_get_text ((GtkEntry *)oauth2_page.oauth2_authcode_entry);
 	gchar *trim_text = g_strdup(authcode);
 	g_strstrip(trim_text);
@@ -5140,36 +5228,28 @@ static void prefs_account_oauth2_obtain_tokens(GtkButton *button, gpointer data)
 	ret = oauth2_obtain_tokens (service, OAUTH2Data, trim_text);
 	
 	if(!ret){
-	    if(OAUTH2Data->refresh_token != NULL){
-	      passwd_store_set_account(tmp_ac_prefs.account_id,
-				       PWS_ACCOUNT_OAUTH2_REFRESH,
-				       OAUTH2Data->refresh_token,
-				       FALSE);
-	      log_message(LOG_PROTOCOL, "OAuth2 refresh token stored\n");
+		if(OAUTH2Data->refresh_token != NULL){
+			passwd_store_set_account(tmp_ac_prefs.account_id,
+				PWS_ACCOUNT_OAUTH2_REFRESH, OAUTH2Data->refresh_token, FALSE);
+			log_message(LOG_PROTOCOL, "OAuth2 refresh token stored\n");
 	    }
 
 	    if(OAUTH2Data->access_token != NULL){
-	      passwd_store_set_account(tmp_ac_prefs.account_id,
-				       PWS_ACCOUNT_RECV,
-				       OAUTH2Data->access_token,
-				       FALSE);
+			passwd_store_set_account(tmp_ac_prefs.account_id,
+				PWS_ACCOUNT_RECV, OAUTH2Data->access_token, FALSE);
 
-	      passwd_store_set_account(tmp_ac_prefs.account_id,
-				       PWS_ACCOUNT_SEND,
-				       OAUTH2Data->access_token,
-				       FALSE);
-	      log_message(LOG_PROTOCOL, "OAuth2 access token stored\n");
+			passwd_store_set_account(tmp_ac_prefs.account_id,
+				PWS_ACCOUNT_SEND, OAUTH2Data->access_token, FALSE);
+			log_message(LOG_PROTOCOL, "OAuth2 access token stored\n");
 
-	      gtk_entry_set_text(GTK_ENTRY(basic_page.pass_entry), OAUTH2Data->access_token);
-	      gtk_entry_set_text(GTK_ENTRY(send_page.smtp_pass_entry), OAUTH2Data->access_token);
+			gtk_entry_set_text(GTK_ENTRY(basic_page.pass_entry), OAUTH2Data->access_token);
+			gtk_entry_set_text(GTK_ENTRY(send_page.smtp_pass_entry), OAUTH2Data->access_token);
 	    }
 
 	    if(OAUTH2Data->expiry_str != NULL){
-	      passwd_store_set_account(tmp_ac_prefs.account_id,
-				       PWS_ACCOUNT_OAUTH2_EXPIRY,
-				       OAUTH2Data->expiry_str,
-				       FALSE);
-	      log_message(LOG_PROTOCOL, "OAuth2 access token expiry stored\n");
+			passwd_store_set_account(tmp_ac_prefs.account_id,
+				PWS_ACCOUNT_OAUTH2_EXPIRY, OAUTH2Data->expiry_str, FALSE);
+			log_message(LOG_PROTOCOL, "OAuth2 access token expiry stored\n");
 	    }
 
 	    tmp_ac_prefs.oauth2_date = g_get_real_time () / G_USEC_PER_SEC;
@@ -5177,6 +5257,7 @@ static void prefs_account_oauth2_obtain_tokens(GtkButton *button, gpointer data)
 	g_free(trim_text);
 	g_free(OAUTH2Data);
 }
+#endif
 
 static void prefs_account_set_autochk_interval_to_widgets(PrefParam *pparam)
 {
@@ -5786,8 +5867,6 @@ static void prefs_account_showpwd_checkbtn_toggled(GtkToggleButton *button,
 	gtk_entry_set_visibility(GTK_ENTRY(entry), active);
 }
 
-#define CL(x) ((gdouble)x / 65535)
-
 static void prefs_account_entry_changed_newline_check_cb(GtkWidget *entry,
 		gpointer user_data)
 {
@@ -5801,8 +5880,6 @@ static void prefs_account_entry_changed_newline_check_cb(GtkWidget *entry,
 		gtk_widget_modify_base(entry, GTK_STATE_NORMAL, NULL);
 	}
 }
-
-#undef CL
 
 static void prefs_account_filter_on_recv_toggled(GtkToggleButton *button,
 					  gpointer user_data)
@@ -5977,3 +6054,195 @@ static void prefs_account_receive_itv_spinbutton_value_changed_cb(GtkWidget *w, 
 				PREFS_RECV_AUTOCHECK_MIN_INTERVAL);
 	}
 }
+
+#ifdef USE_OAUTH2
+//Automation of the oauth2 authorisation process to receive loopback callback generated by redirect in browser
+static void prefs_account_oauth2_listener(GTask *task, gpointer source, gpointer task_data, GCancellable *cancellable)
+{
+	struct Oauth2Listener *oauth2_listener_data = (struct Oauth2Listener *)task_data;
+	unsigned int socket_desc;
+	int client_sock, c;
+	struct sockaddr_in server , client;
+	char client_message[2000];
+	char *reply;
+	char *reply_message;
+	char *title;
+	char *body;
+	fd_set rfds;
+	gint ret = 1;
+	struct timeval timeout;
+
+	debug_print("oauth2 listener task running\n");
+     
+	//Create socket
+	socket_desc = socket(AF_INET , SOCK_STREAM , 0);
+	if (socket_desc == -1)
+	{
+		debug_print("oauth2 listener could not create socket\n");
+		g_task_return_boolean (task, TRUE);
+		g_object_unref (task);
+		return;
+	}
+	debug_print("oauth2 listener socket created\n");
+	
+	//Prepare the sockaddr_in structure
+	server.sin_family = AF_INET;
+	server.sin_addr.s_addr = INADDR_ANY;
+	server.sin_port = htons( 8888 );
+	
+	//Bind
+	if( bind(socket_desc,(struct sockaddr *)&server , sizeof(server)) < 0)
+	{
+		close(socket_desc);
+		debug_print("oauth2 listener bind failed\n");
+		g_task_return_boolean (task, TRUE);
+		g_object_unref (task);
+		return;
+	}
+	debug_print("oauth2 listener bind done\n");
+
+	listen(socket_desc , 1);
+	
+	//Accept and incoming connection
+	debug_print("oauth2 listener waiting for incoming connections...\n");
+	c = sizeof(struct sockaddr_in);
+	
+	do{
+		FD_ZERO(&rfds);
+		FD_SET(socket_desc, &rfds);
+		timeout.tv_sec = 1;
+		timeout.tv_usec = 0;
+
+		select(socket_desc+1, &rfds, NULL, NULL, &timeout);
+
+		//select woke up, maybe accept connection from an incoming client
+		if(FD_ISSET(socket_desc, &rfds)){
+			client_sock = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c);
+			if (client_sock < 0){
+				debug_print("oauth2 listener accept failed\n");
+				g_task_return_boolean (task, TRUE);
+				g_object_unref (task);
+				return;
+			}
+			debug_print("oauth2 listener connection accepted\n");
+
+			//Receive message sent to the loopback address by the authorisation page
+			prefs_account_oauth2_get_line(client_sock, client_message, sizeof(client_message));
+			oauth2_listener_data->trim_text = g_strdup(client_message);
+			g_strstrip(oauth2_listener_data->trim_text);
+
+			ret = oauth2_obtain_tokens (oauth2_listener_data->service, oauth2_listener_data->OAUTH2Data, oauth2_listener_data->trim_text);
+
+			if(!ret){
+				oauth2_listener_data->success = TRUE;
+				title = _("Authorisation complete");
+				body = _("Your OAuth2 authorisation code has been received by Claws Mail");
+			}else{
+				//Something went wrong
+				title = _("Authorisation NOT completed");
+				body = _("Your OAuth2 authorisation code was not received by Claws Mail");
+				log_message(LOG_PROTOCOL, "OAuth2 authorisation code not received\n");
+			}
+			reply_message = g_strconcat("<html><head><title>", title,
+					"</title><meta charset=\"utf-8\"></head><body><h1>", title,
+					"</h1><p>", body, "</p></body></html>", NULL);
+			reply = g_strdup_printf(
+					"HTTP/1.0 200 OK\r\nContent-Type: text/html\r\nContent-Length: %lu\r\n\r\n%s",
+					strlen(reply_message), reply_message);
+			g_free(reply_message);
+			write(client_sock, reply, strlen(reply));
+			g_free(reply);
+			close(client_sock);
+		}
+	}while(ret && !oauth2_listener_cancel);
+	
+	close(socket_desc);
+	debug_print("oauth2 closing task\n");
+	g_task_return_boolean (task, TRUE);
+	g_object_unref (task);
+}
+
+static void prefs_account_oauth2_callback(GObject *source, GAsyncResult *res, gpointer user_data)
+{
+	struct Oauth2Listener *oauth2_listener_data = (struct Oauth2Listener *)user_data;
+
+	if(oauth2_listener_data->success){
+		debug_print("oauth2 listener callback storing data and updating GUI\n");
+
+		if(oauth2_listener_data->OAUTH2Data->refresh_token != NULL){
+			passwd_store_set_account(tmp_ac_prefs.account_id,
+				PWS_ACCOUNT_OAUTH2_REFRESH,
+				oauth2_listener_data->OAUTH2Data->refresh_token,
+				FALSE);
+			log_message(LOG_PROTOCOL, "OAuth2 refresh token stored\n");
+		}
+
+		if(oauth2_listener_data->OAUTH2Data->access_token != NULL){
+			passwd_store_set_account(tmp_ac_prefs.account_id,
+				    PWS_ACCOUNT_RECV,
+					oauth2_listener_data->OAUTH2Data->access_token,
+				    FALSE);
+			passwd_store_set_account(tmp_ac_prefs.account_id,
+					PWS_ACCOUNT_SEND,
+				    oauth2_listener_data->OAUTH2Data->access_token,
+				    FALSE);
+			log_message(LOG_PROTOCOL, "OAuth2 access token stored\n");
+		}
+
+		if(oauth2_listener_data->OAUTH2Data->expiry_str != NULL){
+			passwd_store_set_account(tmp_ac_prefs.account_id,
+					PWS_ACCOUNT_OAUTH2_EXPIRY,
+					oauth2_listener_data->OAUTH2Data->expiry_str,
+				    FALSE);
+			log_message(LOG_PROTOCOL, "OAuth2 access token expiry stored\n");
+		}
+
+		tmp_ac_prefs.oauth2_date = g_get_real_time () / G_USEC_PER_SEC;
+
+		gtk_entry_set_text(GTK_ENTRY(oauth2_page.oauth2_authcode_entry), oauth2_listener_data->trim_text != NULL ? oauth2_listener_data->trim_text : "");
+		gtk_widget_set_sensitive(oauth2_page.oauth2_authcode_entry, FALSE);
+		gtk_widget_set_sensitive(oauth2_page.oauth2_authorise_btn, FALSE);
+		gtk_entry_set_text(GTK_ENTRY(basic_page.pass_entry), oauth2_listener_data->OAUTH2Data->access_token);
+		gtk_entry_set_text(GTK_ENTRY(send_page.smtp_pass_entry), oauth2_listener_data->OAUTH2Data->access_token);
+	}
+
+	debug_print("oauth2 listener callback freeing resources\n");
+	g_free(oauth2_listener_data->trim_text);
+	g_free(oauth2_listener_data->OAUTH2Data);
+	g_free(oauth2_listener_data);
+	oauth2_listener_cancel = 0;
+	oauth2_listener_closed = 1;
+}
+
+static int prefs_account_oauth2_get_line(int sock, char *buf, int size)
+{
+	int i = 0;
+	char c = '\0';
+	int n;
+	
+	while ((i < size - 1) && (c != '\n')) {
+                n = recv(sock, &c, 1, 0);
+                //printf("%02X\n", c);
+                if (n > 0) {
+                        if (c == '\r') {
+                                n = recv(sock, &c, 1, MSG_PEEK);
+                                //printf("%02X\n", c);
+                                if ((n > 0) && (c == '\n')) {
+                                        n = recv(sock, &c, 1, 0);
+                                        if (n < 0)
+                                               log_message(LOG_PROTOCOL, "Receiving from pipe failed\n"); 
+                                }
+                                else
+                                        c = '\n';
+                        }
+                        buf[i] = c;
+                        i++;
+                }
+                else
+                        c = '\n';
+        }
+        buf[i] = '\0';
+
+        return (i);
+}
+#endif

@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2022 the Claws Mail team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2023 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -235,9 +235,6 @@ static void initial_processing		(FolderItem *item, gpointer data);
 static void quit_signal_handler         (int sig);
 #endif
 static void install_basic_sighandlers   (void);
-#if (defined linux && defined SIGIO)
-static void install_memory_sighandler   (void);
-#endif
 static void exit_claws			(MainWindow *mainwin);
 
 #ifdef HAVE_NETWORKMANAGER_SUPPORT
@@ -1043,6 +1040,7 @@ static void reset_statistics(void)
 	session_stats.sent = 0;
 	session_stats.replied = 0;
 	session_stats.forwarded = 0;
+	session_stats.spam = 0;
 	session_stats.time_started = time(NULL);
 }
 
@@ -1120,9 +1118,6 @@ int main(int argc, char *argv[])
 	crash_install_handlers();
 #endif
 	install_basic_sighandlers();
-#if (defined linux && defined SIGIO)
-	install_memory_sighandler();
-#endif
 
 	if (cmd.status || cmd.status_full || cmd.search ||
 		cmd.statistics || cmd.reset_statistics || 
@@ -1611,7 +1606,11 @@ int main(int argc, char *argv[])
 	folderview_thaw(mainwin->folderview);
 	main_window_cursor_normal(mainwin);
 
-	if (!cmd.target && prefs_common.goto_last_folder_on_startup &&
+	if (!cmd.target && prefs_common.goto_folder_on_startup &&
+	    folder_find_item_from_identifier(prefs_common.startup_folder) != NULL &&
+	    !claws_crashed()) {
+		cmd.target = prefs_common.startup_folder;
+	} else if (!cmd.target && prefs_common.goto_last_folder_on_startup &&
 	    folder_find_item_from_identifier(prefs_common.last_opened_folder) != NULL &&
 	    !claws_crashed()) {
 		cmd.target = prefs_common.last_opened_folder;
@@ -2769,6 +2768,12 @@ static void lock_socket_input_cb(gpointer data,
 				session_stats.received);
  		CM_FD_WRITE_ALL(tmp);
 
+		if (session_stats.spam > 0) {
+			g_snprintf(tmp, sizeof(tmp), _("Spam messages: %d\n"),
+					session_stats.spam);
+			CM_FD_WRITE_ALL(tmp);
+		}
+
  		CM_FD_WRITE_ALL("\n");
 
 		g_snprintf(tmp, sizeof(tmp), _("Outgoing traffic\n"));
@@ -2972,57 +2977,6 @@ static void install_basic_sighandlers()
 	sigprocmask(SIG_UNBLOCK, &mask, 0);
 #endif /* !G_OS_WIN32 */
 }
-
-#if (defined linux && defined SIGIO)
-static int mem_notify_fd = 0;
-
-static gboolean clean_caches(gpointer unused)
-{
-	if (static_mainwindow && static_mainwindow->lock_count > 0)
-		return TRUE;
-	debug_print("/dev/mem_notify: callback: Freeing some memory now!\n");
-	folder_clean_cache_memory_force();
-	return FALSE;
-}
-
-static void memory_signal_handler(int sig)
-{
-	debug_print("/dev/mem_notify: Kernel says we should free up some memory!\n");
-	g_timeout_add(10, clean_caches, NULL); 
-}
-
-static void install_memory_sighandler()
-{
-	sigset_t    mask;
-	struct sigaction act;
-	int flags;
-
-	mem_notify_fd = g_open("/dev/mem_notify", O_RDONLY|O_NONBLOCK, 0);
-	if (mem_notify_fd == -1) {
-		debug_print("/dev/mem_notify not available (%s)\n", 
-			g_strerror(errno));
-		return;
-	}
-	
-	fcntl(mem_notify_fd, F_SETOWN, getpid());
-	flags = fcntl(mem_notify_fd, F_GETFL);
-	fcntl(mem_notify_fd, flags|FASYNC);
-
-	sigemptyset(&mask);
-
-	sigaddset(&mask, SIGIO);
-
-	act.sa_handler = memory_signal_handler;
-	act.sa_mask    = mask;
-	act.sa_flags   = 0;
-
-	sigaction(SIGIO, &act, 0);
-
-	sigprocmask(SIG_UNBLOCK, &mask, 0);
-
-	debug_print("/dev/mem_notify: installed handler\n");
-}
-#endif /* linux && SIGIO */
 
 #ifdef HAVE_NETWORKMANAGER_SUPPORT
 static void networkmanager_state_change_cb(DBusGProxy *proxy, gchar *dev,

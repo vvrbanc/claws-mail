@@ -102,8 +102,6 @@
 #include "w32_reg.h"
 #endif
 
-#define AC_LABEL_WIDTH	240
-
 /* list of all instantiated MainWindow */
 static GList *mainwin_list = NULL;
 
@@ -457,13 +455,13 @@ static gint mailing_list_create_submenu(MainWindow *mainwindow,
 				       MsgInfo *msginfo);
 
 static gint mailing_list_populate_submenu(GtkWidget *menu, const gchar * list_header);
-	
+
 static void get_url_part(const gchar **buf, gchar *url_decoded);
 
 static void mailing_list_compose(GtkWidget *w, gpointer *data);
- 
+
 static void mailing_list_open_uri(GtkWidget *w, gpointer *data);
-#define  SEPARATE_ACTION 500 
+
 static void mainwindow_quicksearch		(GtkAction	*action,
 				  gpointer	 data);
 static gboolean any_folder_want_synchronise(void);
@@ -2730,6 +2728,8 @@ void main_window_toggle_message_view(MainWindow *mainwin)
 			mainwin->messageview->visible = TRUE;
 			gtk_widget_reparent(GTK_WIDGET_PTR(summaryview), ppaned);
 			gtk_container_add(GTK_CONTAINER(container), ppaned);
+			gtk_paned_set_position(GTK_PANED(ppaned),
+					       prefs_common.summaryview_height);
 			g_object_unref(ppaned);
 		}
 		break;

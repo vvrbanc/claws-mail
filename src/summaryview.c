@@ -3357,8 +3357,8 @@ static void summary_set_ctree_from_list(SummaryView *summaryview,
 
 	node = GTK_CMCTREE_NODE(GTK_CMCLIST(ctree)->row_list);
 
-	if (prefs_common.bold_unread) {
-		START_TIMING("bold_unread");
+	if (prefs_common.bold_unread || prefs_common.bold_marked) {
+		START_TIMING("bold_unread/bold_marked");
 		while (node) {
 			GtkCMCTreeNode *next = GTK_CMCTREE_NODE_NEXT(node);
 			if (GTK_CMCTREE_ROW(node)->children)
@@ -3982,11 +3982,12 @@ static void summary_set_row_marks(SummaryView *summaryview, GtkCMCTreeNode *row)
 					"");
 	}
 
-	if (prefs_common.bold_unread &&
-	    ((MSG_IS_UNREAD(flags) && !MSG_IS_IGNORE_THREAD(flags)) ||
-	     (!GTK_CMCTREE_ROW(row)->expanded &&
+	if (((prefs_common.bold_unread && MSG_IS_UNREAD(flags)) ||
+	     (prefs_common.bold_marked && MSG_IS_MARKED(flags))) &&
+	    !MSG_IS_IGNORE_THREAD(flags) ||
+	    (!GTK_CMCTREE_ROW(row)->expanded &&
 	      GTK_CMCTREE_ROW(row)->children &&
-	      summary_have_unread_children(summaryview, row))))
+	      summary_have_unread_children(summaryview, row)))
 		style = bold_style;
 
 	/* set mark column */
@@ -6618,6 +6619,10 @@ static gboolean tooltip_cb (GtkWidget  *widget,
 		case GTK_CMCELL_TEXT:
 			if (gtk_cmctree_node_get_text(ctree, node, column, &text) != TRUE)
 				return FALSE;
+			if (column == summaryview->col_pos[S_COL_FROM])
+				text = info->from;
+			else if (column == summaryview->col_pos[S_COL_TO])
+				text = info->to;
 			break;
 		case GTK_CMCELL_PIXTEXT:
 			if (gtk_cmctree_node_get_pixtext(ctree, node, column, &text, 
@@ -7410,7 +7415,7 @@ static void summary_sort_by_column_click(SummaryView *summaryview,
 	node = GTK_CMCTREE_NODE(GTK_CMCLIST(summaryview->ctree)->row_list);
 
 	summary_freeze(summaryview);
-	if (prefs_common.bold_unread) {
+	if (prefs_common.bold_unread || prefs_common.bold_marked) {
 		while (node) {
 			GtkCMCTreeNode *next = GTK_CMCTREE_NODE_NEXT(node);
 			if (GTK_CMCTREE_ROW(node)->children)
@@ -8496,21 +8501,6 @@ gint summaryview_export_mbox_list(SummaryView *summaryview)
 	g_free(mbox);
 	
 	return ret;
-}
-
-void summaryview_lock(SummaryView *summaryview, FolderItem *item)
-{
-	if (!summaryview || !summaryview->folder_item || !item) {
-		return;
-	}
-
-	if (summaryview->folder_item->folder == item->folder) {
-		gtk_widget_set_sensitive(summaryview->ctree, FALSE);
-	}
-}
-void summaryview_unlock(SummaryView *summaryview, FolderItem *item)
-{
-	gtk_widget_set_sensitive(summaryview->ctree, TRUE);
 }
 
 static void summary_reedit_cb(GtkAction *gaction, gpointer data)

@@ -1,13 +1,10 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 2001-2021 the Claws Mail team
- * This file (C) 2005-2015 Andrej Kacian <andrej@kacian.sk>
- *
- * - Plugin preferences
+ * Copyright (C) 2005-2023 the Claws Mail Team and Andrej Kacian <andrej@kacian.sk>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -16,8 +13,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -158,7 +154,7 @@ static void create_rssyl_prefs_page(PrefsPage *page,
 
 	/* Whether to refresh all feeds on CM startup */
 	refresh_on_startup = gtk_check_button_new_with_label(
-			_("Refresh all feeds on application start"));
+			_("Refresh all feeds on start-up"));
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(refresh_on_startup),
 			rssyl_prefs.refresh_on_startup);
 	gtk_box_pack_start(GTK_BOX(vbox1), refresh_on_startup, FALSE, FALSE, 0);

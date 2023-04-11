@@ -1,7 +1,7 @@
 /*
  * Claws Mail -- A GTK based, lightweight, and fast e-mail client
  * == Fancy Plugin ==
- * Copyright(C) 1999-2022 the Claws Mail Team
+ * Copyright(C) 1999-2023 the Claws Mail Team
  * This file Copyright (C) 2009-2014 Salvatore De Paolis
  * <iwkse@claws-mail.org> and the Claws Mail Team
  *
@@ -110,10 +110,13 @@ static void fancy_apply_prefs(FancyViewer *viewer)
 		g_strfreev(msg_font_params);
 	}
 	webkit_web_view_set_settings(viewer->view, viewer->settings);
-	if (viewer->override_prefs_remote_content)
-		webkit_web_context_set_network_proxy_settings(webkit_web_context_get_default(), WEBKIT_NETWORK_PROXY_MODE_DEFAULT, NULL);
-	else
-		webkit_web_context_set_network_proxy_settings(webkit_web_context_get_default(), WEBKIT_NETWORK_PROXY_MODE_CUSTOM, viewer->no_remote_content_proxy_settings);
+	webkit_web_context_set_cache_model(webkit_web_context_get_default(), WEBKIT_CACHE_MODEL_DOCUMENT_VIEWER);
+	webkit_web_view_send_message_to_page(viewer->view,
+		webkit_user_message_new("LoadRemoteContent",
+			g_variant_new_boolean(viewer->override_prefs_remote_content)),
+		NULL,
+		NULL,
+		NULL);
 
 	if (viewer->override_stylesheet) {
 		/* copied from vimb */
@@ -523,7 +526,7 @@ static void resource_request_starting_cb(WebKitWebView		*view,
 	gchar *image;
 	gint err;
 	MimeInfo *partinfo = viewer->to_load;
-	
+
 	filename = viewer->filename;
 	if ((!g_ascii_strncasecmp(uri, "cid:", 4)) || (!g_ascii_strncasecmp(uri, "mid:", 4))) {
 		image = g_strconcat("<", uri + 4, ">", NULL);
@@ -1103,27 +1106,7 @@ static MimeViewer *fancy_viewer_create(void)
 	viewer->mimeviewer.scroll_one_line = fancy_scroll_one_line;
 	viewer->view = WEBKIT_WEB_VIEW(webkit_web_view_new());
 
-/*#ifdef HAVE_LIBSOUP_GNOME
-  TODO webkit_get_default_session() missing 
-   *     enum WebKitNetworkProxySettings
-   * */
- /* Use GNOME proxy settings through libproxy */
-/*	if (fancy_prefs.enable_gnome_proxy) {
-		SoupSession *session = webkit_get_default_session();
-		soup_session_add_feature_by_type (session, SOUP_TYPE_PROXY_RESOLVER_GNOME);
-	}
-#endif
-	
-	if (fancy_prefs.enable_proxy) {
-		SoupSession *session = webkit_get_default_session();
-		SoupURI* pURI = soup_uri_new(fancy_prefs.proxy_str);
-		g_object_set(session, "proxy-uri", pURI, NULL);
-	}
-*/
 	viewer->settings = webkit_settings_new();
-	// Proxy "" makes libsoup backend think that there is no way
-	// to connect, which is ideal.
-	viewer->no_remote_content_proxy_settings = webkit_network_proxy_settings_new("", NULL);
 	g_object_set(viewer->settings, "user-agent", "Fancy Viewer", NULL);
 	viewer->scrollwin = gtk_scrolled_window_new(NULL, NULL);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(viewer->scrollwin),
@@ -1266,6 +1249,28 @@ gint plugin_init(gchar **error)
 			return -1;
 		}
 	g_free(directory);
+
+	gchar *web_ext_filename = g_strconcat(FANCY_WEB_EXTENSION_FILE,
+		".",
+		G_MODULE_SUFFIX,
+		NULL);
+	gchar *web_ext_file = g_build_path(G_DIR_SEPARATOR_S,
+		FANCY_WEB_EXTENSIONS_DIR,
+		web_ext_filename,
+		NULL);
+
+	if (!g_file_test(web_ext_file, G_FILE_TEST_EXISTS)) {
+		*error = g_strdup_printf(_("Failed to find the companion WebKit extension %s"), web_ext_file);
+		g_free(web_ext_filename);
+		g_free(web_ext_file);
+		return -1;
+	}
+
+	g_free(web_ext_filename);
+	g_free(web_ext_file);
+
+	webkit_web_context_set_web_extensions_directory(webkit_web_context_get_default(),
+		FANCY_WEB_EXTENSIONS_DIR);
 
 	fancy_prefs_init();
 

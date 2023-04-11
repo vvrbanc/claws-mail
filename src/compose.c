@@ -5418,8 +5418,8 @@ gint compose_send(Compose *compose)
 		}
 	} else {
 		if (errstr) {
-			alertpanel_error_log(_("%s\nUse \"Send queued messages\" from "
-				   "the main window to retry."), errstr);
+			alertpanel_error_log(_("%s\nYou can try to \"Send\" again "
+				"or queue the message with \"Send later\""), errstr);
 			g_free(errstr);
 		} else {
 			alertpanel_error_log(_("The message was queued but could not be "
@@ -6157,11 +6157,10 @@ static ComposeQueueResult compose_queue_sub(Compose *compose, gint *msgnum, Fold
         }
 
 	if (compose->to_list) {
-    		if (compose->account->protocol != A_NNTP)
-            		mailac = compose->account;
-		else if (cur_account && cur_account->protocol != A_NNTP)
+    		mailac = compose->account;
+		if (!mailac && cur_account && cur_account->protocol != A_NNTP)
 	    		mailac = cur_account;
-		else if (!(mailac = compose_current_mail_account())) {
+		else if (!mailac && !(mailac = compose_current_mail_account())) {
 			alertpanel_error(_("No account for sending mails available!"));
 			return COMPOSE_QUEUE_ERROR_NO_MSG;
 		}
@@ -9708,7 +9707,7 @@ static void compose_exec_ext_editor(Compose *compose)
 			   G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH,
 			   NULL, NULL, &pid, &error)) {
 		alertpanel_error(_("Could not spawn the following "
-				 "command:\n%s\n%s"),
+				 "external editor command:\n%s\n%s"),
 				 cmd, error ? error->message : _("Unknown error"));
 		if (error)
 			g_error_free(error);
@@ -9745,7 +9744,11 @@ static void compose_ext_editor_closed_cb(GPid pid, gint exit_status, gpointer da
 	GtkTextIter start, end;
 	gchar *chars;
 
+#if GLIB_CHECK_VERSION(2,70,0)
+	if (!g_spawn_check_wait_status(exit_status, &error)) {
+#else
 	if (!g_spawn_check_exit_status(exit_status, &error)) {
+#endif
 		alertpanel_error(
 			_("External editor stopped with an error: %s"),
 			error ? error->message : _("Unknown error"));
@@ -9813,19 +9816,21 @@ static gboolean compose_get_ext_editor_cmd_valid()
 static gboolean compose_ext_editor_kill(Compose *compose)
 {
 	GPid pid = compose->exteditor_pid;
+	gchar *pidmsg = NULL;
 
 	if (pid > 0) {
 		AlertValue val;
 		gchar *msg;
 
+		pidmsg = g_strdup_printf(_("process id: %" G_PID_FORMAT), pid);
+
 		msg = g_strdup_printf
 			(_("The external editor is still working.\n"
 			   "Force terminating the process?\n"
-			   "process id: %" G_PID_FORMAT), pid);
+			   "%s"), pidmsg);
 		val = alertpanel_full(_("Notice"), msg, NULL, _("_No"), NULL, _("_Yes"),
 		      		      NULL, NULL, ALERTFOCUS_FIRST, FALSE, NULL,
 				      ALERT_WARNING);
-			
 		g_free(msg);
 
 		if (val == G_ALERTALTERNATE) {
@@ -9839,8 +9844,8 @@ static gboolean compose_ext_editor_kill(Compose *compose)
 			waitpid(compose->exteditor_pid, NULL, 0);
 #endif /* G_OS_WIN32 */
 
-			g_warning("terminated process id: %" G_PID_FORMAT ", "
-				  "temporary file: %s", pid, compose->exteditor_file);
+			g_warning("terminated %s, temporary file: %s",
+				pidmsg, compose->exteditor_file);
 			g_spawn_close_pid(compose->exteditor_pid);
 
 			compose_set_ext_editor_sensitive(compose, TRUE);
@@ -9849,10 +9854,14 @@ static gboolean compose_ext_editor_kill(Compose *compose)
 			compose->exteditor_file    = NULL;
 			compose->exteditor_pid     = INVALID_PID;
 			compose->exteditor_tag     = -1;
-		} else
+		} else {
+			g_free(pidmsg);
 			return FALSE;
+        }
 	}
 
+	if (pidmsg)
+		g_free(pidmsg);
 	return TRUE;
 }
 
@@ -10539,6 +10548,7 @@ warn_err:
 		compose->mode = COMPOSE_REEDIT;
 		
 		if (action == COMPOSE_AUTO_SAVE) {
+			compose->modified = FALSE;
 			compose->autosaved_draft = compose->targetinfo;
 		}
 		compose_set_title(compose);
@@ -10591,6 +10601,8 @@ static void compose_save_cb(GtkAction *action, gpointer data)
 	Compose *compose = (Compose *)data;
 	compose_draft(compose, COMPOSE_KEEP_EDITING);
 	compose->rmode = COMPOSE_REEDIT;
+	compose->modified = FALSE;
+	compose_set_title(compose);
 }
 
 void compose_attach_from_list(Compose *compose, GList *file_list, gboolean free_data)
@@ -10730,7 +10742,7 @@ static void compose_close_cb(GtkAction *action, gpointer data)
 			debug_print("couldn't lock mutex, probably sending\n");
 			return;
 		}
-		if (!reedit || compose->folder->stype == F_DRAFT) {
+		if (!reedit || (compose->folder != NULL && compose->folder->stype == F_DRAFT)) {
 			val = alertpanel(_("Discard message"),
 				 _("This message has been modified. Discard it?"),
 				 NULL, _("_Discard"), NULL, _("_Save to Drafts"), NULL, _("_Cancel"),

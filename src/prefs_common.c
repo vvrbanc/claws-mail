@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2021 the Claws Mail team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2023 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -463,6 +463,8 @@ static PrefParam param[] = {
 	 NULL, NULL, NULL},
 
 	 {"bold_unread", "TRUE", &prefs_common.bold_unread, P_BOOL,
+	 NULL, NULL, NULL},
+	 {"bold_marked", "FALSE", &prefs_common.bold_marked, P_BOOL,
 	 NULL, NULL, NULL},
 
 #ifndef GENERIC_UMPC
@@ -1168,7 +1170,11 @@ static PrefParam param[] = {
 	 NULL, NULL, NULL},
 	{"warn_dnd", "1", &prefs_common.warn_dnd, P_INT,
 	 NULL, NULL, NULL},
-	{"utf8_instead_of_locale_for_broken_mail", "0", 
+	{"show_save_all_success", "1", &prefs_common.show_save_all_success, P_INT,
+	 NULL, NULL, NULL},
+	{"show_save_all_failure", "1", &prefs_common.show_save_all_failure, P_INT,
+	 NULL, NULL, NULL},
+	{"utf8_instead_of_locale_for_broken_mail", "0",
 	 &prefs_common.broken_are_utf8, P_INT,
 	 NULL, NULL, NULL},
 	{"enable_swap_from", "FALSE", &prefs_common.swap_from, P_BOOL,
@@ -1205,6 +1211,10 @@ static PrefParam param[] = {
 	{"last_opened_folder", "", &prefs_common.last_opened_folder,
 	P_STRING, NULL, NULL, NULL },
 	{"goto_last_folder_on_startup", "FALSE", &prefs_common.goto_last_folder_on_startup,
+	P_BOOL, NULL, NULL, NULL },
+	{"startup_folder", "", &prefs_common.startup_folder,
+	P_STRING, NULL, NULL, NULL },
+	{"goto_folder_on_startup", "FALSE", &prefs_common.goto_folder_on_startup,
 	P_BOOL, NULL, NULL, NULL },
 	{"summary_quicksearch_sticky", "1", &prefs_common.summary_quicksearch_sticky, P_INT,
 	 NULL, NULL, NULL},

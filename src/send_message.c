@@ -57,7 +57,9 @@
 #include "log.h"
 #include "passwordstore.h"
 #include "file-utils.h"
+#ifdef USE_OAUTH2
 #include "oauth2.h"
+#endif
 
 typedef struct _SendProgressDialog	SendProgressDialog;
 
@@ -282,6 +284,10 @@ gint send_message_smtp_full(PrefsAccount *ac_prefs, GSList *to_list, FILE *fp, g
 		    strlen(ac_prefs->gnutls_priority))
 			session->gnutls_priority = g_strdup(ac_prefs->gnutls_priority);
 		session->use_tls_sni = ac_prefs->use_tls_sni;
+#ifdef USE_OAUTH2
+		if (ac_prefs->use_smtp_auth && ac_prefs->smtp_auth_type == SMTPAUTH_OAUTH2)
+		        oauth2_check_passwds(ac_prefs);
+#endif
 #else
 		if (ac_prefs->ssl_smtp != SSL_NONE) {
 			if (alertpanel_full(_("Insecure connection"),
@@ -299,9 +305,6 @@ gint send_message_smtp_full(PrefsAccount *ac_prefs, GSList *to_list, FILE *fp, g
 		}
 		port = ac_prefs->set_smtpport ? ac_prefs->smtpport : SMTP_PORT;
 #endif
-		
-		if(ac_prefs->use_smtp_auth && ac_prefs->smtp_auth_type == SMTPAUTH_OAUTH2)
-		        oauth2_check_passwds (ac_prefs);
 
 		if (ac_prefs->use_smtp_auth) {
 			smtp_session->forced_auth_type = ac_prefs->smtp_auth_type;

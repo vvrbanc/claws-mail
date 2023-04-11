@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2022 the Claws Mail team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2023 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -161,7 +161,7 @@ static GtkWidget *about_create_child_page_info(void)
 				NULL);
 #ifdef GENERIC_UMPC
 	ADD_TEXT("\n\n");
-	ADD_TEXT(_("Copyright (C) 1999-2022\nThe Claws Mail Team\n"
+	ADD_TEXT(_("Copyright (C) 1999-2023\nThe Claws Mail Team\n"
 				"and Hiroyuki Yamamoto"));
 #endif
 	ADD_TEXT("\n\n");
@@ -452,6 +452,16 @@ static GtkWidget *about_create_child_page_features(void)
 	gtk_text_buffer_insert(buffer, &iter, 
 		(gchar *)C_("GnuTLS", "adds support for encrypted connections to servers\n"), -1);
 
+#if HAVE_ICONV
+	gtk_text_buffer_insert_pixbuf(buffer, &iter, active_pixbuf);
+#else
+	gtk_text_buffer_insert_pixbuf(buffer, &iter, inactive_pixbuf);
+#endif
+	gtk_text_buffer_insert_with_tags_by_name(buffer, &iter, (" iconv "), -1,
+						 "bold", NULL);
+	gtk_text_buffer_insert(buffer, &iter,
+		(gchar *)C_("iconv", "allows converting to and from different character sets\n"), -1);
+
 #if INET6
 	gtk_text_buffer_insert_pixbuf(buffer, &iter, active_pixbuf);
 #else
@@ -460,18 +470,7 @@ static GtkWidget *about_create_child_page_features(void)
 	gtk_text_buffer_insert_with_tags_by_name(buffer, &iter, (" IPv6 "), -1,
 						 "bold", NULL);
 	gtk_text_buffer_insert(buffer, &iter, 
-		(gchar *)C_("IPv6", "adds support for IPv6 addresses, the new Internet "
-			    "addressing protocol\n"), -1);
-
-#if HAVE_ICONV
-	gtk_text_buffer_insert_pixbuf(buffer, &iter, active_pixbuf);
-#else
-	gtk_text_buffer_insert_pixbuf(buffer, &iter, inactive_pixbuf);
-#endif
-	gtk_text_buffer_insert_with_tags_by_name(buffer, &iter, (" iconv "), -1,
-						 "bold", NULL);
-	gtk_text_buffer_insert(buffer, &iter, 
-		(gchar *)C_("iconv", "allows converting to and from different character sets\n"), -1);
+		(gchar *)C_("IPv6", "adds support for IPv6 addresses\n"), -1);
 
 #if USE_JPILOT
 	gtk_text_buffer_insert_pixbuf(buffer, &iter, active_pixbuf);
@@ -503,6 +502,16 @@ static GtkWidget *about_create_child_page_features(void)
 	gtk_text_buffer_insert(buffer, &iter, 
 		(gchar *)C_("libetpan", "adds support for IMAP and NNTP servers\n"), -1);
 
+#if HAVE_SVG
+	gtk_text_buffer_insert_pixbuf(buffer, &iter, active_pixbuf);
+#else
+	gtk_text_buffer_insert_pixbuf(buffer, &iter, inactive_pixbuf);
+#endif
+	gtk_text_buffer_insert_with_tags_by_name(buffer, &iter, (" librSVG "), -1,
+						 "bold", NULL);
+	gtk_text_buffer_insert(buffer, &iter,
+		(gchar *)C_("librSVG", "adds support for SVG themes\n"), -1);
+
 #if HAVE_LIBSM
 	gtk_text_buffer_insert_pixbuf(buffer, &iter, active_pixbuf);
 #else
@@ -523,15 +532,15 @@ static GtkWidget *about_create_child_page_features(void)
 	gtk_text_buffer_insert(buffer, &iter,
 		(gchar *)C_("NetworkManager", "adds support for detection of network connection changes\n"), -1);
 
-#if HAVE_SVG
+#if USE_OAUTH2
 	gtk_text_buffer_insert_pixbuf(buffer, &iter, active_pixbuf);
 #else
 	gtk_text_buffer_insert_pixbuf(buffer, &iter, inactive_pixbuf);
 #endif
-	gtk_text_buffer_insert_with_tags_by_name(buffer, &iter, (" librSVG "), -1,
+	gtk_text_buffer_insert_with_tags_by_name(buffer, &iter, (" OAuth2 "), -1,
 						 "bold", NULL);
 	gtk_text_buffer_insert(buffer, &iter,
-		(gchar *)C_("librSVG", "adds support for SVG themes\n"), -1);
+		(gchar *)C_("OAuth2", "adds support for OAuth2 authentication\n"), -1);
 
 	return scrolledwin;
 }
@@ -751,6 +760,11 @@ static void about_update_stats(void)
 					session_stats.received);
 		gtk_text_buffer_insert_with_tags_by_name(stats_text_buffer, &iter, buf, -1,
 				"indented-list-item", "bold", NULL);
+		if (session_stats.spam > 0) {
+			g_snprintf(buf, sizeof(buf), _("Spam messages: %d\n"), session_stats.spam);
+			gtk_text_buffer_insert_with_tags_by_name(stats_text_buffer, &iter, buf, -1,
+								 "indented-list-item", NULL);
+		}
 
 		gtk_text_buffer_insert(stats_text_buffer, &iter, "\n", 1);
 		gtk_text_buffer_insert_with_tags_by_name(stats_text_buffer, &iter,
@@ -859,7 +873,7 @@ static void about_create(void)
 	gtk_container_add(GTK_CONTAINER(grid2), button);
 #ifndef GENERIC_UMPC
 	label = gtk_label_new
-		(_("Copyright (C) 1999-2022\nThe Claws Mail Team\n"
+		(_("Copyright (C) 1999-2023\nThe Claws Mail Team\n"
 		 "and Hiroyuki Yamamoto"));
 	gtk_label_set_selectable(GTK_LABEL(label), TRUE);
 	gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_CENTER);
