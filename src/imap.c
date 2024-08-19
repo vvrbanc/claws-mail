@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2022 the Claws Mail team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2024 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,7 +36,6 @@
 #ifdef HAVE_LIBETPAN
 
 #include <stdlib.h>
-#include <dirent.h>
 #include <unistd.h>
 #include <ctype.h>
 #include <time.h>
@@ -795,7 +794,6 @@ static void imap_folder_init(Folder *folder, const gchar *name,
 			     const gchar *path)
 {
 	folder_remote_folder_init((Folder *)folder, name, path);
-	IMAP_FOLDER(folder)->max_set_size = IMAP_SET_MAX_COUNT;
 	IMAP_FOLDER(folder)->search_charset_supported = TRUE;
 	IMAP_FOLDER(folder)->search_charset = g_strdup(conv_get_locale_charset_str_no_utf8());
 }
@@ -912,6 +910,18 @@ static gint imap_auth(IMAPSession *session, const gchar *user, const gchar *pass
 	case IMAP_AUTH_SCRAM_SHA1:
 		ok = imap_cmd_login(session, user, pass, "SCRAM-SHA-1");
 		break;
+	case IMAP_AUTH_SCRAM_SHA224:
+		ok = imap_cmd_login(session, user, pass, "SCRAM-SHA-224");
+		break;
+	case IMAP_AUTH_SCRAM_SHA256:
+		ok = imap_cmd_login(session, user, pass, "SCRAM-SHA-256");
+		break;
+	case IMAP_AUTH_SCRAM_SHA384:
+		ok = imap_cmd_login(session, user, pass, "SCRAM-SHA-384");
+		break;
+	case IMAP_AUTH_SCRAM_SHA512:
+		ok = imap_cmd_login(session, user, pass, "SCRAM-SHA-512");
+		break;
 	case IMAP_AUTH_PLAIN:
 		ok = imap_cmd_login(session, user, pass, "PLAIN");
 		break;
@@ -935,6 +945,10 @@ static gint imap_auth(IMAPSession *session, const gchar *user, const gchar *pass
 				"\t CRAM-MD5 %d\n"
 				"\t DIGEST-MD5 %d\n"
 				"\t SCRAM-SHA-1 %d\n"
+				"\t SCRAM-SHA-224 %d\n"
+				"\t SCRAM-SHA-256 %d\n"
+				"\t SCRAM-SHA-384 %d\n"
+				"\t SCRAM-SHA-512 %d\n"
 				"\t PLAIN %d\n"
 #ifdef USE_GNUTLS
 				"\t OAUTH2 %d\n"
@@ -945,6 +959,10 @@ static gint imap_auth(IMAPSession *session, const gchar *user, const gchar *pass
 			imap_has_capability(session, "CRAM-MD5"),
 			imap_has_capability(session, "DIGEST-MD5"),
 			imap_has_capability(session, "SCRAM-SHA-1"),
+			imap_has_capability(session, "SCRAM-SHA-224"),
+			imap_has_capability(session, "SCRAM-SHA-256"),
+			imap_has_capability(session, "SCRAM-SHA-384"),
+			imap_has_capability(session, "SCRAM-SHA-512"),
 			imap_has_capability(session, "PLAIN"),
 #ifdef USE_GNUTLS
 			imap_has_capability(session, "XOAUTH2"),
@@ -955,6 +973,14 @@ static gint imap_auth(IMAPSession *session, const gchar *user, const gchar *pass
 			ok = imap_cmd_login(session, user, pass, "CRAM-MD5");
 		if (ok == MAILIMAP_ERROR_LOGIN && imap_has_capability(session, "DIGEST-MD5"))
 			ok = imap_cmd_login(session, user, pass, "DIGEST-MD5");
+		if (ok == MAILIMAP_ERROR_LOGIN && imap_has_capability(session, "SCRAM-SHA-512"))
+			ok = imap_cmd_login(session, user, pass, "SCRAM-SHA-512");
+		if (ok == MAILIMAP_ERROR_LOGIN && imap_has_capability(session, "SCRAM-SHA-384"))
+			ok = imap_cmd_login(session, user, pass, "SCRAM-SHA-384");
+		if (ok == MAILIMAP_ERROR_LOGIN && imap_has_capability(session, "SCRAM-SHA-256"))
+			ok = imap_cmd_login(session, user, pass, "SCRAM-SHA-256");
+		if (ok == MAILIMAP_ERROR_LOGIN && imap_has_capability(session, "SCRAM-SHA-224"))
+			ok = imap_cmd_login(session, user, pass, "SCRAM-SHA-224");
 		if (ok == MAILIMAP_ERROR_LOGIN && imap_has_capability(session, "SCRAM-SHA-1"))
 			ok = imap_cmd_login(session, user, pass, "SCRAM-SHA-1");
 		if (ok == MAILIMAP_ERROR_LOGIN && imap_has_capability(session, "PLAIN"))
@@ -992,6 +1018,30 @@ static gint imap_auth(IMAPSession *session, const gchar *user, const gchar *pass
 				     "SCRAM SASL plugin is installed.");
 		}
 
+		if (type == IMAP_AUTH_SCRAM_SHA224) {
+			ext_info = _("\n\nSCRAM-SHA-224 logins only work if libetpan has been "
+				     "compiled with SASL support and the "
+				     "SCRAM SASL plugin is installed.");
+		}
+
+		if (type == IMAP_AUTH_SCRAM_SHA256) {
+			ext_info = _("\n\nSCRAM-SHA-256 logins only work if libetpan has been "
+				     "compiled with SASL support and the "
+				     "SCRAM SASL plugin is installed.");
+		}
+
+		if (type == IMAP_AUTH_SCRAM_SHA384) {
+			ext_info = _("\n\nSCRAM-SHA-384 logins only work if libetpan has been "
+				     "compiled with SASL support and the "
+				     "SCRAM SASL plugin is installed.");
+		}
+
+		if (type == IMAP_AUTH_SCRAM_SHA512) {
+			ext_info = _("\n\nSCRAM-SHA-512 logins only work if libetpan has been "
+				     "compiled with SASL support and the "
+				     "SCRAM SASL plugin is installed.");
+		}
+
 		if (type == IMAP_AUTH_PLAIN) {
 			ext_info = _("\n\nPLAIN logins only work if libetpan has been "
 				     "compiled with SASL support and the "
@@ -1010,7 +1060,7 @@ static gint imap_auth(IMAPSession *session, const gchar *user, const gchar *pass
 		} 
 #endif
 		if (time(NULL) - last_login_err > 10) {
-			if (!prefs_common.no_recv_err_panel) {
+			if (prefs_common.show_recv_err_dialog) {
 				alertpanel_error_log(_("Connection to %s failed: "
 					"login refused.%s"),
 					server, ext_info);
@@ -1199,6 +1249,7 @@ static IMAPSession *imap_session_new(Folder * folder,
 #endif
 
 	imap_init(folder);
+	IMAP_FOLDER(folder)->max_set_size = account->imap_batch_size;
 	buf = g_strdup_printf(_("Account '%s': Connecting to IMAP server: %s:%d..."),
 				folder->account->account_name, folder->account->recv_server,
 				port);
@@ -1263,7 +1314,7 @@ static IMAPSession *imap_session_new(Folder * folder,
 #endif
 			imap_handle_error(NULL, account->recv_server, r);
 
-		if(!prefs_common.no_recv_err_panel) {
+		if(prefs_common.show_recv_err_dialog) {
 			alertpanel_error_log(_("Can't connect to IMAP server: %s:%d"),
 					 account->recv_server, port);
 		} else {
@@ -1370,7 +1421,7 @@ try_again:
 			}
 			goto try_again;
 		} else {
-			if (prefs_common.no_recv_err_panel) {
+			if (!prefs_common.show_recv_err_dialog) {
 				log_error(LOG_PROTOCOL, _("Couldn't login to IMAP server %s.\n"), account->recv_server);
 				mainwindow_show_error();
 			} else
@@ -4508,7 +4559,9 @@ static gint imap_cmd_expunge(IMAPSession *session)
 		return -1;
 	}
 
+	statusbar_print_all(_("Expunging deleted messages..."));
 	r = imap_threaded_expunge(session->folder);
+	statusbar_pop_all();
 	if (r != MAILIMAP_NO_ERROR) {
 		imap_handle_error(SESSION(session), NULL, r);
 		return r;

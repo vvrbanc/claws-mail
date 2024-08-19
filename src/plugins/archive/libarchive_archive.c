@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2018 Michael Rasmussen and the Claws Mail Team
+ * Copyright (C) 1999-2024 Michael Rasmussen and the Claws Mail Team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,11 +27,14 @@
 
 #include "libarchive_archive.h"
 
-#ifndef _TEST
+#ifndef DEBUG_ARCHIVE
 #	include "archiver.h"
 #	include "utils.h"
 #	include "mainwindow.h"
 #   include "folder.h"
+#endif
+#ifdef DEBUG_ARCHIVE
+#include "procmsg.h"
 #endif
 
 #include <sys/types.h>
@@ -44,7 +47,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <dirent.h>
 #include <libgen.h>
 
 #define READ_BLOCK_SIZE 10240
@@ -58,7 +60,7 @@ static GSList* msg_trash_list = NULL;
 static GSList* file_list = NULL;
 static gboolean stop_action = FALSE;
 
-#ifdef _TEST
+#ifdef DEBUG_ARCHIVE
 static int permissions = 0;
 #endif
 
@@ -242,7 +244,7 @@ static void archive_free_file_info(struct file_info* file) {
 	file = NULL;
 }
 
-void stop_archiving() {
+void stop_archiving(void) {
 	debug_print("stop action set to true\n");
 	stop_action = TRUE;
 }
@@ -311,7 +313,7 @@ static gchar* get_full_path(struct file_info* file) {
 	return path;
 }
 
-#ifdef _TEST
+#ifdef DEBUG_ARCHIVE
 static gchar* strip_leading_slash(gchar* path) {
 	gchar* stripped = path;
 	gchar* result = NULL;
@@ -356,7 +358,7 @@ void archive_add_file(gchar* path) {
 
 	g_return_if_fail(path != NULL);
 
-#ifndef _TEST
+#ifndef DEBUG_ARCHIVE
 	debug_print("add %s to list\n", path);
 #endif
 	filename = g_strrstr_len(path, strlen(path), "/");
@@ -375,16 +377,15 @@ GSList* archive_get_file_list() {
 	return file_list;
 }
 
-#ifdef _TEST
+#ifdef DEBUG_ARCHIVE
 const gchar* archive_extract(const char* archive_name, int flags) {
 	struct archive* in;
 	struct archive* out;
 	struct archive_entry* entry;
 	int res = ARCHIVE_OK;
-	gchar* buf = NULL;
-	const char* result == NULL;
+	const char* result = NULL;
 
-	g_return_val_if_fail(archive_name != NULL, ARCHIVE_FATAL);
+	g_return_val_if_fail(archive_name != NULL, NULL);
 
 	fprintf(stdout, "%s: extracting\n", archive_name);
 	in = archive_read_new();
@@ -425,7 +426,7 @@ const gchar* archive_extract(const char* archive_name, int flags) {
 					if (res == ARCHIVE_EOF)
 						res = ARCHIVE_OK;
 					if (res != ARCHIVE_OK) {
-						gchar *e = archive_error_string(in);
+						const gchar *e = archive_error_string(in);
 						g_warning("%s: %s", archive_name, e? e: "unknown error");
 						result = e;
 					}
@@ -453,7 +454,7 @@ const gchar* archive_create(const char* archive_name, GSList* files,
 			COMPRESS_METHOD method, ARCHIVE_FORMAT format) {
 	struct archive* arch;
 
-#ifndef _TEST
+#ifndef DEBUG_ARCHIVE
 	gint num = 0;
 	gint total = g_slist_length (files);
 #endif
@@ -571,7 +572,7 @@ const gchar* archive_create(const char* archive_name, GSList* files,
 		struct file_info* file;
 		gchar* filename = NULL;
 
-#ifndef _TEST
+#ifndef DEBUG_ARCHIVE
 		set_progress_print_all(num++, total, 30);
 #endif
 		file = (struct file_info *) files->data;
@@ -581,7 +582,7 @@ const gchar* archive_create(const char* archive_name, GSList* files,
 		/* libarchive will crash if instructed to add archive to it self */
 		if (g_utf8_collate(archive_name, filename) == 0) {
 			g_warning("%s: not dumping to '%s'", archive_name, filename);
-#ifndef _TEST
+#ifndef DEBUG_ARCHIVE
 			debug_print("%s: not dumping to '%s'\n", archive_name, filename);
 #endif
 		}
@@ -592,9 +593,10 @@ const gchar* archive_create(const char* archive_name, GSList* files,
 			GError* err = NULL;
 			GStatBuf st;
 			int fd;
+
+#ifndef DEBUG_ARCHIVE
 			gchar* msg = NULL;
 
-#ifndef _TEST
 			debug_print("Adding: %s\n", filename);
 			msg = g_strdup_printf("%s", filename);
 			set_progress_file_label(msg);
@@ -649,7 +651,7 @@ const gchar* archive_create(const char* archive_name, GSList* files,
 		g_free(filename);
 		files = g_slist_next(files);
 	}
-#ifndef _TEST
+#ifndef DEBUG_ARCHIVE
 	if (stop_action)
 		unlink(archive_name);
 	stop_action = FALSE;
@@ -663,32 +665,35 @@ const gchar* archive_create(const char* archive_name, GSList* files,
 	return NULL;
 }
 
-#ifdef _TEST
+#ifdef DEBUG_ARCHIVE
 void archive_scan_folder(const char* dir) {
 	GStatBuf st;
-	DIR* root;
-	struct dirent* ent;
+	GDir* root;
+	const gchar* ent;
 	gchar cwd[PATH_MAX];
 	gchar path[PATH_MAX];
-	
+	GError *error = NULL;
+
 	getcwd(cwd, PATH_MAX);
 
 	if (g_stat(dir, &st) == -1)
 		return;
 	if (! S_ISDIR(st.st_mode))
 		return;
-	if (!(root = opendir(dir)))
+	if (!(root = g_dir_open(dir, 0, &error))) {
+		debug_print("opening '%s' failed: %d (%s)\n", dir, error->code, error->message);
 		return;
+	}
 	chdir(dir);
 
-	while ((ent = readdir(root)) != NULL) {
-		if (strcmp(".", ent->d_name) == 0 || strcmp("..", ent->d_name) == 0)
+	while ((ent = g_dir_read_name(root)) != NULL) {
+		if (strcmp(".", ent) == 0 || strcmp("..", ent) == 0)
 			continue;
-		if (g_stat(ent->d_name, &st) == -1) {
-			FILE_OP_ERROR(filename, "g_stat");
+		if (g_stat(ent, &st) == -1) {
+			FILE_OP_ERROR(ent, "g_stat");
 			continue;
 		}
-		sprintf(path, "%s/%s", dir, ent->d_name);
+		sprintf(path, "%s/%s", dir, ent);
 		if (S_ISREG(st.st_mode) || S_ISLNK(st.st_mode)) {
 			archive_add_file(path);
 		}
@@ -697,7 +702,7 @@ void archive_scan_folder(const char* dir) {
 		}
 	}
 	chdir(cwd);
-	closedir(root);
+	g_dir_close(root);
 }
 
 int main(int argc, char** argv) {
@@ -710,7 +715,7 @@ int main(int argc, char** argv) {
 	gchar cwd[PATH_MAX];
 	gboolean remove = FALSE;
 	const char *p = NULL;
-	int res;
+	const gchar* res;
 
 	getcwd(cwd, PATH_MAX);
 
@@ -743,9 +748,9 @@ int main(int argc, char** argv) {
 	
 	while (*argv) {
 		archive_scan_folder(*argv++);
-		res = archive_create(archive, file_list);
-		if (res != ARCHIVE_OK) {
-			fprintf(stderr, "%s: Creating archive failed\n", archive);
+		res = archive_create(archive, file_list, GZIP, TAR);
+		if (res != NULL) {
+			fprintf(stderr, "%s: Creating archive failed [%s]\n", archive, res);
 			return EXIT_FAILURE;
 		}
 	}
@@ -765,7 +770,8 @@ int main(int argc, char** argv) {
 		fprintf(stdout, "Executing: %s\n", buf);
 		system(buf);
 	}
-	archive_free_list(file_list);
+	if (file_list != NULL)
+		g_slist_free(file_list);
 	return EXIT_SUCCESS;
 }
 #endif

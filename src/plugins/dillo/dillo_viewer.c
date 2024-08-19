@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2012 the Claws Mail Team
+ * Copyright (C) 1999-2023 the Claws Mail Team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -124,6 +124,16 @@ static void dillo_show_mimepart(MimeViewer *_viewer,
 		claws_unlink(viewer->filename);
 		g_free(viewer->filename);
 	}
+
+#ifdef GDK_WINDOWING_X11
+	if (!GDK_IS_X11_DISPLAY(gdk_display_get_default())) {
+		debug_print("dillo viewer only works on X11\n");
+		return;
+	}
+#else
+	debug_print("dillo viewer only works on X11\n");
+	return;
+#endif
 
 	viewer->filename = procmime_get_tmp_file_name(partinfo);
 	

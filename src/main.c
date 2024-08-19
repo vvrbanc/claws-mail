@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2023 the Claws Mail team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2024 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -156,11 +156,6 @@
 static gboolean went_offline_nm;
 #endif
 
-
-#ifdef HAVE_DBUS_GLIB
-static DBusGProxy *awn_proxy = NULL;
-#endif
-
 gchar *prog_version;
 #if (defined HAVE_LIBSM || defined CRASH_DIALOG)
 gchar *argv0;
@@ -210,6 +205,7 @@ static struct RemoteCmd {
 	const gchar *target;
 	gboolean debug;
 	const gchar *geometry;
+	const gchar *import_mbox;
 } cmd;
 
 SessionStats session_stats;
@@ -933,106 +929,6 @@ static void main_dump_features_list(gboolean show_debug_only)
 #endif
 }
 
-#ifdef HAVE_DBUS_GLIB
-static gulong dbus_item_hook_id = HOOK_NONE;
-static gulong dbus_folder_hook_id = HOOK_NONE;
-
-static void uninstall_dbus_status_handler(void)
-{
-	if(awn_proxy)
-		g_object_unref(awn_proxy);
-	awn_proxy = NULL;
-	if (dbus_item_hook_id != HOOK_NONE)
-		hooks_unregister_hook(FOLDER_ITEM_UPDATE_HOOKLIST, dbus_item_hook_id);
-	if (dbus_folder_hook_id != HOOK_NONE)
-		hooks_unregister_hook(FOLDER_UPDATE_HOOKLIST, dbus_folder_hook_id);
-}
-
-static void dbus_update(FolderItem *removed_item)
-{
-	guint new, unread, unreadmarked, marked, total;
-	guint replied, forwarded, locked, ignored, watched;
-	gchar *buf;
-	GError *error = NULL;
-
-	folder_count_total_msgs(&new, &unread, &unreadmarked, &marked, &total,
-				&replied, &forwarded, &locked, &ignored,
-				&watched);
-	if (removed_item) {
-		total -= removed_item->total_msgs;
-		new -= removed_item->new_msgs;
-		unread -= removed_item->unread_msgs;
-	}
-
-	if (new > 0) {
-		buf = g_strdup_printf("%d", new);
-		dbus_g_proxy_call(awn_proxy, "SetInfoByName", &error,
-			G_TYPE_STRING, "claws-mail",
-			G_TYPE_STRING, buf,
-			G_TYPE_INVALID, G_TYPE_INVALID);
-		g_free(buf);
-		
-	} else {
-		dbus_g_proxy_call(awn_proxy, "UnsetInfoByName", &error, G_TYPE_STRING,
-			"claws-mail", G_TYPE_INVALID, G_TYPE_INVALID);
-	}
-	if (error) {
-		debug_print("%s\n", error->message);
-		g_error_free(error);
-	}
-}
-
-static gboolean dbus_status_update_folder_hook(gpointer source, gpointer data)
-{
-	FolderUpdateData *hookdata;
-	hookdata = source;
-	if (hookdata->update_flags & FOLDER_REMOVE_FOLDERITEM)
-		dbus_update(hookdata->item);
-	else
-		dbus_update(NULL);
-
-	return FALSE;
-}
-
-static gboolean dbus_status_update_item_hook(gpointer source, gpointer data)
-{
-	dbus_update(NULL);
-
-	return FALSE;
-}
-
-static void install_dbus_status_handler(void)
-{
-	GError *tmp_error = NULL;
-	DBusGConnection *connection = dbus_g_bus_get(DBUS_BUS_SESSION, &tmp_error);
-	
-	if(!connection) {
-		/* If calling code doesn't do error checking, at least print some debug */
-		debug_print("Failed to open connection to session bus: %s\n",
-				 tmp_error->message);
-		g_error_free(tmp_error);
-		return;
-	}
-	awn_proxy = dbus_g_proxy_new_for_name(connection,
-			"com.google.code.Awn",
-			"/com/google/code/Awn",
-			"com.google.code.Awn");
-	dbus_item_hook_id = hooks_register_hook (FOLDER_ITEM_UPDATE_HOOKLIST, dbus_status_update_item_hook, NULL);
-	if (dbus_item_hook_id == HOOK_NONE) {
-		g_warning("failed to register folder item update hook");
-		uninstall_dbus_status_handler();
-		return;
-	}
-
-	dbus_folder_hook_id = hooks_register_hook (FOLDER_UPDATE_HOOKLIST, dbus_status_update_folder_hook, NULL);
-	if (dbus_folder_hook_id == HOOK_NONE) {
-		g_warning("failed to register folder update hook");
-		uninstall_dbus_status_handler();
-		return;
-	}
-}
-#endif
-
 static void reset_statistics(void)
 {
 	/* (re-)initialize session statistics */
@@ -1160,7 +1056,6 @@ int main(int argc, char *argv[])
 				NULL,NULL);
 		}
 #endif
-		install_dbus_status_handler();
 	}
 #endif
 
@@ -1236,6 +1131,12 @@ int main(int argc, char *argv[])
 	g_free(userrc);
 
 	userrc = g_strconcat(get_rc_dir(), G_DIR_SEPARATOR_S, MENU_RC, NULL);
+
+	if (copy_file(userrc, userrc, TRUE) < 0) {
+		g_warning("can't copy %s to %s.bak",
+			  userrc, userrc);
+	}
+
 	gtk_accel_map_load (userrc);
 	g_free(userrc);
 
@@ -1606,6 +1507,10 @@ int main(int argc, char *argv[])
 	folderview_thaw(mainwin->folderview);
 	main_window_cursor_normal(mainwin);
 
+	if (cmd.import_mbox) {
+		mainwindow_import_mbox(cmd.import_mbox);
+	}
+
 	if (!cmd.target && prefs_common.goto_folder_on_startup &&
 	    folder_find_item_from_identifier(prefs_common.startup_folder) != NULL &&
 	    !claws_crashed()) {
@@ -1673,7 +1578,6 @@ int main(int argc, char *argv[])
 		g_object_unref(nm_proxy);
 #endif
 #ifdef HAVE_DBUS_GLIB
-	uninstall_dbus_status_handler();
 	if(connection)
 		dbus_g_connection_unref(connection);
 #endif
@@ -2096,6 +2000,7 @@ static void parse_cmd_opt(int argc, char *argv[])
  			g_print("%s\n", _("  --reset-statistics     reset session statistics"));
 			g_print("%s\n", _("  --select folder[/msg]  jump to the specified folder/message\n" 
 					  "                         folder is a folder id like 'folder/sub_folder', a file:// uri or an absolute path"));
+			g_print("%s\n", _("  --import-mbox file     import the specified mbox file\n"));
 			g_print("%s\n", _("  --online               switch to online mode"));
 			g_print("%s\n", _("  --offline              switch to offline mode"));
 			g_print("%s\n", _("  --exit --quit -q       exit Claws Mail"));
@@ -2144,6 +2049,13 @@ static void parse_cmd_opt(int argc, char *argv[])
                 i++;
 		    } else {
                 parse_cmd_opt_error(_("Missing folder argument for option %s"), argv[i]);
+			}
+		} else if (!strcmp(argv[i], "--import-mbox")) {
+			if (i+1 < argc) {
+				cmd.import_mbox = argv[i+1];
+				i++;
+			} else {
+				parse_cmd_opt_error(_("Missing file argument for option %s"), argv[i]);
 			}
 		} else if (i == 1 && argc == 2) {
 			/* only one parameter. Do something intelligent about it */
@@ -2549,6 +2461,10 @@ static gint prohibit_duplicate_launch(int *argc, char ***argv)
 		gchar *str = g_strdup_printf("select %s\n", cmd.target);
 		CM_FD_WRITE_ALL(str);
 		g_free(str);
+	} else if (cmd.import_mbox) {
+		gchar *str = g_strdup_printf("import %s\n", cmd.import_mbox);
+		CM_FD_WRITE_ALL(str);
+		g_free(str);
 	} else if (cmd.search) {
 		gchar buf[BUFFSIZE];
 		gchar *str =
@@ -2802,6 +2718,9 @@ static void lock_socket_input_cb(gpointer data,
 	} else if (!STRNCMP(buf, "select ")) {
 		const gchar *target = buf+7;
 		mainwindow_jump_to(target, TRUE);
+	} else if (!STRNCMP(buf, "import ")) {
+		const gchar *mbox_file = buf + 7;
+		mainwindow_import_mbox(mbox_file);
 	} else if (!STRNCMP(buf, "search ")) {
 		FolderItem* folderItem = NULL;
 		GSList *messages = NULL;

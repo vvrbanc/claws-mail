@@ -21,8 +21,6 @@
 #include "claws-features.h"
 #endif
 
-/* This can probably be handled better, e.g. define it in config.h. */
-#define _WIN32_WINNT _WIN32_WINNT_WIN6
 #include <glib.h>
 #include <glib/gi18n.h>
 
@@ -709,7 +707,7 @@ static gboolean sock_connect_async_cb(GIOChannel *source,
 	SockConnectData *conn_data = (SockConnectData *)data;
 	gint fd;
 	gint val;
-	guint len;
+	socklen_t len;
 	SockInfo *sockinfo;
 
 	if (conn_data->io_tag == 0 && conn_data->channel == NULL)
@@ -722,7 +720,7 @@ static gboolean sock_connect_async_cb(GIOChannel *source,
 	g_io_channel_unref(source);
 
 	len = sizeof(val);
-	if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (void*)&val, &len) < 0) {
+	if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &val, &len) < 0) {
 		perror("getsockopt");
 		close(fd);
 		sock_connect_address_list_async(conn_data);
@@ -1256,6 +1254,7 @@ static gint ssl_read(gnutls_session_t ssl, gchar *buf, gint len)
 	}
 
 	while (1) {
+		errno = 0;
 		r = gnutls_record_recv(ssl, buf, len);
 		if (r > 0)
 			return r;
@@ -1273,7 +1272,10 @@ static gint ssl_read(gnutls_session_t ssl, gchar *buf, gint len)
 		case GNUTLS_E_INTERRUPTED:
 			errno = EAGAIN;
 			return -1;
-
+		case GNUTLS_E_PREMATURE_TERMINATION:
+			if (errno == 0)
+				return 0;
+			/* fall through */
 		default:
 			debug_print("Unexpected TLS read result %d\n", r);
 			errno = EIO;

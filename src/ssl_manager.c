@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2022 the Claws Mail team and Colin Leroy
+ * Copyright (C) 1999-2024 the Claws Mail team and Colin Leroy
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,6 +15,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
+
 #ifdef HAVE_CONFIG_H
 #  include "config.h"
 #include "claws-features.h"
@@ -26,7 +27,6 @@
 #include <glib/gi18n.h>
 #include <gdk/gdkkeysyms.h>
 #include <sys/types.h>
-#include <dirent.h>
 
 #include "ssl_manager.h"
 #include "ssl_certificate.h"
@@ -150,9 +150,7 @@ static GtkWidget *ssl_manager_list_view_create	(void)
 	
  	gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(model),
                                              0, GTK_SORT_ASCENDING);
-	g_object_unref(model);	
-	gtk_tree_view_set_rules_hint(list_view, prefs_common.use_stripes_everywhere);
-	
+	g_object_unref(model);
 	selector = gtk_tree_view_get_selection(list_view);
 	gtk_tree_selection_set_mode(selector, GTK_SELECTION_BROWSE);
 
@@ -217,7 +215,7 @@ void ssl_manager_create(void)
 	g_signal_connect(G_OBJECT(view_btn), "clicked",
 			 G_CALLBACK(ssl_manager_view_cb), NULL);
 
-	close_btn = gtk_button_new_with_mnemonic("_Close");
+	close_btn = gtk_button_new_with_mnemonic(_("_Close"));
 	gtk_button_set_image(GTK_BUTTON(close_btn),
 			gtk_image_new_from_icon_name("window-close", GTK_ICON_SIZE_BUTTON));
 	g_signal_connect(G_OBJECT(close_btn), "clicked",

@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 2005-2023 the Claws Mail Team and Colin Leroy
+ * Copyright (C) 2005-2024 the Claws Mail Team and Colin Leroy
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -257,8 +257,6 @@ static GtkWidget *date_format_create(GtkButton *button, void *data)
 
 	datefmt_list_view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
 	g_object_unref(G_OBJECT(store));
-	gtk_tree_view_set_rules_hint(GTK_TREE_VIEW(datefmt_list_view),
-				     prefs_common.use_stripes_everywhere);
 	gtk_widget_show(datefmt_list_view);
 	gtk_container_add(GTK_CONTAINER(scrolledwindow1), datefmt_list_view);
 
@@ -426,7 +424,7 @@ static void prefs_summaries_create_widget(PrefsPage *_page, GtkWindow *window,
 	label = gtk_label_new(_("Displayed columns"));
 	gtk_widget_show(label);
 	gtk_box_pack_start(GTK_BOX(hbox0), label, FALSE, FALSE, 0);
-	button_dispitem = gtk_button_new_with_mnemonic("_Edit");
+	button_dispitem = gtk_button_new_with_mnemonic(_("_Edit"));
 	gtk_widget_show (button_dispitem);
 	gtk_box_pack_start (GTK_BOX (hbox0), button_dispitem, FALSE, FALSE, 0);
 	g_signal_connect (G_OBJECT (button_dispitem), "clicked",
@@ -520,7 +518,7 @@ static void prefs_summaries_create_widget(PrefsPage *_page, GtkWindow *window,
 	label = gtk_label_new(_("Displayed columns"));
 	gtk_widget_show(label);
 	gtk_box_pack_start(GTK_BOX(hbox0), label, FALSE, FALSE, 0);
-	button_dispitem = gtk_button_new_with_mnemonic("_Edit");
+	button_dispitem = gtk_button_new_with_mnemonic(_("_Edit"));
 	gtk_widget_show (button_dispitem);
 	gtk_box_pack_start (GTK_BOX (hbox0), button_dispitem, FALSE, FALSE, 0);
 	g_signal_connect (G_OBJECT (button_dispitem), "clicked",

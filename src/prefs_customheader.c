@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2022 the Claws Mail team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2024 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,7 +35,6 @@
 #include "main.h"
 #include "prefs_gtk.h"
 #include "prefs_customheader.h"
-#include "prefs_common.h"
 #include "prefs_account.h"
 #include "mainwindow.h"
 #include "foldersel.h"
@@ -544,8 +543,6 @@ static void prefs_custom_header_list_view_set_row(PrefsAccount *ac)
 
 }
 
-#define B64_LINE_SIZE		57
-#define B64_BUFFSIZE		77
 static void prefs_custom_header_val_from_file_cb(void)
 {
 	gchar *filename = NULL;
@@ -846,8 +843,7 @@ static GtkWidget *prefs_custom_header_list_view_create(void)
 	model = GTK_TREE_MODEL(prefs_custom_header_create_data_store());
 	list_view = GTK_TREE_VIEW(gtk_tree_view_new_with_model(model));
 	g_object_unref(model);	
-	
-	gtk_tree_view_set_rules_hint(list_view, prefs_common.use_stripes_everywhere);
+
 	gtk_tree_view_set_reorderable(list_view, TRUE);
 	
 	selector = gtk_tree_view_get_selection(list_view);

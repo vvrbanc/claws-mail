@@ -404,8 +404,7 @@ static void cm_gdata_query_groups_ready(GDataContactsService *service, GAsyncRes
         g_string_append(str, "/base/");
         g_string_append(str, id+off+strlen("/full/"));
         g_string_append_c(str, '\0');
-        contacts_group_id = str->str;
-        g_string_free(str, FALSE);
+        contacts_group_id = g_string_free(str, FALSE);
       }
       else
         contacts_group_id = g_strdup(id);
@@ -772,13 +771,13 @@ void cm_gdata_load_contacts_cache_from_file(void)
         debug_print("Ignored contact without email address: %s\n", cached_contact->full_name ? cached_contact->full_name : "(null)");
         /* Not added to list: return allocated memory */
         if (cached_contact->full_name)
-            g_free(cached_contact->full_name);
+            g_free((gchar *) cached_contact->full_name);
         if (cached_contact->given_name)
-            g_free(cached_contact->given_name);
+            g_free((gchar *) cached_contact->given_name);
         if (cached_contact->family_name)
-            g_free(cached_contact->family_name);
+            g_free((gchar *) cached_contact->family_name);
         if (cached_contact->address)
-            g_free(cached_contact->address);
+            g_free((gchar *) cached_contact->address);
         g_free(cached_contact);
       }
     }

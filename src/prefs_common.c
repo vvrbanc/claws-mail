@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2023 the Claws Mail team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2024 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -110,6 +110,8 @@ static PrefParam param_os_specific[] = {
 	/* Message */
 	{"attach_save_directory", NULL,
 	 &prefs_common.attach_save_dir, P_STRING, NULL, NULL, NULL},
+	{"attach_save_chmod", "",
+	 &prefs_common.attach_save_chmod, P_INT, NULL, NULL, NULL},
 	{"attach_load_directory", NULL,
 	 &prefs_common.attach_load_dir, P_STRING, NULL, NULL, NULL},
 
@@ -183,6 +185,8 @@ static PrefParam param[] = {
 	{"receivewin_height", "-1", &prefs_common.receivewin_height, P_INT,
 	 NULL, NULL, NULL},
 	{"no_receive_error_panel", "FALSE", &prefs_common.no_recv_err_panel,
+	 P_BOOL, NULL, NULL, NULL}, /* deprecated */
+	{"show_receive_error_dialog", "TRUE", &prefs_common.show_recv_err_dialog,
 	 P_BOOL, NULL, NULL, NULL},
 	{"close_receive_dialog", "TRUE", &prefs_common.close_recv_dialog,
 	 P_BOOL, NULL, NULL, NULL},
@@ -241,7 +245,8 @@ static PrefParam param[] = {
 	 NULL, NULL, NULL},
 	{"type_any_header", "FALSE", &prefs_common.type_any_header, P_BOOL,
 	 NULL, NULL, NULL},
-	
+	{"notify_pasted_attachments", "TRUE", &prefs_common.notify_pasted_attachments, P_BOOL,
+	 NULL, NULL, NULL},
 
 	{"linewrap_length", "72", &prefs_common.linewrap_len, P_INT,
 	 NULL, NULL, NULL},
@@ -801,6 +806,8 @@ static PrefParam param[] = {
 	 NULL, NULL, NULL},
 	{"attach_save_directory", NULL,
 	 &SPECIFIC_PREFS.attach_save_dir, P_STRING, NULL, NULL, NULL},
+	{"attach_save_chmod", "",
+	 &SPECIFIC_PREFS.attach_save_chmod, P_INT, NULL, NULL, NULL},
 	{"attach_load_directory", NULL,
 	 &SPECIFIC_PREFS.attach_load_dir, P_STRING, NULL, NULL, NULL},
 
@@ -1317,6 +1324,9 @@ static PrefParam param[] = {
 	{"qs_press_timeout", "500", &prefs_common.qs_press_timeout, P_INT,
 	 NULL, NULL, NULL},
 
+	 {"passphrase_dialog_msg_title_switch", "FALSE", &prefs_common.passphrase_dialog_msg_title_switch,
+	  P_BOOL, NULL, NULL, NULL},
+
 	{NULL, NULL, NULL, P_OTHER, NULL, NULL, NULL}
 };
 
@@ -1447,6 +1457,11 @@ static void prefs_common_save_history_to_dir(const gchar *dirname, const gchar *
 		goto out;
 	}
 
+	if (change_file_mode_rw(fp, history) < 0) {
+		FILE_OP_ERROR(history, "chmod");
+		g_warning("can't change file mode: %s", history);
+	}
+	
 	for (cur = list; cur != NULL; cur = cur->next) {
 		TRY(claws_fputs((gchar *)cur->data, fp) != EOF &&
 		    claws_fputc('\n', fp) != EOF);

@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 2002-2014 by the Claws Mail Team and Hiroyuki Yamamoto
+ * Copyright (C) 2002-2023 by the Claws Mail Team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,7 +14,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
- * 
  */
 
 #ifdef HAVE_CONFIG_H
@@ -312,22 +311,15 @@ MatcherProp *matcherprop_new(gint criteria, const gchar *header,
 			      gint matchtype, const gchar *expr,
 			      int value)
 {
-	MatcherProp *prop;
+	MatcherProp *prop = g_new0(MatcherProp, 1);
 
- 	prop = g_new0(MatcherProp, 1);
 	prop->criteria = criteria;
-	prop->header = header != NULL ? g_strdup(header) : NULL;
-
-	prop->expr = expr != NULL ? g_strdup(expr) : NULL;
-
 	prop->matchtype = matchtype;
-#ifndef G_OS_WIN32
-	prop->preg = NULL;
-#endif
-	prop->casefold_expr = NULL;
 	prop->value = value;
-	prop->error = 0;
-
+	if (header)
+		prop->header = g_strdup(header);
+	if (expr)
+	    prop->expr = g_strdup(expr);
 	return prop;
 }
 
@@ -341,13 +333,11 @@ void matcherprop_free(MatcherProp *prop)
 {
 	g_free(prop->expr);
 	g_free(prop->header);
-#ifndef G_OS_WIN32
 	if (prop->preg != NULL) {
 		regfree(prop->preg);
 		g_free(prop->preg);
 	}
 	g_free(prop->casefold_expr);
-#endif
 	g_free(prop);
 }
 
@@ -363,16 +353,15 @@ MatcherProp *matcherprop_copy(const MatcherProp *src)
 	MatcherProp *prop = g_new0(MatcherProp, 1);
 	
 	prop->criteria = src->criteria;
-	prop->header = src->header ? g_strdup(src->header) : NULL;
-	prop->expr = src->expr ? g_strdup(src->expr) : NULL;
 	prop->matchtype = src->matchtype;
-	
-#ifndef G_OS_WIN32
-	prop->preg = NULL; /* will be re-evaluated */
-#endif
-	prop->casefold_expr = src->casefold_expr ? g_strdup(src->casefold_expr) : NULL;
 	prop->value = src->value;
 	prop->error = src->error;	
+	if (src->header)
+		prop->header = g_strdup(src->header);
+	if (src->expr)
+		prop->expr = g_strdup(src->expr);
+	if (src->casefold_expr)
+		prop->casefold_expr = g_strdup(src->casefold_expr);
 	return prop;		
 }
 
@@ -510,6 +499,7 @@ static gboolean matcherprop_string_match(MatcherProp *prop, const gchar *str,
 				    | ((prop->matchtype == MATCHTYPE_REGEXPCASE)
 				    ? REG_ICASE : 0)) != 0) {
 				prop->error = 1;
+                regfree(prop->preg);
 				g_free(prop->preg);
 				prop->preg = NULL;
 			}
@@ -1548,10 +1538,10 @@ static gboolean matcherlist_match_headers(MatcherList *matchers, FILE *fp)
 					else
 						match = MATCH_ONE;
 				} else {
-					/* further call to matcherprop_match_one_header() can't match
-					   and it irrelevant, so: don't alter the match result */
-					procheader_header_free(header);
-					continue;
+					if (!header)
+						continue;
+					/* matching one address header exactly, is that the right one?
+					   further call to matcherprop_match_one_header() will tell us */
 				}
 				procheader_header_free(header);
 			}

@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2021 the Claws Mail team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2024 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -273,7 +273,7 @@ const gchar *procmime_mimeinfo_get_parameter(MimeInfo *mimeinfo, const gchar *na
 		strretchomp(lastline);						\
 		llen = strlen(lastline);					\
 		if (lastline[llen-1] == ' ' && !account_sigsep_matchlist_str_found(lastline, "%s") &&	\
-		    !(llen == 2 && lastline[1] == ' ' && strchr(prefs_common.quote_chars, lastline[0]))) {					\
+		    !(llen >= 2 && lastline[1] == ' ' && strchr(prefs_common.quote_chars, lastline[0]))) {					\
 			/* this is flowed */					\
 			if (delsp)						\
 				lastline[llen-1] = '\0';			\
@@ -442,7 +442,6 @@ gboolean procmime_decode_content(MimeInfo *mimeinfo)
 			}
 		}
 		if (tmpfp != outfp) {
-			ftruncate(fileno(tmpfp), ftell(tmpfp));
 			claws_fclose(tmpfp);
 		}
 	} else if (encoding == ENC_X_UUENCODE) {
@@ -480,7 +479,6 @@ gboolean procmime_decode_content(MimeInfo *mimeinfo)
 			g_warning("write error");
 	}
 
-	ftruncate(fileno(outfp), ftell(outfp));
 	claws_fclose(outfp);
 	claws_fclose(infp);
 
@@ -508,9 +506,6 @@ gboolean procmime_decode_content(MimeInfo *mimeinfo)
 
 	return TRUE;
 }
-
-#define B64_LINE_SIZE		57
-#define B64_BUFFSIZE		77
 
 gboolean procmime_encode_content(MimeInfo *mimeinfo, EncodingType encoding)
 {
@@ -767,7 +762,6 @@ gboolean procmime_scan_text_content(MimeInfo *mimeinfo,
 	gchar buf[BUFFSIZE];
 	gchar *str;
 	gboolean scan_ret = FALSE;
-	gchar *tmpfile = NULL;
 	int r;
 
 	cm_return_val_if_fail(mimeinfo != NULL, TRUE);
@@ -776,27 +770,15 @@ gboolean procmime_scan_text_content(MimeInfo *mimeinfo,
 	if (!procmime_decode_content(mimeinfo))
 		return TRUE;
 
-#if HAVE_FMEMOPEN
-	tmpfp = fmemopen(NULL, mimeinfo->length * 2, "w+");
-#else
-	tmpfile = procmime_get_tmp_file_name(mimeinfo);
-	if (tmpfile == NULL) {
-		g_warning("no filename");
-		return TRUE;
-	}
-
-	tmpfp = claws_fopen(tmpfile, "w+");
-#endif
+	tmpfp = my_tmpfile();
 
 	if (tmpfp == NULL) {
-		g_free(tmpfile);
-		FILE_OP_ERROR(tmpfile, "open");
+		FILE_OP_ERROR("tmpfile", "open");
 		return TRUE;
 	}
 
 	if ((r = procmime_get_part_to_stream(tmpfp, mimeinfo)) < 0) {
 		g_warning("procmime_get_part_to_stream error %d", r);
-		g_free(tmpfile);
 		return TRUE;
 	}
 
@@ -862,11 +844,6 @@ gboolean procmime_scan_text_content(MimeInfo *mimeinfo,
 
 	claws_fclose(tmpfp);
 
-#if !HAVE_FMEMOPEN
-	claws_unlink(tmpfile);
-	g_free(tmpfile);
-#endif
-
 	return scan_ret;
 }
 
@@ -890,7 +867,6 @@ FILE *procmime_get_text_content(MimeInfo *mimeinfo)
 
 	err = procmime_scan_text_content(mimeinfo, scan_fputs_cb, outfp);
 
-	ftruncate(fileno(outfp), ftell(outfp));
 	rewind(outfp);
 	if (err == TRUE) {
 		claws_fclose(outfp);
@@ -903,36 +879,18 @@ FILE *procmime_get_text_content(MimeInfo *mimeinfo)
 FILE *procmime_get_binary_content(MimeInfo *mimeinfo)
 {
 	FILE *outfp;
-#if !HAVE_FMEMOPEN
-	gchar *tmpfile = NULL;
-#endif
 
 	cm_return_val_if_fail(mimeinfo != NULL, NULL);
 
 	if (!procmime_decode_content(mimeinfo))
 		return NULL;
 
-#if HAVE_FMEMOPEN
-	outfp = fmemopen(NULL, mimeinfo->length * 2, "w+");
-#else
-	tmpfile = procmime_get_tmp_file_name(mimeinfo);
-	if (tmpfile == NULL) {
-		g_warning("no filename");
-		return NULL;
-	}
-
-	outfp = claws_fopen(tmpfile, "w+");
-
-	if (tmpfile != NULL) {
-		g_unlink(tmpfile);
-		g_free(tmpfile);
-	}
-#endif
+	outfp = my_tmpfile();
 
 	if (procmime_get_part_to_stream(outfp, mimeinfo) < 0) {
 		return NULL;
 	}
-	ftruncate(fileno(outfp), ftell(outfp));
+
 	return outfp;
 }
 
@@ -1403,7 +1361,9 @@ static struct TypeTable mime_type_table[] = {
 	{"image", MIMETYPE_IMAGE},
 	{"audio", MIMETYPE_AUDIO},
 	{"video", MIMETYPE_VIDEO},
+	{"font",  MIMETYPE_FONT},
 	{"model", MIMETYPE_MODEL},
+	{"chemical", MIMETYPE_CHEMICAL},
 	{"application", MIMETYPE_APPLICATION},
 	{"message", MIMETYPE_MESSAGE},
 	{"multipart", MIMETYPE_MULTIPART},
@@ -2174,7 +2134,9 @@ static gchar *typenames[] = {
     "application",
     "message",
     "multipart",
+    "font",
     "model",
+    "chemical",
     "unknown",
 };
 

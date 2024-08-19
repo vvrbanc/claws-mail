@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2022 the Claws Mail team and Colin Leroy
+ * Copyright (C) 1999-2024 the Claws Mail team and Colin Leroy
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,6 +15,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
+
 #ifdef HAVE_CONFIG_H
 #  include "config.h"
 #include "claws-features.h"
@@ -25,7 +26,6 @@
 #include <glib/gi18n.h>
 #include <gdk/gdkkeysyms.h>
 #include <sys/types.h>
-#include <dirent.h>
 
 #include "manage_window.h"
 #include "utils.h"
@@ -142,9 +142,7 @@ static GtkWidget *uri_opener_list_view_create(void)
 	model = GTK_TREE_MODEL(uri_opener_create_data_store());
 	list_view = GTK_TREE_VIEW(gtk_tree_view_new_with_model(model));
 	g_object_unref(model);	
-	
-	gtk_tree_view_set_rules_hint(list_view, prefs_common.use_stripes_everywhere);
-	
+
 	selector = gtk_tree_view_get_selection(list_view);
 	gtk_tree_selection_set_mode(selector, GTK_SELECTION_MULTIPLE);
 

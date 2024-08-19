@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 2003-2022 Match Grun and the Claws Mail team
+ * Copyright (C) 2003-2024 the Claws Mail team and Match Grun
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,7 +14,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
- *
  */
 
 /*
@@ -26,7 +25,6 @@
 #endif
 
 #include <sys/stat.h>
-#include <dirent.h>
 #include <errno.h>
 #include <time.h>
 #include <string.h>
@@ -40,11 +38,6 @@
 #include "ldif.h"
 #include "file-utils.h"
 
-
-#ifdef MKDIR_TAKES_ONE_ARG
-#undef mkdir
-#define mkdir(a,b) mkdir(a)
-#endif
 
 #define DFL_DIR_CLAWS_OUT  "claws-mail-out"
 #define DFL_FILE_CLAWS_OUT "addressbook.ldif"
@@ -466,7 +459,6 @@ static gboolean exportldif_fmt_person(
 			ldif_write_value(
 				stream, LDIF_TAG_LASTNAME, sn );
 			g_free(sn);
-			sn = NULL;
 			ldif_write_value(
 				stream, LDIF_TAG_FIRSTNAME, person->firstName );
 
@@ -476,7 +468,6 @@ static gboolean exportldif_fmt_person(
 				displayName = g_strdup(person->nickName);
 			ldif_write_value(stream, LDIF_TAG_NICKNAME, displayName);
 			g_free(displayName);
-			displayName = NULL;
 
 			/* Format E-Mail */
 			exportldif_fmt_email( person, stream );
@@ -586,7 +577,7 @@ gboolean exportldif_create_dir( ExportLdifCtl *ctl ) {
 	gboolean retVal = FALSE;
 
 	ctl->rcCreate = 0;
-	if( mkdir( ctl->dirOutput, S_IRWXU ) == 0 ) {
+	if( g_mkdir( ctl->dirOutput, S_IRWXU ) == 0 ) {
 		retVal = TRUE;
 	}
 	else {

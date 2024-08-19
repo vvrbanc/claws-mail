@@ -1,7 +1,7 @@
 /*
  * Claws Mail templates subsystem 
  * Copyright (C) 2001 Alexander Barinov
- * Copyright (C) 2001-2022 The Claws Mail team
+ * Copyright (C) 2001-2024 The Claws Mail team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,6 @@
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>
 #include <string.h>
-#include <dirent.h>
 #include <sys/stat.h>
 
 #include "template.h"
@@ -1200,8 +1199,7 @@ static GtkWidget *prefs_template_list_view_create(void)
 			 G_CALLBACK(prefs_template_list_popup_menu), list_view);
 	g_signal_connect(G_OBJECT(list_view), "button-press-event",
 			G_CALLBACK(prefs_template_list_btn_pressed), list_view);
-	
-	gtk_tree_view_set_rules_hint(list_view, prefs_common.use_stripes_everywhere);
+
 	gtk_tree_view_set_reorderable(list_view, TRUE);
 
 	selector = gtk_tree_view_get_selection(list_view);

@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2023 the Claws Mail team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2024 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -660,11 +660,11 @@ static MsgInfo *parse_stream(void *data, gboolean isstring, MsgFlags flags,
 	msginfo->inreplyto = NULL;
 
 	if (avatar_hook_id == HOOK_NONE &&
-	    (prefs_common.enable_avatars && (AVATARS_ENABLE_CAPTURE || AVATARS_ENABLE_RENDER))) {
+	    (prefs_common.enable_avatars & (AVATARS_ENABLE_CAPTURE | AVATARS_ENABLE_RENDER))) {
 		avatar_hook_id = hooks_register_hook(AVATAR_HEADER_UPDATE_HOOKLIST,
 						     avatar_from_some_face, NULL);
 	} else if (avatar_hook_id != HOOK_NONE &&
-		   !(prefs_common.enable_avatars && AVATARS_ENABLE_CAPTURE)) {
+		   !(prefs_common.enable_avatars & AVATARS_ENABLE_CAPTURE)) {
 		hooks_unregister_hook(AVATAR_HEADER_UPDATE_HOOKLIST, avatar_hook_id);
 		avatar_hook_id = HOOK_NONE;
 	}
@@ -912,7 +912,56 @@ gchar *procheader_get_fromname(const gchar *str)
 	return name;
 }
 
-static gint procheader_scan_date_string(const gchar *str,
+static gint procheader_remove_comment_in_date_string(gchar *o_str)
+{
+	gchar str[strlen(o_str)+1];
+	int i, j = 0;
+	int in_comment_nest_level = 0;
+	gboolean flag_escape_backslash = FALSE;
+
+	for (i=0; i < strlen(o_str); i++) {
+		switch (o_str[i]) {
+		case '(':
+			in_comment_nest_level++;
+			if (in_comment_nest_level > 16) {
+				str[j] = '\0';
+				return TRUE;
+			}
+			continue;
+		case '\\':
+			if (in_comment_nest_level > 0) {
+				flag_escape_backslash = TRUE;
+				continue;
+			}
+			break;
+		case ')':
+			if (flag_escape_backslash == TRUE) {
+				flag_escape_backslash = FALSE;
+				continue;
+			}
+			in_comment_nest_level--;
+			if (in_comment_nest_level < 0) {
+				str[j] = '\0';
+				return TRUE;
+			}
+			continue;
+		default:
+			if (in_comment_nest_level > 0) {
+				if (flag_escape_backslash == TRUE)
+					flag_escape_backslash = FALSE;
+				continue;
+			}
+			break;
+		}
+		str[j++] = o_str[i];
+	}
+	str[j] = '\0';
+	strcpy(o_str, str);
+	return TRUE;
+}
+
+
+static gint procheader_scan_date_string(const gchar *o_str,
 					gchar *weekday, gint *day,
 					gchar *month, gint *year,
 					gint *hh, gint *mm, gint *ss,
@@ -925,8 +974,14 @@ static gint procheader_scan_date_string(const gchar *str,
 	gchar offset_sign, zonestr[7];
 	gchar sep1;
 
-	if (str == NULL)
+	if (o_str == NULL)
 		return -1;
+
+	gchar str[strlen(o_str)+1];
+
+	strcpy(str, o_str);
+	if (strchr(str, '(') != NULL)
+		procheader_remove_comment_in_date_string(str);
 
 	result = sscanf(str, "%10s %d %9s %d %2d:%2d:%2d %6s",
 			weekday, day, month, year, hh, mm, ss, zone);
@@ -1302,7 +1357,7 @@ gboolean procheader_header_is_internal(const gchar *hdr_name)
 	const gchar *internal_hdrs[] = {
 		"AF:", "NF:", "PS:", "SRH:", "SFN:", "DSR:", "MID:", "CFG:",
 		"PT:", "S:", "RQ:", "SSV:", "NSV:", "SSH:", "R:", "MAID:",
-		"SCF:", "RMID:", "FMID:", "NAID:",
+		"SCF:", "RRCPT:", "RMID:", "FMID:", "NAID:",
 		"X-Claws-Account-Id:",
 		"X-Claws-Sign:",
 		"X-Claws-Encrypt:",

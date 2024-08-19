@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2022 the Claws Mail team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2024 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -48,6 +48,7 @@
 #include "quote_fmt.h"
 #include "combobox.h"
 #include "stock_pixmap.h"
+#include "file-utils.h"
 
 #if USE_ENCHANT
 #include "gtkaspell.h"
@@ -193,8 +194,6 @@ static gboolean general_save_recurse_func(GNode *node, gpointer data);
 static gboolean compose_save_recurse_func(GNode *node, gpointer data);
 static gboolean templates_save_recurse_func(GNode *node, gpointer data);
 
-static gint prefs_folder_item_chmod_mode		(gchar *folder_chmod);
-
 static void clean_cache_cb(GtkWidget *widget, gpointer data);
 static void folder_regexp_test_cb(GtkWidget *widget, gpointer data);
 static void folder_regexp_set_subject_example_cb(GtkWidget *widget, gpointer data);
@@ -322,7 +321,7 @@ static void prefs_folder_item_general_create_widget_func(PrefsPage * page_,
 
 	COMBOBOX_ADD (folder_type_menu, _("Normal"),  F_NORMAL);
 	COMBOBOX_ADD (folder_type_menu, _("Inbox"),  F_INBOX);
-	COMBOBOX_ADD (folder_type_menu, _("Outbox"),  F_OUTBOX);
+	COMBOBOX_ADD (folder_type_menu, _("Sent"),  F_OUTBOX);
 	COMBOBOX_ADD (folder_type_menu, _("Drafts"),  F_DRAFT);
 	COMBOBOX_ADD (folder_type_menu, _("Queue"),  F_QUEUE);
 	COMBOBOX_ADD (folder_type_menu, _("Trash"),  F_TRASH);
@@ -746,7 +745,7 @@ static void general_save_folder_prefs(FolderItem *folder, FolderItemGeneralPage 
 		prefs->enable_folder_chmod = 
 			gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(page->checkbtn_folder_chmod));
 		buf = gtk_editable_get_chars(GTK_EDITABLE(page->entry_folder_chmod), 0, -1);
-		prefs->folder_chmod = prefs_folder_item_chmod_mode(buf);
+		prefs->folder_chmod = prefs_chmod_mode(buf);
 		g_free(buf);
 	}
 
@@ -1799,21 +1798,6 @@ static void prefs_folder_item_templates_save_func(PrefsPage *page_)
 
 }
 
-static gint prefs_folder_item_chmod_mode(gchar *folder_chmod) 
-{
-	gint newmode = 0;
-	gchar *tmp;
-
-	if (folder_chmod) {
-		newmode = strtol(folder_chmod, &tmp, 8);
-		if (!(*(folder_chmod) && !(*tmp)))
-			newmode = 0;
-	}
-
-	return newmode;
-}
-
-
 static void clean_cache_cb(GtkWidget *widget, gpointer data)
 {
 	FolderItemGeneralPage *page = (FolderItemGeneralPage *) data;
@@ -1849,10 +1833,10 @@ static regex_t *summary_compile_simplify_regexp(gchar *simplify_subject_regexp)
 
 	preg = g_new0(regex_t, 1);
 
-	err = string_match_precompile(simplify_subject_regexp, 
-				      preg, REG_EXTENDED);
+	err = regcomp(preg, simplify_subject_regexp, REG_EXTENDED);
 	if (err) {
 		regerror(err, preg, buf, BUFFSIZE);
+		regfree(preg);
 		g_free(preg);
 		preg = NULL;
 	}

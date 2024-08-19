@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2022 the Claws Mail team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2024 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -188,9 +188,6 @@ typedef enum {
     NO_FIELD_PRESENT
 } MailField;
 
-#define B64_LINE_SIZE		57
-#define B64_BUFFSIZE		77
-
 #define MAX_REFERENCES_LEN	999
 
 #define COMPOSE_DRAFT_TIMEOUT_UNSET -1
@@ -333,7 +330,8 @@ static ComposeQueueResult compose_queue_sub			(Compose	*compose,
 						 gboolean	perform_checks,
 						 gboolean 	remove_reedit_target);
 static int compose_add_attachments		(Compose	*compose,
-						 MimeInfo	*parent);
+						 MimeInfo	*parent,
+						 gint 		 action);
 static gchar *compose_get_header		(Compose	*compose);
 static gchar *compose_get_manual_headers_info	(Compose	*compose);
 
@@ -374,11 +372,11 @@ static void compose_set_ext_editor_sensitive	(Compose	*compose,
 						 gboolean	 sensitive);
 static gboolean compose_get_ext_editor_cmd_valid();
 static gboolean compose_get_ext_editor_uses_socket();
-#ifndef G_OS_WIN32
+#ifdef GDK_WINDOWING_X11
 static gboolean compose_ext_editor_plug_removed_cb
 						(GtkSocket      *socket,
 						 Compose        *compose);
-#endif /* G_OS_WIN32 */
+#endif /* GDK_WINDOWING_X11 */
 
 static void compose_undo_state_changed		(UndoMain	*undostruct,
 						 gint		 undo_state,
@@ -607,6 +605,8 @@ static GtkActionEntry compose_popup_entries[] =
 	{"Compose/Properties", NULL, N_("_Properties..."), NULL, NULL, G_CALLBACK(compose_attach_property) },
 };
 
+/* make sure to keep the key bindings in the tables below in sync with the default_menurc[] in prefs_other.c
+   as well as with tables in messageview.c */
 static GtkActionEntry compose_entries[] =
 {
 	{"Menu",                          NULL, "Menu", NULL, NULL, NULL },
@@ -657,7 +657,7 @@ static GtkActionEntry compose_entries[] =
 	{"Edit/Advanced/BackWord",        NULL, N_("Move a word backward"), NULL, NULL, G_CALLBACK(compose_advanced_action_cb) }, /*COMPOSE_CALL_ADVANCED_ACTION_MOVE_BACKWARD_WORD*/
 	{"Edit/Advanced/ForwWord",        NULL, N_("Move a word forward"), NULL, NULL, G_CALLBACK(compose_advanced_action_cb) }, /*COMPOSE_CALL_ADVANCED_ACTION_MOVE_FORWARD_WORD*/
 	{"Edit/Advanced/BegLine",         NULL, N_("Move to beginning of line"), NULL, NULL, G_CALLBACK(compose_advanced_action_cb) }, /*COMPOSE_CALL_ADVANCED_ACTION_MOVE_BEGINNING_OF_LINE*/
-	{"Edit/Advanced/EndLine",         NULL, N_("Move to end of line"), NULL, NULL, G_CALLBACK(compose_advanced_action_cb) }, /*COMPOSE_CALL_ADVANCED_ACTION_MOVE_END_OF_LINE*/
+	{"Edit/Advanced/EndLine",         NULL, N_("Move to end of line"), "<control>E", NULL, G_CALLBACK(compose_advanced_action_cb) }, /*COMPOSE_CALL_ADVANCED_ACTION_MOVE_END_OF_LINE*/
 	{"Edit/Advanced/PrevLine",        NULL, N_("Move to previous line"), "<control>P", NULL, G_CALLBACK(compose_advanced_action_cb) }, /*COMPOSE_CALL_ADVANCED_ACTION_MOVE_PREVIOUS_LINE*/
 	{"Edit/Advanced/NextLine",        NULL, N_("Move to next line"), "<control>N", NULL, G_CALLBACK(compose_advanced_action_cb) }, /*COMPOSE_CALL_ADVANCED_ACTION_MOVE_NEXT_LINE*/
 	{"Edit/Advanced/DelBackChar",     NULL, N_("Delete a character backward"), "<control>H", NULL, G_CALLBACK(compose_advanced_action_cb) }, /*COMPOSE_CALL_ADVANCED_ACTION_DELETE_BACKWARD_CHARACTER*/
@@ -711,7 +711,7 @@ static GtkActionEntry compose_entries[] =
 	{"Options/Encoding/Thai",         NULL, N_("Thai"), NULL, NULL, NULL },
 
 /* Tools menu */
-	{"Tools/AddressBook",             NULL, N_("_Address book"), NULL, NULL, G_CALLBACK(compose_address_cb) }, 
+	{"Tools/AddressBook",             NULL, N_("_Address book"), "<shift><control>A", NULL, G_CALLBACK(compose_address_cb) }, 
 
 	{"Tools/Template",                NULL, N_("_Template"), NULL, NULL, NULL },
 	{"Tools/Template/PlaceHolder",    NULL, "Placeholder", NULL, NULL, G_CALLBACK(compose_nothing_cb) },
@@ -1752,6 +1752,16 @@ Compose *compose_forward(PrefsAccount *account, MsgInfo *msginfo,
 	else
 		mode = COMPOSE_FORWARD;
 	compose = compose_create(account, msginfo->folder, mode, batch);
+
+	cm_toggle_menu_set_active_full(compose->ui_manager, "Menu/Options/RemoveReferences", TRUE);
+	cm_menu_set_sensitive_full(compose->ui_manager, "Menu/Options/RemoveReferences", TRUE);
+
+	if (compose_parse_header(compose, msginfo) < 0) {
+		compose->updating = FALSE;
+		compose_destroy(compose);
+		return NULL;
+	}
+
 	compose_apply_folder_privacy_settings(compose, msginfo->folder);
 
 	compose->updating = TRUE;
@@ -2578,11 +2588,11 @@ Compose *compose_redirect(PrefsAccount *account, MsgInfo *msginfo,
 
 	compose_colorize_signature(compose);
 
-	
 	cm_menu_set_sensitive_full(compose->ui_manager, "Popup/Compose/Add", FALSE);
 	cm_menu_set_sensitive_full(compose->ui_manager, "Popup/Compose/Remove", FALSE);
 	cm_menu_set_sensitive_full(compose->ui_manager, "Popup/Compose/Properties", FALSE);
 
+	cm_menu_set_sensitive_full(compose->ui_manager, "Menu/Message/SendLater", FALSE);
 	cm_menu_set_sensitive_full(compose->ui_manager, "Menu/Message/Save", FALSE);
 	cm_menu_set_sensitive_full(compose->ui_manager, "Menu/Message/InsertFile", FALSE);
 	cm_menu_set_sensitive_full(compose->ui_manager, "Menu/Message/AttachFile", FALSE);
@@ -2593,6 +2603,8 @@ Compose *compose_redirect(PrefsAccount *account, MsgInfo *msginfo,
 	cm_menu_set_sensitive_full(compose->ui_manager, "Menu/Tools/ShowRuler", FALSE);
 	cm_menu_set_sensitive_full(compose->ui_manager, "Menu/Tools/Actions", FALSE);
 	
+	if (compose->toolbar->sendl_btn)
+		gtk_widget_set_sensitive(compose->toolbar->sendl_btn, FALSE);
 	if (compose->toolbar->draft_btn)
 		gtk_widget_set_sensitive(compose->toolbar->draft_btn, FALSE);
 	if (compose->toolbar->insert_btn)
@@ -3006,7 +3018,10 @@ static gint compose_parse_header(Compose *compose, MsgInfo *msginfo)
 				compose->folder->stype ==  F_DRAFT)
 			compose->msgid = g_strdup(msginfo->msgid);
 	} else {
-		if (msginfo->msgid && *msginfo->msgid)
+		if (msginfo->msgid && *msginfo->msgid &&
+		    (compose->mode != COMPOSE_FORWARD &&
+		     compose->mode != COMPOSE_FORWARD_INLINE &&
+		     compose->mode != COMPOSE_FORWARD_AS_ATTACH))
 			compose->inreplyto = g_strdup(msginfo->msgid);
 
 		if (!compose->references) {
@@ -3062,7 +3077,6 @@ static gchar *compose_parse_references(const gchar *ref, const gchar *msgid)
 {
 	GSList *ref_id_list, *cur;
 	GString *new_ref;
-	gchar *new_ref_str;
 
 	ref_id_list = references_list_append(NULL, ref);
 	if (!ref_id_list) return NULL;
@@ -3100,10 +3114,7 @@ static gchar *compose_parse_references(const gchar *ref, const gchar *msgid)
 
 	slist_free_strings_full(ref_id_list);
 
-	new_ref_str = new_ref->str;
-	g_string_free(new_ref, FALSE);
-
-	return new_ref_str;
+	return g_string_free(new_ref, FALSE);
 }
 
 static gchar *compose_quote_fmt(Compose *compose, MsgInfo *msginfo,
@@ -3779,6 +3790,10 @@ static ComposeInsertResult compose_insert_file(Compose *compose, const gchar *fi
 		compose->autowrap = prev_autowrap;
 		if (compose->autowrap)
 			compose_wrap_all(compose);
+	} else {
+		gchar *filename = g_path_get_basename(file);
+		debug_print("Can't insert file '%s' (invalid character)\n", filename);
+		g_free(filename);
 	}
 
 	g_string_free(file_contents, TRUE);
@@ -4176,10 +4191,9 @@ static gchar * compose_get_itemized_chars(GtkTextBuffer *buffer,
 	gunichar wc;
 	gint len = 0;
 	GString *item_chars = g_string_new("");
-	gchar *str = NULL;
 
 	if (gtk_text_iter_ends_line(&iter)) {
-		g_string_free(item_chars, FALSE);
+		g_string_free(item_chars, TRUE);
 		return NULL;
 	}
 
@@ -4194,9 +4208,7 @@ static gchar * compose_get_itemized_chars(GtkTextBuffer *buffer,
 		g_string_append_unichar(item_chars, wc);
 	}
 
-	str = item_chars->str;
-	g_string_free(item_chars, FALSE);
-	return str;
+	return g_string_free(item_chars, FALSE);
 }
 
 /* return the number of spaces at a line's start */
@@ -5839,6 +5851,29 @@ static gint compose_write_to_file(Compose *compose, FILE *fp, gint action, gbool
 	}
 	g_free(chars);
 
+	/* check for line length limit */
+	if (action == COMPOSE_WRITE_FOR_SEND &&
+	    encoding != ENC_QUOTED_PRINTABLE && encoding != ENC_BASE64 &&
+	    check_line_length(buf, 1000, &line) < 0) {
+		if (encoding == ENC_8BIT) {
+			AlertValue aval;
+
+			msg = g_strdup_printf
+				(_("Line %d exceeds the line length limit (998 bytes).\n"
+				   "The contents of the message might be broken on the way "
+				   "to the recipient."), line + 1);
+			aval = alertpanel(_("Warning"), msg, NULL, _("Send safely"), NULL, _("Send as-is"),
+					NULL, NULL, ALERTFOCUS_FIRST);
+			g_free(msg);
+			if (aval != G_ALERTALTERNATE)
+				encoding = ENC_QUOTED_PRINTABLE;
+		} else {
+			debug_print("Line %d exceeds the line length limit (998 bytes), "
+				    "switching to QP transfer encoding\n", line + 1);
+			encoding = ENC_QUOTED_PRINTABLE;
+		}
+	}
+	
 	if (prefs_common.rewrite_first_from && (encoding == ENC_8BIT || encoding == ENC_7BIT)) {
 		if (!strncmp(buf, "From ", sizeof("From ")-1) ||
 		    strstr(buf, "\nFrom ") != NULL) {
@@ -5866,26 +5901,6 @@ static gint compose_write_to_file(Compose *compose, FILE *fp, gint action, gbool
 	debug_print("main text: %" G_GSIZE_FORMAT " bytes encoded as %s in %d\n",
 		strlen(buf), out_codeset, encoding);
 
-	/* check for line length limit */
-	if (action == COMPOSE_WRITE_FOR_SEND &&
-	    encoding != ENC_QUOTED_PRINTABLE && encoding != ENC_BASE64 &&
-	    check_line_length(buf, 1000, &line) < 0) {
-		AlertValue aval;
-
-		msg = g_strdup_printf
-			(_("Line %d exceeds the line length limit (998 bytes).\n"
-			   "The contents of the message might be broken on the way to the delivery.\n"
-			   "\n"
-			   "Send it anyway?"), line + 1);
-		aval = alertpanel(_("Warning"), msg, NULL, _("_Cancel"), NULL, _("_OK"),
-				  NULL, NULL, ALERTFOCUS_FIRST);
-		g_free(msg);
-		if (aval != G_ALERTALTERNATE) {
-			g_free(buf);
-			return COMPOSE_QUEUE_ERROR_NO_MSG;
-		}
-	}
-	
 	if (encoding != ENC_UNKNOWN)
 		procmime_encode_content(mimetext, encoding);
 
@@ -5911,7 +5926,7 @@ static gint compose_write_to_file(Compose *compose, FILE *fp, gint action, gbool
 		g_node_append(mimempart->node, mimetext->node);
 		g_node_append(mimemsg->node, mimempart->node);
 
-		if (compose_add_attachments(compose, mimempart) < 0)
+		if (compose_add_attachments(compose, mimempart, action) < 0)
 			return COMPOSE_QUEUE_ERROR_NO_MSG;
 	} else
 		g_node_append(mimemsg->node, mimetext->node);
@@ -6399,7 +6414,7 @@ static ComposeQueueResult compose_queue_sub(Compose *compose, gint *msgnum, Fold
 	return COMPOSE_QUEUE_SUCCESS;
 }
 
-static int compose_add_attachments(Compose *compose, MimeInfo *parent)
+static int compose_add_attachments(Compose *compose, MimeInfo *parent, gint action)
 {
 	AttachInfo *ainfo;
 	GtkTreeView *tree_view = GTK_TREE_VIEW(compose->attach_clist);
@@ -6425,8 +6440,8 @@ static int compose_add_attachments(Compose *compose, MimeInfo *parent)
 		
 		if (!is_file_exist(ainfo->file)) {
 			gchar *msg = g_strdup_printf(_("Attachment %s doesn't exist anymore. Ignore?"), ainfo->file);
-			AlertValue val = alertpanel_full(_("Warning"), msg,
-							 NULL, _("Cancel sending"),
+			AlertValue val = alertpanel_full(_("Warning"), msg, NULL,
+							 action == COMPOSE_WRITE_FOR_STORE? _("Cancel drafting"): _("Cancel sending"),
 							 NULL, _("Ignore attachment"), NULL, NULL,
 							 ALERTFOCUS_FIRST, FALSE, NULL, ALERT_WARNING);
 			g_free(msg);
@@ -6984,10 +6999,7 @@ static gchar *compose_get_header(Compose *compose)
 		g_free(headername_wcolon);		
 	}
 
-	str = header->str;
-	g_string_free(header, FALSE);
-
-	return str;
+	return g_string_free(header, FALSE);
 }
 
 #undef IS_IN_CUSTOM_HEADER
@@ -7500,8 +7512,6 @@ static GtkWidget *compose_create_attach(Compose *compose)
 			 COL_NAME, NULL);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(attach_clist), column);
 
-	gtk_tree_view_set_rules_hint(GTK_TREE_VIEW(attach_clist),
-				     prefs_common.use_stripes_everywhere);
 	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(attach_clist));
 	gtk_tree_selection_set_mode(selection, GTK_SELECTION_MULTIPLE);
 
@@ -9630,11 +9640,11 @@ static gboolean compose_can_autosave(Compose *compose)
 static void compose_exec_ext_editor(Compose *compose)
 {
 	gchar *tmp;
-#ifndef G_OS_WIN32
+#ifdef GDK_WINDOWING_X11
 	GtkWidget *socket;
 	Window socket_wid = 0;
 	gchar *p, *s;
-#endif /* G_OS_WIN32 */
+#endif /* GDK_WINDOWING_X11 */
 	GPid pid;
 	GError *error = NULL;
 	gchar *cmd = NULL;
@@ -9650,38 +9660,43 @@ static void compose_exec_ext_editor(Compose *compose)
 		return;
 	}
 
+#ifdef GDK_WINDOWING_X11
 	if (compose_get_ext_editor_uses_socket()) {
-#ifndef G_OS_WIN32
-		/* Only allow one socket */
-		if (compose->exteditor_socket != NULL) {
-			if (gtk_widget_is_focus(compose->exteditor_socket)) {
-				/* Move the focus off of the socket */
-				gtk_widget_child_focus(compose->window, GTK_DIR_TAB_BACKWARD);
+		if (GDK_IS_X11_DISPLAY(gdk_display_get_default())) {
+			/* Only allow one socket */
+			if (compose->exteditor_socket != NULL) {
+				if (gtk_widget_is_focus(compose->exteditor_socket)) {
+					/* Move the focus off of the socket */
+					gtk_widget_child_focus(compose->window, GTK_DIR_TAB_BACKWARD);
+				}
+				g_free(tmp);
+				return;
 			}
-			g_free(tmp);
-			return;
-		}
-		/* Create the receiving GtkSocket */
-		socket = gtk_socket_new ();
-		g_signal_connect (G_OBJECT(socket), "plug-removed",
-			          G_CALLBACK(compose_ext_editor_plug_removed_cb),
-				  compose);
-		gtk_box_pack_start(GTK_BOX(compose->edit_vbox), socket, TRUE, TRUE, 0);
-		gtk_widget_set_size_request(socket, prefs_common.compose_width, -1);
-		/* Realize the socket so that we can use its ID */
-		gtk_widget_realize(socket);
-		socket_wid = gtk_socket_get_id(GTK_SOCKET (socket));
-		compose->exteditor_socket = socket;
+			/* Create the receiving GtkSocket */
+			socket = gtk_socket_new ();
+			g_signal_connect (G_OBJECT(socket), "plug-removed",
+						  G_CALLBACK(compose_ext_editor_plug_removed_cb),
+					  compose);
+			gtk_box_pack_start(GTK_BOX(compose->edit_vbox), socket, TRUE, TRUE, 0);
+			gtk_widget_set_size_request(socket, prefs_common.compose_width, -1);
+			/* Realize the socket so that we can use its ID */
+			gtk_widget_realize(socket);
+			socket_wid = gtk_socket_get_id(GTK_SOCKET (socket));
+			compose->exteditor_socket = socket;
+		} else
+			debug_print("Socket communication with an external editor is only available on X11.\n");
+	}
 #else
-		alertpanel_error(_("Socket communication with an external editor is not available on Windows."));
+	if (compose_get_ext_editor_uses_socket()) {
+		alertpanel_error(_("Socket communication with an external editor is only available on X11."));
 		g_free(tmp);
 		return;
-#endif /* G_OS_WIN32 */
 	}
+#endif /* GDK_WINDOWING_X11 */
 
 	if (compose_get_ext_editor_cmd_valid()) {
-		if (compose_get_ext_editor_uses_socket()) {
-#ifndef G_OS_WIN32
+#ifdef GDK_WINDOWING_X11
+		if (compose_get_ext_editor_uses_socket() && GDK_IS_X11_DISPLAY(gdk_display_get_default())) {
 			p = g_strdup(prefs_common_get_ext_editor_cmd());
 			s = strstr(p, "%w");
 			s[1] = 'u';
@@ -9690,10 +9705,12 @@ static void compose_exec_ext_editor(Compose *compose)
 			else
 				cmd = g_strdup_printf(p, socket_wid, tmp);
 			g_free(p);
-#endif /* G_OS_WIN32 */
 		} else {
 			cmd = g_strdup_printf(prefs_common_get_ext_editor_cmd(), tmp);
 		}
+#else
+		cmd = g_strdup_printf(prefs_common_get_ext_editor_cmd(), tmp);
+#endif /* GDK_WINDOWING_X11 */
 	} else {
 		if (prefs_common_get_ext_editor_cmd())
 			g_warning("external editor command-line is invalid: '%s'",
@@ -9782,10 +9799,12 @@ static void compose_ext_editor_closed_cb(GPid pid, gint exit_status, gpointer da
 	compose->exteditor_file    = NULL;
 	compose->exteditor_pid     = INVALID_PID;
 	compose->exteditor_tag     = -1;
-	if (compose->exteditor_socket) {
+#ifdef GDK_WINDOWING_X11
+	if (compose->exteditor_socket && GDK_IS_X11_DISPLAY(gdk_display_get_default())) {
 		gtk_widget_destroy(compose->exteditor_socket);
 		compose->exteditor_socket = NULL;
 	}
+#endif /* GDK_WINDOWING_X11 */
 
 }
 
@@ -9893,7 +9912,8 @@ static void compose_set_ext_editor_sensitive(Compose *compose,
 			ext_editor_menu_entries[i], sensitive);
 	}
 
-	if (compose_get_ext_editor_uses_socket()) {
+#ifdef GDK_WINDOWING_X11
+	if (compose_get_ext_editor_uses_socket() && GDK_IS_X11_DISPLAY(gdk_display_get_default())) {
 		if (sensitive) {
 			if (compose->exteditor_socket)
 				gtk_widget_hide(compose->exteditor_socket);
@@ -9916,6 +9936,9 @@ static void compose_set_ext_editor_sensitive(Compose *compose,
 	} else {
 		gtk_widget_set_sensitive(compose->text,                   sensitive);
 	}
+#else
+	gtk_widget_set_sensitive(compose->text, sensitive);
+#endif /* GDK_WINDOWING_X11 */
 	if (compose->toolbar->send_btn)
 		gtk_widget_set_sensitive(compose->toolbar->send_btn,      sensitive);
 	if (compose->toolbar->sendl_btn)
@@ -9940,14 +9963,14 @@ static gboolean compose_get_ext_editor_uses_socket()
 	        strstr(prefs_common_get_ext_editor_cmd(), "%w"));
 }
 
-#ifndef G_OS_WIN32
+#ifdef GDK_WINDOWING_X11
 static gboolean compose_ext_editor_plug_removed_cb(GtkSocket *socket, Compose *compose)
 {
 	compose->exteditor_socket = NULL;
 	/* returning FALSE allows destruction of the socket */
 	return FALSE;
 }
-#endif /* G_OS_WIN32 */
+#endif /* GDK_WINDOWING_X11 */
 
 /**
  * compose_undo_state_changed:
@@ -10156,7 +10179,8 @@ static gboolean attach_button_pressed(GtkWidget *widget, GdkEventButton *event,
 	gint attach_nr_selected;
 	GtkTreePath *path;
 	
-	if (!event) return FALSE;
+	if (!event || compose->redirect_filename != NULL)
+		return FALSE;
 
 	if (event->button == 3) {
 		attach_selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(widget));
@@ -10886,67 +10910,214 @@ static void entry_copy_clipboard(GtkWidget *entry)
 			gtk_clipboard_get(GDK_SELECTION_CLIPBOARD));
 }
 
-static void entry_paste_clipboard(Compose *compose, GtkWidget *entry, 
- 				  gboolean wrap, GdkAtom clip, GtkTextIter *insert_place)
+static void paste_text(Compose *compose, GtkWidget *entry,
+		       gboolean wrap, GdkAtom clip, GtkTextIter *insert_place,
+		       const gchar *contents)
 {
- 	if (GTK_IS_TEXT_VIEW(entry)) {
-		GtkTextBuffer *buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(entry));
-		GtkTextMark *mark_start = gtk_text_buffer_get_insert(buffer);
-		GtkTextIter start_iter, end_iter;
-		gint start, end;
-		gchar *contents = gtk_clipboard_wait_for_text(gtk_clipboard_get(clip));
- 
-		if (contents == NULL)
-			return;
+	GtkTextBuffer *buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(entry));
+	GtkTextMark *mark_start = gtk_text_buffer_get_insert(buffer);
+	GtkTextIter start_iter, end_iter;
+	gint start, end;
 
-                glong len = g_utf8_strlen(contents, -1);
-                if (len > MAX_ALLOCA_MEM_SIZE) {
-                        alertpanel_error(_("Size of pasted text exceeds limit (%dKiB) for paste.\n"
-					   "Attach as file instead."),
-					 (MAX_ALLOCA_MEM_SIZE / 1024));
-                        return;
-                }
-		/* we shouldn't delete the selection when middle-click-pasting, or we
-		 * can't mid-click-paste our own selection */
-		if (clip != GDK_SELECTION_PRIMARY) {
-			undo_paste_clipboard(GTK_TEXT_VIEW(compose->text), compose->undostruct);
-			gtk_text_buffer_delete_selection(buffer, FALSE, TRUE);
-		}
-		
-		if (insert_place == NULL) {
-			/* if insert_place isn't specified, insert at the cursor.
-			 * used for Ctrl-V pasting */
-			gtk_text_buffer_get_iter_at_mark(buffer, &start_iter, mark_start);
-			start = gtk_text_iter_get_offset(&start_iter);
-			gtk_text_buffer_insert(buffer, &start_iter, contents, strlen(contents));
-		} else {
-			/* if insert_place is specified, paste here.
-			 * used for mid-click-pasting */
-			start = gtk_text_iter_get_offset(insert_place);
-			gtk_text_buffer_insert(buffer, insert_place, contents, strlen(contents));
-			if (prefs_common.primary_paste_unselects)
-				gtk_text_buffer_select_range(buffer, insert_place, insert_place);
- 		}
-		
-		if (!wrap) {
-			/* paste unwrapped: mark the paste so it's not wrapped later */
-			end = start + strlen(contents);
-			gtk_text_buffer_get_iter_at_offset(buffer, &start_iter, start);
-			gtk_text_buffer_get_iter_at_offset(buffer, &end_iter, end);
-			gtk_text_buffer_apply_tag_by_name(buffer, "no_wrap", &start_iter, &end_iter);
-		} else if (wrap && clip == GDK_SELECTION_PRIMARY) {
-			/* rewrap paragraph now (after a mid-click-paste) */
-			mark_start = gtk_text_buffer_get_insert(buffer);
-			gtk_text_buffer_get_iter_at_mark(buffer, &start_iter, mark_start);
-			gtk_text_iter_backward_char(&start_iter);
-			compose_beautify_paragraph(compose, &start_iter, TRUE);
- 		}
-	} else if (GTK_IS_EDITABLE(entry))
-		gtk_editable_paste_clipboard (GTK_EDITABLE(entry));
- 
+	if (contents == NULL)
+		return;
+
+	/* we shouldn't delete the selection when middle-click-pasting, or we
+	 * can't mid-click-paste our own selection */
+	if (clip != GDK_SELECTION_PRIMARY) {
+		undo_paste_clipboard(GTK_TEXT_VIEW(compose->text), compose->undostruct);
+		gtk_text_buffer_delete_selection(buffer, FALSE, TRUE);
+	}
+
+	if (insert_place == NULL) {
+		/* if insert_place isn't specified, insert at the cursor.
+		 * used for Ctrl-V pasting */
+		gtk_text_buffer_get_iter_at_mark(buffer, &start_iter, mark_start);
+		start = gtk_text_iter_get_offset(&start_iter);
+		gtk_text_buffer_insert(buffer, &start_iter, contents, strlen(contents));
+	} else {
+		/* if insert_place is specified, paste here.
+		 * used for mid-click-pasting */
+		start = gtk_text_iter_get_offset(insert_place);
+		gtk_text_buffer_insert(buffer, insert_place, contents, strlen(contents));
+		if (prefs_common.primary_paste_unselects)
+			gtk_text_buffer_select_range(buffer, insert_place, insert_place);
+	}
+
+	if (!wrap) {
+		/* paste unwrapped: mark the paste so it's not wrapped later */
+		end = start + strlen(contents);
+		gtk_text_buffer_get_iter_at_offset(buffer, &start_iter, start);
+		gtk_text_buffer_get_iter_at_offset(buffer, &end_iter, end);
+		gtk_text_buffer_apply_tag_by_name(buffer, "no_wrap", &start_iter, &end_iter);
+	} else if (wrap && clip == GDK_SELECTION_PRIMARY) {
+		/* rewrap paragraph now (after a mid-click-paste) */
+		mark_start = gtk_text_buffer_get_insert(buffer);
+		gtk_text_buffer_get_iter_at_mark(buffer, &start_iter, mark_start);
+		gtk_text_iter_backward_char(&start_iter);
+		compose_beautify_paragraph(compose, &start_iter, TRUE);
+	}
 	compose->modified = TRUE;
 }
- 
+
+static void attach_uri_list(Compose *compose, GtkSelectionData *data)
+{
+	GList *list, *tmp;
+	int att = 0;
+	gchar *warn_files = NULL;
+
+	list = uri_list_extract_filenames(
+		(const gchar *)gtk_selection_data_get_data(data));
+	for (tmp = list; tmp != NULL; tmp = tmp->next) {
+		gchar *utf8_filename = conv_filename_to_utf8((const gchar *)tmp->data);
+		gchar *tmp_f = g_strdup_printf("%s%s\n",
+				warn_files?warn_files:"",
+				utf8_filename);
+		g_free(warn_files);
+		warn_files = tmp_f;
+		att++;
+		compose_attach_append
+			(compose, (const gchar *)tmp->data,
+			 utf8_filename, NULL, NULL);
+		g_free(utf8_filename);
+	}
+	if (list) {
+		AlertValue val = 0;
+		compose_changed_cb(NULL, compose);
+		if (prefs_common.notify_pasted_attachments) {
+			gchar *msg;
+
+			msg = g_strdup_printf(ngettext("The following file has been attached: \n%s",
+						"The following files have been attached: \n%s", att), warn_files);
+			val = alertpanel_full(_("Notice"), msg,
+						NULL, _("_Close"), NULL, NULL, NULL, NULL,
+						ALERTFOCUS_FIRST, TRUE, NULL, ALERT_NOTICE);
+			g_free(msg);
+		}
+		g_free(warn_files);
+		if (val & G_ALERTDISABLE)
+			prefs_common.notify_pasted_attachments = FALSE;
+	}
+	list_free_strings_full(list);
+}
+
+int attach_image(Compose *compose, GtkSelectionData *data, const gchar *subtype)
+{
+	FILE *fp;
+	const guchar *contents;
+	gchar *tmpf;
+	gchar *file;
+	gchar *type;
+	size_t len;
+	int r;
+
+	cm_return_val_if_fail(data != NULL, -1);
+
+	contents = gtk_selection_data_get_data(data);
+	len = gtk_selection_data_get_length(data);
+
+	tmpf = get_tmp_file();
+	file = g_strconcat(tmpf, "-image.", subtype, NULL);
+	g_free(tmpf);
+
+	debug_print("writing image to %s\n", file);
+
+	if ((fp = claws_fopen(file, "wb")) == NULL) {
+		FILE_OP_ERROR(file, "claws_fopen");
+		g_free(file);
+		return -1;
+	}
+
+	if (claws_fwrite(contents, 1, len, fp) != len) {
+		FILE_OP_ERROR(file, "claws_fwrite");
+		claws_fclose(fp);
+		if (claws_unlink(file) < 0)
+			FILE_OP_ERROR(file, "unlink");
+		g_free(file);
+		return -1;
+	}
+
+	r = claws_safe_fclose(fp);
+
+	if (r == EOF) {
+		FILE_OP_ERROR(file, "claws_fclose");
+		if (claws_unlink(file) < 0)
+			FILE_OP_ERROR(file, "unlink");
+		g_free(file);
+		return -1;
+	}
+
+	type = g_strconcat("image/", subtype, NULL);
+
+	compose_attach_append(compose, (const gchar *)file, 
+		(const gchar *)file, type, NULL);
+
+	alertpanel_notice(_("The pasted image has been attached as: \n%s"), file);
+
+	g_free(file);
+	g_free(type);
+
+	return 0;
+}
+
+static void entry_paste_clipboard(Compose *compose, GtkWidget *entry, 
+				  gboolean wrap, GdkAtom clip, GtkTextIter *insert_place)
+{
+	if (GTK_IS_TEXT_VIEW(entry)) {
+		GdkAtom types = gdk_atom_intern ("TARGETS", FALSE);
+		GdkAtom *targets = NULL;
+		int n_targets = 0, i;
+		gboolean paste_done = FALSE;
+		GtkClipboard *clipboard = gtk_clipboard_get(clip);
+
+		GtkSelectionData *contents = gtk_clipboard_wait_for_contents(
+						clipboard, types);
+
+		if (contents != NULL) {
+			gtk_selection_data_get_targets(contents, &targets, &n_targets);
+			gtk_selection_data_free(contents);
+		}
+
+		for (i = 0; i < n_targets; i++) {
+			GdkAtom atom = targets[i];
+			gchar *atom_type = gdk_atom_name(atom);
+
+			if (atom_type != NULL && strchr(atom_type, '/')) {
+				GtkSelectionData *data = gtk_clipboard_wait_for_contents(
+						clipboard, atom);
+				debug_print("got contents of type %s\n", atom_type);
+				if (!strcmp(atom_type, "text/plain")) {
+					/* let the default text handler handle it */
+                    break;
+				} else if (!strcmp(atom_type, "text/uri-list")) {
+					attach_uri_list(compose, data);
+
+					paste_done = TRUE;
+					break;
+				} else if (!strncmp(atom_type, "image/", strlen("image/"))) {
+					gchar *subtype = g_strdup((gchar *)(strstr(atom_type, "/")+1));
+					debug_print("image of type %s\n", subtype);
+					attach_image(compose, data, subtype);
+					g_free(subtype);
+
+					paste_done = TRUE;
+					break;
+				}
+			}
+		}
+		if (!paste_done) {
+			gchar *def_text = gtk_clipboard_wait_for_text(clipboard);
+			paste_text(compose, entry, wrap, clip,
+				   insert_place, def_text);
+			g_free(def_text);
+		}
+		g_free(targets);
+	} else if (GTK_IS_EDITABLE(entry)) {
+		gtk_editable_paste_clipboard (GTK_EDITABLE(entry));
+		compose->modified = TRUE;
+	}
+}
+
 static void entry_allsel(GtkWidget *entry)
 {
 	if (GTK_IS_EDITABLE(entry))
@@ -11544,7 +11715,8 @@ static void compose_toggle_sign_cb(GtkToggleAction *action, gpointer data)
 	Compose *compose = (Compose *)data;
 
 	compose->use_signing = gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (action));
-	gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(compose->toolbar->privacy_sign_btn), compose->use_signing);
+	if (compose->toolbar->privacy_sign_btn != NULL)
+		gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(compose->toolbar->privacy_sign_btn), compose->use_signing);
 }
 
 static void compose_toggle_encrypt_cb(GtkToggleAction *action, gpointer data)
@@ -11552,7 +11724,8 @@ static void compose_toggle_encrypt_cb(GtkToggleAction *action, gpointer data)
 	Compose *compose = (Compose *)data;
 
 	compose->use_encryption = gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (action));
-	gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(compose->toolbar->privacy_encrypt_btn), compose->use_encryption);
+	if (compose->toolbar->privacy_encrypt_btn != NULL)
+		gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(compose->toolbar->privacy_encrypt_btn), compose->use_encryption);
 }
 
 static void compose_activate_privacy_system(Compose *compose, PrefsAccount *account, gboolean warn) 
@@ -11604,25 +11777,13 @@ static void compose_attach_drag_received_cb (GtkWidget		*widget,
 					     gpointer		 user_data)
 {
 	Compose *compose = (Compose *)user_data;
-	GList *list, *tmp;
 	GdkAtom type;
 
 	type = gtk_selection_data_get_data_type(data);
 	if ((gdk_atom_name(type) && !strcmp(gdk_atom_name(type), "text/uri-list"))
 	   && gtk_drag_get_source_widget(context) !=
 	        summary_get_main_widget(mainwindow_get_mainwindow()->summaryview)) {
-		list = uri_list_extract_filenames(
-			(const gchar *)gtk_selection_data_get_data(data));
-		for (tmp = list; tmp != NULL; tmp = tmp->next) {
-			gchar *utf8_filename = conv_filename_to_utf8((const gchar *)tmp->data);
-			compose_attach_append
-				(compose, (const gchar *)tmp->data,
-				 utf8_filename, NULL, NULL);
-			g_free(utf8_filename);
-		}
-		if (list)
-			compose_changed_cb(NULL, compose);
-		list_free_strings_full(list);
+		attach_uri_list(compose, data);
 	} else if (gtk_drag_get_source_widget(context)
 		   == summary_get_main_widget(mainwindow_get_mainwindow()->summaryview)) {
 		/* comes from our summaryview */

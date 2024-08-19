@@ -1,7 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2017 Colin Leroy <colin@colino.net> and 
- * the Claws Mail team
+ * Copyright (C) 1999-2023 the Claws Mail team and Colin Leroy <colin@colino.net>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -537,10 +536,23 @@ static void get_rfc822_date_from_time_t(gchar *buf, gint len, time_t t)
 		   day, dd, mon, yyyy, hh, mm, ss, tzoffset(&t));
 #else
 	GDateTime *dt = g_date_time_new_from_unix_local(t);
-	gchar *buf2 = g_date_time_format(dt, "%a, %e %b %Y %H:%M:%S %z");
+	if (dt == NULL) {
+		g_warning("failed getting date/time");
+		g_snprintf(buf, len, "(NULL)");
+		return;
+	}
+
+	gchar *ret = g_date_time_format(dt, "%a, %e %b %Y %T %z");
 	g_date_time_unref(dt);
-	strncpy(buf, buf2, len);
-	g_free(buf2);
+
+	if (ret == NULL) {
+		g_warning("failed formatting date/time");
+		g_snprintf(buf, len, "(NULL)");
+		return;
+	}
+
+	g_snprintf(buf, len, ret);
+	g_free(ret);
 #endif
 }
 
@@ -1330,12 +1342,10 @@ static gchar *write_headers_ical(PrefsAccount 	*account,
 	memset(date, 0, sizeof(date));
 	
 	prop = icalcomponent_get_first_property(ievent, ICAL_SUMMARY_PROPERTY);
-	if (prop) {
-		summary = g_strdup(icalproperty_get_summary(prop));
-		icalproperty_free(prop);
-	} else {
-		summary = g_strdup("");
-	}
+	summary = g_strdup(icalproperty_get_summary(prop));
+	icalproperty_free(prop);
+	if (!summary)
+		summary = g_strdup(_("[no summary]"));
 	
 	while (strchr(summary, '\n'))
 		*(strchr(summary, '\n')) = ' ';

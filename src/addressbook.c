@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2022 the Claws Mail team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2024 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,7 +30,6 @@
 #include <string.h>
 #include <setjmp.h>
 #include <sys/types.h>
-#include <dirent.h>
 
 #include "main.h"
 #include "addressbook.h"
@@ -1145,13 +1144,13 @@ static void addressbook_create(void)
 
 	gtkut_stock_button_add_help(hbbox, &help_btn);
 
-	edit_btn = gtk_button_new_with_mnemonic("_Edit");
+	edit_btn = gtk_button_new_with_mnemonic(_("_Edit"));
 	gtk_widget_set_can_default(edit_btn, TRUE);
 	gtk_box_pack_start(GTK_BOX(hbbox), edit_btn, TRUE, TRUE, 0);
-	del_btn = gtk_button_new_with_mnemonic("_Delete");
+	del_btn = gtk_button_new_with_mnemonic(_("_Delete"));
 	gtk_widget_set_can_default(del_btn, TRUE);
 	gtk_box_pack_start(GTK_BOX(hbbox), del_btn, TRUE, TRUE, 0);
-	reg_btn = gtk_button_new_with_mnemonic("_New");
+	reg_btn = gtk_button_new_with_mnemonic(_("_New"));
 	gtk_widget_set_can_default(reg_btn, TRUE);
 	gtk_box_pack_start(GTK_BOX(hbbox), reg_btn, TRUE, TRUE, 0);
 

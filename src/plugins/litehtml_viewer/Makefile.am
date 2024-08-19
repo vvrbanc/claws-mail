@@ -6,7 +6,6 @@
 include $(srcdir)/../win_plugin.mk
 
 SUBDIRS = litehtml
-EXTRA_DIST = css.inc
 
 IFLAGS = \
 	-I$(top_builddir)/src \
@@ -31,7 +30,7 @@ endif
 
 litehtml_viewer_la_LDFLAGS = \
 	$(plugin_ldflags) \
-	-avoid-version -module
+	-avoid-version -module -z noexecstack
 
 EXTRA_litehtml_viewer_la_DEPENDENCIES = $(plugin_extra_deps) \
 	litehtml/liblitehtml.la
@@ -62,6 +61,7 @@ litehtml_viewer_la_SOURCES = \
 	container_linux.cpp \
 	container_linux.h \
 	container_linux_images.cpp \
+	container_linux_images.h \
 	http.cpp \
 	http.h \
 	lh_prefs.c \
@@ -70,7 +70,6 @@ litehtml_viewer_la_SOURCES = \
 	lh_viewer.h \
 	lh_widget.cpp \
 	lh_widget.h \
-	lh_widget_text.cpp \
 	lh_widget_wrapped.h \
 	plugin.c
 

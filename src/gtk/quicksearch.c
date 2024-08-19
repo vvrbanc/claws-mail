@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2022 the Claws Mail team and Colin Leroy
+ * Copyright (C) 1999-2024 the Claws Mail team and Colin Leroy
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -422,9 +422,9 @@ static gchar *search_descr_strings[] = {
 	"E S",	 N_("true if execute \"S\" succeeds"),
 	"f S",	 N_("messages originating from user S"),
 	"F",	 N_("forwarded messages"),
-	"ha",	 N_("messages which have attachments"),
 	"h S",	 N_("messages which contain S in any header name or value"),
 	"H S",	 N_("messages which contain S in the value of any header"),
+	"ha",	 N_("messages which have attachments"),
 	"i S",	 N_("messages which contain S in Message-ID header"),
 	"I S",	 N_("messages which contain S in In-Reply-To header"),
 	"k #",	 N_("messages which are marked with color #"),
@@ -447,9 +447,9 @@ static gchar *search_descr_strings[] = {
 	"tagged",N_("messages which have tag(s)"),
 	"T",	 N_("marked messages"),
 	"U",	 N_("unread messages"),
+	"v H V", N_("messages which contain V in header H"),
 	"x S",	 N_("messages which contain S in References header"),
 	"X \"cmd args\"", N_("messages returning 0 when passed to command - %F is message file"),
-	"y S",	 N_("messages which contain S in X-Label header"),
 	"",	 "" ,
 	"&amp;",	 N_("logical AND operator"),
 	"|",	 N_("logical OR operator"),
@@ -938,7 +938,7 @@ QuickSearch *quicksearch_new()
 			     _("Clear the current search"));
 	gtk_widget_show(clear_search);
 
-	search_condition_expression = gtk_button_new_with_mnemonic("_Edit");
+	search_condition_expression = gtk_button_new_with_mnemonic(_("_Edit"));
 	gtk_box_pack_start(GTK_BOX(search_hbox), search_condition_expression,
 			   FALSE, FALSE, 0);
 	g_signal_connect(G_OBJECT (search_condition_expression), "clicked",

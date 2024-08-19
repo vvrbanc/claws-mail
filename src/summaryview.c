@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2022 the Claws Mail team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2024 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -433,7 +433,7 @@ static GtkActionEntry summary_popup_entries[] =
 	{"SummaryViewPopup/Forward",              NULL, N_("_Forward"), NULL, NULL, G_CALLBACK(summary_reply_cb) }, /* COMPOSE_FORWARD_INLINE */
 	{"SummaryViewPopup/ForwardAtt",           NULL, N_("For_ward as attachment"), NULL, NULL, G_CALLBACK(summary_reply_cb) }, /* COMPOSE_FORWARD_AS_ATTACH */
 	{"SummaryViewPopup/Redirect",             NULL, N_("Redirec_t"), NULL, NULL, G_CALLBACK(summary_reply_cb) }, /* COMPOSE_REDIRECT */
-	{"SummaryViewPopup/Mark",                 NULL, N_("_Mark"), NULL, NULL, NULL },
+	{"SummaryViewPopup/Mark",                 NULL, NC_("Menu Item", "_Mark"), NULL, NULL, NULL },
 	{"SummaryViewPopup/ColorLabel",           NULL, N_("Color la_bel"), NULL, NULL, NULL },
 	{"SummaryViewPopup/Tags",                 NULL, N_("Ta_gs"), NULL, NULL, NULL },
 	{"SummaryViewPopup/CreateFilterRule",     NULL, N_("Create _filter rule"), NULL, NULL, NULL },
@@ -758,14 +758,17 @@ SummaryView *summary_create(MainWindow *mainwin)
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menus/SummaryViewPopup/Mark", "MarkRead", "Message/Mark/MarkRead", GTK_UI_MANAGER_MENUITEM)
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menus/SummaryViewPopup/Mark", "MarkUnread", "Message/Mark/MarkUnread", GTK_UI_MANAGER_MENUITEM)
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menus/SummaryViewPopup/Mark", "Separator2", "Message/Mark/---", GTK_UI_MANAGER_SEPARATOR)
+	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menus/SummaryViewPopup/Mark", "MarkAllRead", "Message/Mark/MarkAllRead", GTK_UI_MANAGER_MENUITEM)
+	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menus/SummaryViewPopup/Mark", "MarkAllUnread", "Message/Mark/MarkAllUnread", GTK_UI_MANAGER_MENUITEM)
+	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menus/SummaryViewPopup/Mark", "Separator3", "Message/Mark/---", GTK_UI_MANAGER_SEPARATOR)
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menus/SummaryViewPopup/Mark", "IgnoreThread", "Message/Mark/IgnoreThread", GTK_UI_MANAGER_MENUITEM)
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menus/SummaryViewPopup/Mark", "UnignoreThread", "Message/Mark/UnignoreThread", GTK_UI_MANAGER_MENUITEM)
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menus/SummaryViewPopup/Mark", "WatchThread", "Message/Mark/WatchThread", GTK_UI_MANAGER_MENUITEM)
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menus/SummaryViewPopup/Mark", "UnwatchThread", "Message/Mark/UnwatchThread", GTK_UI_MANAGER_MENUITEM)
-	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menus/SummaryViewPopup/Mark", "Separator3", "Message/Mark/---", GTK_UI_MANAGER_SEPARATOR)
+	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menus/SummaryViewPopup/Mark", "Separator4", "Message/Mark/---", GTK_UI_MANAGER_SEPARATOR)
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menus/SummaryViewPopup/Mark", "MarkSpam", "Message/Mark/MarkSpam", GTK_UI_MANAGER_MENUITEM)
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menus/SummaryViewPopup/Mark", "MarkHam", "Message/Mark/MarkHam", GTK_UI_MANAGER_MENUITEM)
-	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menus/SummaryViewPopup/Mark", "Separator4", "Message/Mark/---", GTK_UI_MANAGER_SEPARATOR)
+	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menus/SummaryViewPopup/Mark", "Separator5", "Message/Mark/---", GTK_UI_MANAGER_SEPARATOR)
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menus/SummaryViewPopup/Mark", "Lock", "Message/Mark/Lock", GTK_UI_MANAGER_MENUITEM)
 	MENUITEM_ADDUI_MANAGER(mainwin->ui_manager, "/Menus/SummaryViewPopup/Mark", "Unlock", "Message/Mark/Unlock", GTK_UI_MANAGER_MENUITEM)
 
@@ -1847,6 +1850,8 @@ void summary_set_menu_sensitive(SummaryView *summaryview)
 	SET_SENSITIVE("Menus/SummaryViewPopup/Mark/Unmark", M_TARGET_EXIST);
 	SET_SENSITIVE("Menus/SummaryViewPopup/Mark/MarkRead", M_TARGET_EXIST);
 	SET_SENSITIVE("Menus/SummaryViewPopup/Mark/MarkUnread", M_TARGET_EXIST);
+	SET_SENSITIVE("Menus/SummaryViewPopup/Mark/MarkAllRead", M_TARGET_EXIST);
+	SET_SENSITIVE("Menus/SummaryViewPopup/Mark/MarkAllUnread", M_TARGET_EXIST);
 	SET_SENSITIVE("Menus/SummaryViewPopup/Mark/IgnoreThread", M_TARGET_EXIST);
 	SET_SENSITIVE("Menus/SummaryViewPopup/Mark/UnignoreThread", M_TARGET_EXIST);
 	SET_SENSITIVE("Menus/SummaryViewPopup/Mark/WatchThread", M_TARGET_EXIST);
@@ -1945,8 +1950,7 @@ void summary_select_prev_unread(SummaryView *summaryview)
  				val = !G_ALERTALTERNATE;
  				break;
  			default:
- 				debug_print(
- 					_("Internal error: unexpected value for prefs_common.next_unread_msg_dialog\n"));
+ 				debug_print("Internal error: unexpected value for prefs_common.next_unread_msg_dialog\n");
  		}
 		if (val != G_ALERTALTERNATE) return;
 		if (summaryview->sort_type == SORT_ASCENDING)
@@ -1994,8 +1998,7 @@ void summary_select_next_unread(SummaryView *summaryview)
  				val = G_ALERTOTHER;
  				break;
  			default:
- 				debug_print(
- 					_("Internal error: unexpected value for prefs_common.next_unread_msg_dialog\n"));
+ 				debug_print("Internal error: unexpected value for prefs_common.next_unread_msg_dialog\n");
  		}
 
 		if (val == G_ALERTALTERNATE)
@@ -2032,8 +2035,7 @@ void summary_select_prev_new(SummaryView *summaryview)
  				val = !G_ALERTALTERNATE;
  				break;
  			default:
- 				debug_print(
- 					_("Internal error: unexpected value for prefs_common.next_unread_msg_dialog\n"));
+ 				debug_print("Internal error: unexpected value for prefs_common.next_unread_msg_dialog\n");
  		}
 		if (val != G_ALERTALTERNATE) return;
 		if (summaryview->sort_type == SORT_ASCENDING)
@@ -2081,8 +2083,7 @@ void summary_select_next_new(SummaryView *summaryview)
  				val = G_ALERTOTHER;
  				break;
  			default:
- 				debug_print(
- 					_("Internal error: unexpected value for prefs_common.next_unread_msg_dialog\n"));
+ 				debug_print("Internal error: unexpected value for prefs_common.next_unread_msg_dialog\n");
  		}
 		if (val == G_ALERTALTERNATE)
 			folderview_select_next_with_flag(summaryview->folderview, MSG_NEW);
@@ -2150,8 +2151,7 @@ void summary_select_next_marked(SummaryView *summaryview)
  				val = G_ALERTOTHER;
  				break;
  			default:
- 				debug_print(
- 					_("Internal error: unexpected value for prefs_common.next_unread_msg_dialog\n"));
+ 				debug_print("Internal error: unexpected value for prefs_common.next_unread_msg_dialog\n");
  		}
 		if (val == G_ALERTALTERNATE)
 			folderview_select_next_with_flag(summaryview->folderview, MSG_MARKED);
@@ -2720,14 +2720,14 @@ static void summary_status_show(SummaryView *summaryview)
 		del = g_strdup("");
 	if (summaryview->moved)
 		mv = g_strdup_printf(_("%s%d moved"),
-				     summaryview->deleted ? _(", ") : "",
+				     summaryview->deleted ? ", " : "",
 				     summaryview->moved);
 	else
 		mv = g_strdup("");
 	if (summaryview->copied)
 		cp = g_strdup_printf(_("%s%d copied"),
 				     summaryview->deleted ||
-				     summaryview->moved ? _(", ") : "",
+				     summaryview->moved ? ", " : "",
 				     summaryview->copied);
 	else
 		cp = g_strdup("");
@@ -2881,7 +2881,7 @@ static void summary_set_column_titles(SummaryView *summaryview)
 			label = gtk_image_new_from_pixbuf(markxpm);
 			gtk_widget_show(label);
 			gtk_cmclist_set_column_widget(clist, pos, label);
-			gtk_sctree_set_column_tooltip(GTK_SCTREE(clist), pos, _("Mark"));
+			gtk_sctree_set_column_tooltip(GTK_SCTREE(clist), pos, C_("Column Header", "_Mark"));
 			continue;
 		} else if (type == S_COL_LOCKED) {
 			label = gtk_image_new_from_pixbuf(lockedxpm);
@@ -3858,8 +3858,8 @@ void summary_view_source(SummaryView * summaryview)
 
 	srcwin = source_window_create();
 	msginfo = gtk_cmctree_node_get_row_data(ctree, summaryview->selected);
-	source_window_show_msg(srcwin, msginfo);
 	source_window_show(srcwin);
+	source_window_show_msg(srcwin, msginfo);
 }
 
 void summary_reedit(SummaryView *summaryview)
@@ -3982,9 +3982,9 @@ static void summary_set_row_marks(SummaryView *summaryview, GtkCMCTreeNode *row)
 					"");
 	}
 
-	if (((prefs_common.bold_unread && MSG_IS_UNREAD(flags)) ||
+	if ((((prefs_common.bold_unread && MSG_IS_UNREAD(flags)) ||
 	     (prefs_common.bold_marked && MSG_IS_MARKED(flags))) &&
-	    !MSG_IS_IGNORE_THREAD(flags) ||
+	    !MSG_IS_IGNORE_THREAD(flags)) ||
 	    (!GTK_CMCTREE_ROW(row)->expanded &&
 	      GTK_CMCTREE_ROW(row)->children &&
 	      summary_have_unread_children(summaryview, row)))
@@ -8296,11 +8296,11 @@ static regex_t *summary_compile_simplify_regexp(gchar *simplify_subject_regexp)
 	
 	preg = g_new0(regex_t, 1);
 
-	err = string_match_precompile(simplify_subject_regexp, 
-				      preg, REG_EXTENDED);
+	err = regcomp(preg, simplify_subject_regexp, REG_EXTENDED);
 	if (err) {
 		regerror(err, preg, buf, BUFFSIZE);
 		alertpanel_error(_("Regular expression (regexp) error:\n%s"), buf);
+		regfree(preg);
 		g_free(preg);
 		preg = NULL;
 	}

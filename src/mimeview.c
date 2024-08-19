@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2023 the Claws Mail team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2024 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -102,7 +102,8 @@ static gboolean mimeview_scrolled	(GtkWidget	*widget,
 					 GdkEventScroll	*event,
 					 MimeView	*mimeview);
 
-static void mimeview_save_all		(MimeView	*mimeview);
+static void mimeview_save_all		(MimeView	*mimeview,
+					 gboolean	 attachments_only);
 #ifndef G_OS_WIN32
 static void mimeview_open_part_with	(MimeView	*mimeview,
 					 MimeInfo	*partinfo,
@@ -203,7 +204,12 @@ static void mimeview_save_as_cb(GtkAction *action, gpointer data)
 
 static void mimeview_save_all_cb(GtkAction *action, gpointer data)
 {
-	mimeview_save_all((MimeView *)data);
+	mimeview_save_all((MimeView *)data, FALSE);
+}
+
+static void mimeview_save_all_attachments_cb(GtkAction *action, gpointer data)
+{
+	mimeview_save_all((MimeView *)data, TRUE);
 }
 
 static void mimeview_select_next_part_cb(GtkAction *action, gpointer data)
@@ -227,6 +233,7 @@ static GtkActionEntry mimeview_menu_actions[] = {
 	{ "MimeView/DisplayAsText", NULL, N_("_Display as text"), NULL, "Display as text", G_CALLBACK(mimeview_display_as_text_cb) },
 	{ "MimeView/SaveAs", NULL, N_("_Save as..."), NULL, "Save as", G_CALLBACK(mimeview_save_as_cb) },
 	{ "MimeView/SaveAll", NULL, N_("Save _all..."), NULL, "Save all parts", G_CALLBACK(mimeview_save_all_cb) },
+	{ "MimeView/SaveAllAttachments", NULL, N_("Save all attachments..."), NULL, "Save all attachments", G_CALLBACK(mimeview_save_all_attachments_cb) },
 	{ "MimeView/NextPart", NULL, N_("Next part"), NULL, "Next part", G_CALLBACK(mimeview_select_next_part_cb) },
 	{ "MimeView/PrevPart", NULL, N_("Previous part"), NULL, "Previous part", G_CALLBACK(mimeview_select_prev_part_cb) }
 };
@@ -318,8 +325,6 @@ MimeView *mimeview_create(MainWindow *mainwin)
 	ctree = gtk_tree_view_new_with_model(GTK_TREE_MODEL(model));
 	g_object_unref(model);
 	gtk_tree_view_set_enable_search(GTK_TREE_VIEW(ctree), FALSE);
-	gtk_tree_view_set_rules_hint(GTK_TREE_VIEW(ctree),
-					prefs_common.use_stripes_everywhere);
 	gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(ctree),
 					prefs_common.show_col_headers);
 
@@ -447,6 +452,9 @@ MimeView *mimeview_create(MainWindow *mainwin)
 			GTK_UI_MANAGER_MENUITEM);
 	MENUITEM_ADDUI_MANAGER(mimeview->ui_manager, 
 			"/Menus/MimeView/", "SaveAll", "MimeView/SaveAll",
+			GTK_UI_MANAGER_MENUITEM);
+	MENUITEM_ADDUI_MANAGER(mimeview->ui_manager, 
+			"/Menus/MimeView/", "SaveAllAttachments", "MimeView/SaveAllAttachments",
 			GTK_UI_MANAGER_MENUITEM);
 	MENUITEM_ADDUI_MANAGER(mimeview->ui_manager, 
 			"/Menus/MimeView/", "NextPart", "MimeView/NextPart",
@@ -587,8 +595,8 @@ void mimeview_destroy(MimeView *mimeview)
 	mimeview_free_mimeinfo(mimeview);
 	gtk_tree_path_free(mimeview->opened);
 	g_free(mimeview->file);
-	g_free(mimeview);
 	mimeviews = g_slist_remove(mimeviews, mimeview);
+	g_free(mimeview);
 }
 
 MimeInfo *mimeview_get_selected_part(MimeView *mimeview)
@@ -1831,6 +1839,11 @@ static gint mimeview_write_part(const gchar *filename,
 		return 0;
 	}
 
+	if (prefs_common.attach_save_chmod) {
+		if (chmod(filename, prefs_common.attach_save_chmod) < 0)
+			FILE_OP_ERROR(filename, "chmod");
+	}
+
 	return 1;
 }
 
@@ -1888,7 +1901,7 @@ static void mimeview_save_all_info(gint errors, gint total)
  * Menu callback: Save all attached files
  * \param mimeview Current display
  */
-static void mimeview_save_all(MimeView *mimeview)
+static void mimeview_save_all(MimeView *mimeview, gboolean attachments_only)
 {
 	MimeInfo *partinfo;
 	gchar *dirname;
@@ -1933,10 +1946,14 @@ static void mimeview_save_all(MimeView *mimeview)
 	}
 
 	while (partinfo != NULL) {
-		if (partinfo->type != MIMETYPE_MESSAGE &&
-		    partinfo->type != MIMETYPE_MULTIPART &&
-		    (partinfo->disposition != DISPOSITIONTYPE_INLINE
-		     || get_real_part_name(partinfo) != NULL)) {
+		if ((!attachments_only &&
+		    (partinfo->type != MIMETYPE_MESSAGE &&
+		     partinfo->type != MIMETYPE_MULTIPART &&
+		     (partinfo->disposition != DISPOSITIONTYPE_INLINE ||
+		      get_real_part_name(partinfo) != NULL))) ||
+		    (attachments_only &&
+		     (partinfo->disposition == DISPOSITIONTYPE_ATTACHMENT &&
+		      get_real_part_name(partinfo) != NULL))) {
 			gchar *filename = mimeview_get_filename_for_part(
 				partinfo, dirname, number++);
 
@@ -2251,9 +2268,10 @@ static void mimeview_view_file(const gchar *filename, MimeInfo *partinfo,
 				g_chmod(filename, S_IRUSR|S_IWUSR);
  		} else {
 			g_warning("MIME viewer command-line is invalid: '%s'", cmd);
+			cmd = NULL;
 			mimeview_open_part_with(mimeview, partinfo, FALSE);
  		}
-		if (execute_command_line(buf, TRUE, NULL) != 0) {
+		if (cmd != NULL && execute_command_line(buf, TRUE, NULL) != 0) {
 			if (!prefs_common.save_parts_readwrite)
 				g_chmod(filename, S_IRUSR|S_IWUSR);
 			mimeview_open_part_with(mimeview, partinfo, FALSE);

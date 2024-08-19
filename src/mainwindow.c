@@ -1,19 +1,19 @@
 /*
-   Claws Mail -- a GTK based, lightweight, and fast e-mail client
-   Copyright (C) 1999-2022 the Claws Mail team and Hiroyuki Yamamoto
-
-   This program is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 3 of the License, or
-   (at your option) any later version.
-
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * Claws Mail -- a GTK based, lightweight, and fast e-mail client
+ * Copyright (C) 1999-2024 the Claws Mail team and Hiroyuki Yamamoto
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "config.h"
@@ -508,6 +508,7 @@ static void 	mw_compose_news_cb			(GtkAction *gaction, gpointer data)
 	compose_news_cb(data, 0, NULL);
 }
 
+/* make sure to keep the tables below in sync with the default_menurc[] in prefs_other.c */
 static GtkActionEntry mainwin_entries[] =
 {
 	{"Menu",                        NULL, "Menu", NULL, NULL, NULL },
@@ -542,7 +543,7 @@ static GtkActionEntry mainwin_entries[] =
 	{"File/PageSetup",              NULL, N_("Page setup..."), NULL, NULL, G_CALLBACK(page_setup_cb) },
 	{"File/Print",                  NULL, N_("_Print..."), "<control>P", NULL, G_CALLBACK(print_cb) },
 	/* {"File/---",                 NULL, "---", NULL, NULL, NULL }, */
-	{"File/SynchroniseFolders",     NULL, N_("Synchronise folders"), "<control><shift>S", NULL, G_CALLBACK(sync_cb) }, 
+	{"File/SynchroniseFolders",     NULL, N_("Synchronise folders"), "<shift><control>S", NULL, G_CALLBACK(sync_cb) }, 
 	/* {"File/---",                 NULL, "---", NULL, NULL, NULL }, */
 	{"File/Exit",                   NULL, N_("E_xit"), "<control>Q", NULL, G_CALLBACK(app_exit_cb) }, 
 
@@ -664,7 +665,7 @@ static GtkActionEntry mainwin_entries[] =
 
 	{"Message/Reply",                                NULL, N_("_Reply"), "<control>R", NULL, G_CALLBACK(main_window_reply_cb) }, /* COMPOSE_REPLY */
 	{"Message/ReplyTo",                              NULL, N_("Repl_y to"), NULL, NULL, NULL }, 
-	{"Message/ReplyTo/All",                          NULL, N_("_All"), "<control><shift>R", NULL, G_CALLBACK(main_window_reply_cb) }, /* COMPOSE_REPLY_TO_ALL */
+	{"Message/ReplyTo/All",                          NULL, N_("_All"), "<shift><control>R", NULL, G_CALLBACK(main_window_reply_cb) }, /* COMPOSE_REPLY_TO_ALL */
 	{"Message/ReplyTo/Sender",                       NULL, N_("_Sender"), NULL, NULL, G_CALLBACK(main_window_reply_cb) }, /* COMPOSE_REPLY_TO_SENDER */
 	{"Message/ReplyTo/List",                         NULL, N_("Mailing _list"), "<control>L", NULL, G_CALLBACK(main_window_reply_cb) }, /* COMPOSE_REPLY_TO_LIST */
 	{"Message/FollowupReply",                        NULL, N_("Follow-up and reply to"), NULL, NULL, G_CALLBACK(main_window_reply_cb) }, /* COMPOSE_FOLLOWUP_AND_REPLY_TO */
@@ -697,9 +698,8 @@ static GtkActionEntry mainwin_entries[] =
 	{"Message/DeleteThread",                     NULL, N_("Delete t_hread"), NULL, NULL, G_CALLBACK(delete_thread_cb) }, 
 	{"Message/CancelNews",                       NULL, N_("Cancel a news message"), NULL, NULL, G_CALLBACK(cancel_cb) },
 	/* separation */
- 	
-	{"Message/Mark",                             NULL, N_("_Mark"), NULL, NULL, NULL },
-	{"Message/Mark/Mark",                        NULL, N_("_Mark"), "<shift>asterisk", NULL, G_CALLBACK(mark_cb) },
+	{"Message/Mark",                             NULL, NC_("Menu Item", "_Mark"), NULL, NULL, NULL },
+	{"Message/Mark/Mark",                        NULL, NC_("Sub-Menu Item", "_Mark"), "<shift>asterisk", NULL, G_CALLBACK(mark_cb) },
 	{"Message/Mark/Unmark",                      NULL, N_("_Unmark"), "U", NULL, G_CALLBACK(unmark_cb) },
 	{"Message/Mark/---",                         NULL, "---", NULL, NULL, NULL },
 
@@ -733,7 +733,7 @@ static GtkActionEntry mainwin_entries[] =
 
 /* Tools menu */
 
-	{"Tools/AddressBook",                        NULL, N_("_Address book"), "<control><shift>A", NULL, G_CALLBACK(addressbook_open_cb) }, 
+	{"Tools/AddressBook",                        NULL, N_("_Address book"), "<shift><control>A", NULL, G_CALLBACK(addressbook_open_cb) }, 
 	{"Tools/AddSenderToAB",                      NULL, N_("Add sender to address boo_k"), NULL, NULL, G_CALLBACK(add_address_cb) }, 
 
 	{"Tools/CollectAddresses",                   NULL, N_("C_ollect addresses"), NULL, NULL, NULL }, 
@@ -760,7 +760,7 @@ static GtkActionEntry mainwin_entries[] =
 	{"Tools/CreateProcessingRule/BySender",      NULL, N_("By S_ender"), NULL, NULL, G_CALLBACK(create_processing_cb) },
 	/* {"Tools/---",                             NULL, "---", NULL, NULL, NULL }, */
 
-	{"Tools/ListUrls",                           NULL, N_("List _URLs..."), "<control><shift>U", NULL, G_CALLBACK(open_urls_cb) }, 
+	{"Tools/ListUrls",                           NULL, N_("List _URLs..."), "<shift><control>U", NULL, G_CALLBACK(open_urls_cb) }, 
 
 	/* {"Tools/---",                             NULL, "---", NULL, NULL, NULL }, */
 	{"Tools/Actions",                            NULL, N_("Actio_ns"), NULL, NULL, NULL },
@@ -834,7 +834,7 @@ static GtkToggleActionEntry mainwin_toggle_entries[] = {
 	{"View/HideDelMessages",                 NULL, N_("Hide deleted messages"), NULL, NULL, G_CALLBACK(hide_del_messages), FALSE }, /* toggle */
 	{"View/FullScreen",                      NULL, N_("_Fullscreen"), "F11", NULL, G_CALLBACK(toggle_fullscreen_cb), FALSE }, /* toggle */
 	{"View/AllHeaders",                      NULL, N_("Show all _headers"), "<control>H", NULL, G_CALLBACK(show_all_header_cb), FALSE }, /* toggle */
-	{"View/Quotes/CollapseAll",              NULL, N_("_Collapse all"), "<control><shift>Q", NULL, G_CALLBACK(hide_quotes_cb), FALSE }, /* 1 toggle */
+	{"View/Quotes/CollapseAll",              NULL, N_("_Collapse all"), "<shift><control>Q", NULL, G_CALLBACK(hide_quotes_cb), FALSE }, /* 1 toggle */
 	{"View/Quotes/Collapse2",                NULL, N_("Collapse from level _2"), NULL, NULL, G_CALLBACK(hide_quotes_cb), FALSE }, /* 2 toggle */
 	{"View/Quotes/Collapse3",                NULL, N_("Collapse from level _3"), NULL, NULL, G_CALLBACK(hide_quotes_cb), FALSE }, /* 3 toggle */
 };
@@ -2785,13 +2785,8 @@ void main_window_get_size(MainWindow *mainwin)
 		return;
 	}
 
-	if (prefs_common.mainwin_fullscreen) {
-		debug_print("mainwin in full screen state. "
-			    "Keeping original settings\n");
-	}
-
 	gtk_widget_get_allocation(GTK_WIDGET_PTR(mainwin->summaryview), &allocation);
-	if (allocation.width > 1 && allocation.height > 1 && !prefs_common.mainwin_fullscreen) {
+	if (allocation.width > 1 && allocation.height > 1) {
 		prefs_common.summaryview_width = allocation.width;
 
 		if (messageview_is_visible(mainwin->messageview))
@@ -2801,23 +2796,20 @@ void main_window_get_size(MainWindow *mainwin)
 	}
 
 	gtk_window_get_size(GTK_WINDOW(mainwin->window), &allocation.width, &allocation.height);
-	if (allocation.width > 1 && allocation.height > 1 &&
-	    !prefs_common.mainwin_maximised && !prefs_common.mainwin_fullscreen) {
+	if (allocation.width > 1 && allocation.height > 1) {
 		prefs_common.mainview_height = allocation.height;
 		prefs_common.mainwin_width   = allocation.width;
 		prefs_common.mainwin_height  = allocation.height;
 	}
 
 	gtk_widget_get_allocation(GTK_WIDGET_PTR(mainwin->folderview), &allocation);
-	if (allocation.width > 1 && allocation.height > 1 &&
-	    !prefs_common.mainwin_fullscreen) {
+	if (allocation.width > 1 && allocation.height > 1) {
 		prefs_common.folderview_width  = allocation.width;
 		prefs_common.folderview_height = allocation.height;
 	}
 	
 	gtk_widget_get_allocation(GTK_WIDGET_PTR(mainwin->messageview), &allocation);
-	if (allocation.width > 1 && allocation.height > 1 &&
-	    !prefs_common.mainwin_fullscreen) {
+	if (allocation.width > 1 && allocation.height > 1) {
 		prefs_common.msgview_width = allocation.width;
 		prefs_common.msgview_height = allocation.height;
 	}
@@ -2949,6 +2941,8 @@ SensitiveCondMask main_window_get_current_state(MainWindow *mainwin)
 	if (mainwin->lock_count == 0 && !claws_is_starting())
 		UPDATE_STATE(M_UNLOCKED);
 	if (selection != SUMMARY_NONE && selection != SUMMARY_SELECTED_NONE)
+		UPDATE_STATE(M_MSG_SELECTED);
+	if (item && item->total_msgs > 0)
 		UPDATE_STATE(M_MSG_EXIST);
 	if (item && item->path && folder_item_parent(item) && !item->no_select) {
 		UPDATE_STATE(M_EXEC);
@@ -3105,7 +3099,7 @@ SensitiveCondMask main_window_get_mask(SensitiveCond cond, ...)
 	value = 0;
 
 	va_start(args, cond); 
-	for (i = (gint) cond; i >= 0; i = va_arg(args, gint))
+	for (i = (gint) cond; i >= 0 && i < M_MAX_RESERVED; i = va_arg(args, gint))
 		value |= SensitiveCond_table[i];
 	va_end(args);
 
@@ -3150,16 +3144,16 @@ void main_window_set_menu_sensitive(MainWindow *mainwin)
 	SET_SENSITIVE("Menu/View/HideReadThreads", M_HIDE_READ_THREADS, M_SUMMARY_ISLIST, M_NOT_DRAFT);
 	SET_SENSITIVE("Menu/View/HideReadMessages", M_HIDE_READ_MSG, M_SUMMARY_ISLIST, M_NOT_DRAFT);
 	SET_SENSITIVE("Menu/View/HideDelMessages", M_SUMMARY_ISLIST, M_NOT_DRAFT);
-	SET_SENSITIVE("Menu/View/Goto/Prev", M_MSG_EXIST);
-	SET_SENSITIVE("Menu/View/Goto/Next", M_MSG_EXIST);
-	SET_SENSITIVE("Menu/View/Goto/PrevUnread", M_MSG_EXIST);
-	SET_SENSITIVE("Menu/View/Goto/NextUnread", M_MSG_EXIST);
-	SET_SENSITIVE("Menu/View/Goto/PrevNew", M_MSG_EXIST);
-	SET_SENSITIVE("Menu/View/Goto/NextNew", M_MSG_EXIST);
-	SET_SENSITIVE("Menu/View/Goto/PrevMarked", M_MSG_EXIST);
-	SET_SENSITIVE("Menu/View/Goto/NextMarked", M_MSG_EXIST);
-	SET_SENSITIVE("Menu/View/Goto/PrevLabeled", M_MSG_EXIST);
-	SET_SENSITIVE("Menu/View/Goto/NextLabeled", M_MSG_EXIST);
+	SET_SENSITIVE("Menu/View/Goto/Prev", M_MSG_SELECTED);
+	SET_SENSITIVE("Menu/View/Goto/Next", M_MSG_SELECTED);
+	SET_SENSITIVE("Menu/View/Goto/PrevUnread", M_MSG_SELECTED);
+	SET_SENSITIVE("Menu/View/Goto/NextUnread", M_MSG_SELECTED);
+	SET_SENSITIVE("Menu/View/Goto/PrevNew", M_MSG_SELECTED);
+	SET_SENSITIVE("Menu/View/Goto/NextNew", M_MSG_SELECTED);
+	SET_SENSITIVE("Menu/View/Goto/PrevMarked", M_MSG_SELECTED);
+	SET_SENSITIVE("Menu/View/Goto/NextMarked", M_MSG_SELECTED);
+	SET_SENSITIVE("Menu/View/Goto/PrevLabeled", M_MSG_SELECTED);
+	SET_SENSITIVE("Menu/View/Goto/NextLabeled", M_MSG_SELECTED);
 	SET_SENSITIVE("Menu/View/Goto/ParentMessage", M_SINGLE_TARGET_EXIST);
 	SET_SENSITIVE("Menu/View/Goto/NextPart", M_SINGLE_TARGET_EXIST);
 	SET_SENSITIVE("Menu/View/Goto/PrevPart", M_SINGLE_TARGET_EXIST);
@@ -3843,10 +3837,9 @@ void main_window_destroy_all(void)
 		mainwin->summaryview->mainwin = NULL;
 		mainwin->messageview->mainwin = NULL;
 
-		g_free(mainwin->toolbar);
-		g_free(mainwin);
-		
+		g_free(mainwin->toolbar);		
 		mainwin_list = g_list_remove(mainwin_list, mainwin);
+		g_free(mainwin);
 	}
 	g_list_free(mainwin_list);
 	mainwin_list = NULL;
@@ -3932,7 +3925,7 @@ static void import_mbox_cb(GtkAction *action, gpointer data)
 {
 	MainWindow *mainwin = (MainWindow *)data;
 	/* only notify if import has failed */
-	if (import_mbox(mainwin->summaryview->folder_item) == -1) {
+	if (import_mbox(mainwin->summaryview->folder_item, NULL) == -1) {
 		alertpanel_error(_("Mbox import has failed."));
 	}
 }
@@ -5569,4 +5562,15 @@ static void goto_prev_part_cb(GtkAction *action, gpointer data)
 	if (mainwin->messageview 
 	&&  mainwin->messageview->mimeview)
 		mimeview_select_prev_part(mainwin->messageview->mimeview);
+}
+
+void mainwindow_import_mbox(const gchar* mbox_file)
+{
+	MainWindow *mainwin = mainwindow_get_mainwindow();
+
+	strcrlftrunc((gchar *) mbox_file);
+	/* only notify if import has failed */
+	if (import_mbox(mainwin->summaryview->folder_item, mbox_file) == -1) {
+		alertpanel_error(_("Mbox import has failed."));
+	}
 }

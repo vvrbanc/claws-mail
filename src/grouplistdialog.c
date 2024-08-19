@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2022 the Claws Mail team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2024 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -117,7 +117,10 @@ GSList *grouplist_dialog(Folder *folder)
 
 	grouplist_dialog_set_list(NULL, TRUE);
 
-	if (ack) gtk_main();
+	if (ack) {
+		gtk_window_set_keep_above(GTK_WINDOW(dialog), TRUE);
+		gtk_main();
+	}
 
 	manage_window_focus_out(dialog, NULL, NULL);
 	gtk_widget_hide(dialog);
@@ -599,8 +602,8 @@ static gboolean button_press_cb(GtkCMCTree *ctree, GdkEventButton *button,
 	list = g_slist_find_custom(subscribed, ginfo->name,
 				   (GCompareFunc)g_ascii_strcasecmp);
 	if (list) {
-		g_free(list->data);
 		subscribed = g_slist_remove(subscribed, list->data);
+		g_free(list->data);
 		gtk_cmclist_unselect_row(GTK_CMCLIST(ctree), row, 0);
 	} else {
 		subscribed = g_slist_append(subscribed, g_strdup(ginfo->name));

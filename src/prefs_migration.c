@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 2016-2022 the Claws Mail team
+ * Copyright (C) 2016-2024 the Claws Mail team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,10 +36,11 @@
 #include "alertpanel.h"
 
 static gint starting_config_version = 0;
+static gboolean version_check_warning_shown = FALSE;
 
 gboolean _version_check(gint ver)
 {
-	if (ver > CLAWS_CONFIG_VERSION) {
+	if (ver > CLAWS_CONFIG_VERSION && !version_check_warning_shown) {
 		gchar *msg;
 		gchar *markup;
 		AlertValue av;
@@ -66,6 +67,8 @@ gboolean _version_check(gint ver)
 		if (av != G_ALERTDEFAULT)
 			return FALSE; /* abort startup */
 
+		version_check_warning_shown = TRUE;
+
 		return TRUE; /* hic sunt dracones */
 	}
 
@@ -84,6 +87,11 @@ static void _update_config_common(gint version)
 			prefs_common.autochk_itv *= 60;
 
 			break;
+		case 4:
+			if (prefs_common.no_recv_err_panel)
+				prefs_common.show_recv_err_dialog = FALSE;
+			else
+				prefs_common.show_recv_err_dialog = TRUE;
 
 		default:
 

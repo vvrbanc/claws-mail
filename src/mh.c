@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2013 Hiroyuki Yamamoto and the Claws Mail team
+ * Copyright (C) 1999-2024 Hiroyuki Yamamoto and the Claws Mail team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,7 +14,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
- * 
  */
 
 #ifdef HAVE_CONFIG_H
@@ -26,7 +25,6 @@
 
 #include <glib.h>
 #include <glib/gi18n.h>
-#include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <string.h>
@@ -420,6 +418,7 @@ static gint mh_add_msgs(Folder *folder, FolderItem *dest, GSList *file_list,
 	gchar *destfile;
 	GSList *cur;
 	MsgFileInfo *fileinfo;
+	FolderItemPrefs *prefs;
 
 	cm_return_val_if_fail(dest != NULL, -1);
 	cm_return_val_if_fail(file_list != NULL, -1);
@@ -428,6 +427,8 @@ static gint mh_add_msgs(Folder *folder, FolderItem *dest, GSList *file_list,
 		mh_get_last_num(folder, dest);
 		if (dest->last_num < 0) return -1;
 	}
+
+	prefs = dest->prefs;
 
 	for (cur = file_list; cur != NULL; cur = cur->next) {
 		fileinfo = (MsgFileInfo *)cur->data;
@@ -447,6 +448,10 @@ static gint mh_add_msgs(Folder *folder, FolderItem *dest, GSList *file_list,
 #ifdef G_OS_UNIX
 		}
 #endif
+		if (prefs && prefs->enable_folder_chmod && prefs->folder_chmod) {
+			if (chmod(destfile, prefs->folder_chmod) < 0)
+				FILE_OP_ERROR(destfile, "chmod");
+		}
 
 		if (relation != NULL)
 			g_hash_table_insert(relation, fileinfo, GINT_TO_POINTER(dest->last_num + 1));

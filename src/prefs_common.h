@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2023 the Claws Mail team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2024 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@
 #include "prefs_msg_colors.h"
 #include "prefs_summary_open.h"
 
-#define CLAWS_CONFIG_VERSION 4
+#define CLAWS_CONFIG_VERSION 5
 
 typedef struct _PrefsCommon	PrefsCommon;
 
@@ -163,6 +163,7 @@ struct _PrefsCommon
 	gint receivewin_height;
 	gboolean close_recv_dialog;
 	gboolean no_recv_err_panel;
+	gboolean show_recv_err_dialog;
 
 	/* Send */
 	gboolean savemsg;
@@ -205,6 +206,7 @@ struct _PrefsCommon
 	gchar *compose_body_format;
 	gboolean show_compose_margin;
 	gboolean type_any_header;
+	gboolean notify_pasted_attachments;
 
 	/* Quote */
 	gboolean reply_with_quote;
@@ -378,6 +380,7 @@ struct _PrefsCommon
 	gchar *mime_textviewer;
 	gchar *mime_open_cmd;
 	gchar *attach_save_dir;
+	gint attach_save_chmod;
 	gchar *attach_load_dir;
 
 	GList *mime_open_cmd_history;
@@ -588,6 +591,8 @@ struct _PrefsCommon
 	guint primary_passphrase_pbkdf2_rounds;
 #endif
 
+	gboolean passphrase_dialog_msg_title_switch;
+
 	/* Proxy */
 	gboolean use_proxy;
 	ProxyInfo proxy_info;
@@ -601,7 +606,7 @@ extern PrefsCommon prefs_common;
 PrefsCommon *prefs_common_get_prefs(void);
 
 GList *prefs_common_read_history_from_dir_with_defaults(const gchar *dirname, const gchar *history,
-															  GList *default_list);
+							GList *default_list);
 void prefs_common_read_config	(void);
 void prefs_common_write_config	(void);
 void prefs_common_open		(void);

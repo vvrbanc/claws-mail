@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 2003-2022 the Claws Mail team
+ * Copyright (C) 2003-2023 the Claws Mail team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -500,11 +500,7 @@ static void prefs_themes_btn_remove_clicked_cb(GtkWidget *widget, gpointer data)
 	theme_str = tdata->displayed;
 
 	tmp = g_path_get_basename(theme_str);
-	if (IS_SYSTEM_THEME(theme_str)) {
-		alert_title = g_strdup_printf(_("Remove system theme '%s'"), tmp);
-	} else {
-		alert_title = g_strdup_printf(_("Remove theme '%s'"), tmp);
-	}
+	alert_title = g_strdup_printf(_("Remove theme '%s'"), tmp);
 	g_free(tmp);
 
 	val = alertpanel(alert_title,
@@ -566,32 +562,13 @@ static void prefs_themes_btn_install_clicked_cb(GtkWidget *widget, gpointer data
 				 _("This folder doesn't seem to be a theme"
 				   "folder.\nInstall anyway?"),
 				 NULL, _("_No"), NULL, _("_Yes"), NULL, NULL, ALERTFOCUS_FIRST);
-		if (G_ALERTALTERNATE != val) {
-			g_free(alert_title);
+		if (G_ALERTALTERNATE != val)
 			goto end_inst;
-		}
 	}
 
-	val = alertpanel(alert_title,
-			 _("Do you want to install theme for all users?"),
-			 NULL, _("_No"), NULL, _("_Yes"), NULL, NULL, ALERTFOCUS_FIRST);
-	g_free(alert_title);
-	switch (val) {
-	case G_ALERTALTERNATE:
-		cinfo->dest = stock_pixmap_get_system_theme_dir_for_theme(
-					themename);
-		break;
-	case G_ALERTDEFAULT:
-		break;
-	default:
-		goto end_inst;
-	}
-
-	if (cinfo->dest == NULL) {
-		cinfo->dest = g_strconcat(get_rc_dir(), G_DIR_SEPARATOR_S,
-					  PIXMAP_THEME_DIR, G_DIR_SEPARATOR_S,
-					  themename, NULL);
-	}
+	cinfo->dest = g_strconcat(get_rc_dir(), G_DIR_SEPARATOR_S,
+				  PIXMAP_THEME_DIR, G_DIR_SEPARATOR_S,
+				  themename, NULL);
 	if (TRUE == is_dir_exist(cinfo->dest)) {
 		AlertValue val = alertpanel_full(_("Theme exists"),
 				_("A theme with the same name is\n"
@@ -642,6 +619,7 @@ end_inst:
 	g_free(themeinfo);
 	g_free(cinfo);
 	g_free(themename);
+	g_free(alert_title);
 }
 
 static gboolean prefs_themes_viewall_key_pressed(GtkWidget *keywidget, GdkEventKey *event, GtkWidget **widget)
@@ -829,10 +807,11 @@ static void prefs_themes_checkbtn_scaling_auto_toggled_cb(GtkWidget *widget, gpo
 static void prefs_themes_update_buttons(const ThemesData *tdata)
 {
 	ThemesPage *theme = tdata->page;
-	gboolean    can_rem, can_use;
+	gboolean    can_rem;
 
-	can_use = !IS_CURRENT_THEME(tdata->displayed);
-	can_rem = can_use && !IS_INTERNAL_THEME(tdata->displayed);
+	can_rem = !IS_CURRENT_THEME(tdata->displayed) &&
+		  !IS_INTERNAL_THEME(tdata->displayed) &&
+		  !IS_SYSTEM_THEME(tdata->displayed);
 
 	if (theme->btn_remove != NULL)
 		gtk_widget_set_sensitive(theme->btn_remove, can_rem);
@@ -1362,8 +1341,7 @@ static void prefs_themes_save(PrefsPage *page)
 				&& scaling_ppi != prefs_common.pixmap_scaling_ppi)) {
 		/* same theme, different scaling options */
 		debug_print("Updating theme scaling\n");
-		stock_pixmap_invalidate_all_icons();
-		main_window_reflect_prefs_all_real(TRUE);
+		main_window_reflect_prefs_all_real(FALSE);
 		compose_reflect_prefs_pixmap_theme();
 		addrcompl_reflect_prefs_pixmap_theme();
 	}

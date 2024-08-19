@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2022 the Claws Mail team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2024 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -248,7 +248,7 @@ static GtkActionEntry msgview_entries[] =
 	{"View/Goto/PrevLabeled",                    NULL, N_("Previous _labeled message"), NULL, NULL, G_CALLBACK(prev_labeled_cb) },
 	{"View/Goto/NextLabeled",                    NULL, N_("Next la_beled message"), NULL, NULL, G_CALLBACK(next_labeled_cb) },
 	/* {"View/Goto/---",                         NULL, "---", NULL, NULL, NULL }, */
-	{"View/Goto/PrevHistory",                    NULL, N_("Previous opened message"), "<alt>Left", NULL, G_CALLBACK(prev_history_cb) },
+	{"View/Goto/PrevHistory",                    NULL, N_("Previously opened message"), "<alt>Left", NULL, G_CALLBACK(prev_history_cb) },
 	{"View/Goto/NextHistory",                    NULL, N_("Next opened message"), "<alt>Right", NULL, G_CALLBACK(next_history_cb) },
 	/* {"View/Goto/---",                         NULL, "---", NULL, NULL, NULL }, */
 	{"View/Goto/ParentMessage",                  NULL, N_("Parent message"), "<control>Up", NULL, G_CALLBACK(parent_cb) },
@@ -2732,8 +2732,8 @@ static void view_source_cb(GtkAction *action, gpointer data)
 	if (!messageview->msginfo) return;
 
 	srcwin = source_window_create();
-	source_window_show_msg(srcwin, messageview->msginfo);
 	source_window_show(srcwin);
+	source_window_show_msg(srcwin, messageview->msginfo);
 }
 
 static void show_all_header_cb(GtkToggleAction *action, gpointer data)

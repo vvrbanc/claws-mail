@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2022 the Claws Mail team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2024 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@
 #include <glib.h>
 #include <gtk/gtk.h>
 #include <string.h>
-#include <dirent.h>
 #ifdef HAVE_SVG
 #include <librsvg/rsvg.h>
 #include <math.h>
@@ -538,6 +537,26 @@ GtkWidget *stock_pixmap_widget(StockPixmap icon)
  */
 void render_scaled_proportionally(RsvgHandle *handle, cairo_t *cr, int width, int height)
 {
+#if LIBRSVG_CHECK_VERSION(2, 46, 0)
+	if (cairo_status(cr) == CAIRO_STATUS_SUCCESS) {
+		const RsvgRectangle viewport = {
+			.x = 0,
+			.y = 0,
+			.width = width,
+			.height = height,
+		};
+		GError *err = NULL;
+
+		cairo_rectangle(cr, 0, 0, width, height);
+		cairo_clip(cr);
+
+		rsvg_handle_render_document(handle, cr, &viewport, &err);
+		if (err != NULL) {
+			g_warning("unable to render SVG document (%d): %s", err->code, err->message);
+			g_error_free(err);
+		}
+	}
+#else
 	RsvgDimensionData dimensions;
 	double x_factor, y_factor;
 	double scale_factor;
@@ -552,6 +571,7 @@ void render_scaled_proportionally(RsvgHandle *handle, cairo_t *cr, int width, in
 	cairo_scale(cr, scale_factor, scale_factor);
 
 	rsvg_handle_render_cairo(handle, cr);
+#endif
 }
 
 /*
@@ -670,11 +690,19 @@ GdkPixbuf *pixbuf_from_svg_like_icon(char *filename, GError **error, StockPixmap
 			height = (int) floor(factor * height);
 		}
 	} else { /* render using SVG size */
+#if LIBRSVG_CHECK_VERSION(2, 52, 0)
+		double svg_width, svg_height;
+
+		rsvg_handle_get_intrinsic_size_in_pixels(handle, &svg_width, &svg_height);
+		width = (int) svg_width;
+		height = (int) svg_height;
+#else
 		RsvgDimensionData dimension;
 
 		rsvg_handle_get_dimensions (handle, &dimension);
 		width = dimension.width;
 		height = dimension.height;
+#endif
 	}
 
 	/* create drawing context */
@@ -903,25 +931,6 @@ void stock_pixmap_themes_list_free(GList *list)
 	g_list_free(list);
 }
 
-void stock_pixmap_invalidate_all_icons(void)
-{
-	StockPixmapData *pix_d;
-	int i = 0;
-
-	while (i < N_STOCK_PIXMAPS) {
-		pix_d = &pixmaps[i];
-		if (pix_d->pixbuf) {
-			g_object_unref(G_OBJECT(pix_d->pixbuf));
-			pix_d->pixbuf = NULL;
-		}
-		if (pix_d->pixmap) {
-			g_object_unref(G_OBJECT(pix_d->pixmap));
-			pix_d->pixmap = NULL;
-		}
-		i++;
-	}
-}
-
 gchar *stock_pixmap_get_name (StockPixmap icon)
 {
 	if (icon >= N_STOCK_PIXMAPS)
@@ -968,10 +977,14 @@ static gboolean do_pix_draw(GtkWidget *widget, cairo_t *cr,
 		mw = mainwindow_get_mainwindow();
 		if (mw != NULL && mw->menubar != NULL) {
 			cairo_t *cr;
-			GdkColor color = gtk_widget_get_style(mw->menubar)->base[GTK_STATE_SELECTED];
+			GdkRGBA color;
 
-			cr = gdk_cairo_create(drawable);
-			gdk_cairo_set_source_color(cr, &color);
+			GtkStyleContext *context = gtk_widget_get_style_context (mw->menubar);
+			gtk_style_context_lookup_color (context, "selected_bg_color", &color);
+			cairo_region_t * creg = cairo_region_create();
+			GdkDrawingContext * dctx  = gdk_window_begin_draw_frame (drawable, creg);
+			cr = gdk_drawing_context_get_cairo_context (dctx);
+			gdk_cairo_set_source_rgba (cr, &color);
 			cairo_set_antialias(cr, CAIRO_ANTIALIAS_NONE);
 			cairo_set_line_width(cr, 1.);
 			cairo_set_line_cap(cr, CAIRO_LINE_CAP_BUTT);
@@ -979,7 +992,8 @@ static gboolean do_pix_draw(GtkWidget *widget, cairo_t *cr,
 			cairo_rectangle(cr, data->border_x-2, data->border_y-2,
 			    data->base_width+3, data->base_height+3);
 			cairo_stroke(cr);
-			cairo_destroy(cr);
+			gdk_window_end_draw_frame (drawable, dctx);
+			cairo_region_destroy (creg);
 		}
 	}
 

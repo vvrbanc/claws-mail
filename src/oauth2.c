@@ -48,7 +48,7 @@
 //Yahoo requires token requests to send POST header Authorization: Basic
 //where the password is Base64 encoding of client_id:client_secret
 
-static gchar *OAUTH2info[4][17]={
+static gchar *OAUTH2info[5][17]={
   {"accounts.google.com",
    "",
    ".",
@@ -100,7 +100,24 @@ static gchar *OAUTH2info[4][17]={
    "offline_access https://outlook.office.com/IMAP.AccessAsUser.All https://outlook.office.com/POP.AccessAsUser.All https://outlook.office.com/SMTP.Send",
    "query",
    ""},
-  {"api.login.yahoo.com",
+   {"login.microsoftonline.us",
+   "",
+   "",
+   "http://127.0.0.1:8888",
+   "/common/oauth2/v2.0/authorize",
+   "/common/oauth2/v2.0/token",
+   "/common/oauth2/v2.0/token",
+   "code",
+   "offline_access https://outlook.office365.us/IMAP.AccessAsUser.All https://outlook.office365.us/POP.AccessAsUser.All https://outlook.office365.us/SMTP.Send",
+   "authorization_code",
+   "refresh_token",
+   "common",
+   "",
+   "offline",
+   "offline_access https://outlook.office365.us/IMAP.AccessAsUser.All https://outlook.office365.us/POP.AccessAsUser.All https://outlook.office365.us/SMTP.Send",
+   "query",
+   ""},
+ {"api.login.yahoo.com",
    "",
    ".",
    "oob",
@@ -119,10 +136,11 @@ static gchar *OAUTH2info[4][17]={
    "1"}
 };
 
-static gchar *OAUTH2CodeMarker[5][2] = {
+static gchar *OAUTH2CodeMarker[6][2] = {
     {"",""},
     {"code=","&scope="},
     {"code="," HTTP"},
+    {"code=","&session_state="},
     {"code=","&session_state="},
     {"yahoo_begin_mark","yahoo_end_mark"} /* Not used since token avalable to user to copy in browser window */
 };
@@ -130,13 +148,13 @@ static gchar *OAUTH2CodeMarker[5][2] = {
 static gint oauth2_post_request (gchar *buf, gchar *host, gchar *resource, gchar *header, gchar *body);
 static gint oauth2_filter_refresh (gchar *json, gchar *refresh_token);
 static gint oauth2_filter_access (gchar *json, gchar *access_token, gint *expiry);
-static gint oauth2_contact_server (SockInfo *sock, gchar *request, gchar *response);
 
 
 static gint oauth2_post_request (gchar *buf, gchar *host, gchar *resource, gchar *header, gchar *body)
 {
        gint len;
   
+       debug_print("Complete body: %s\n", body);
        len = strlen(body);
        if (header[0])
 	 return snprintf(buf, OAUTH2BUFSIZE, "POST %s HTTP/1.1\r\nContent-Type: application/x-www-form-urlencoded\r\nAccept: text/html,application/json\r\nContent-Length: %i\r\nHost: %s\r\nConnection: close\r\nUser-Agent: ClawsMail\r\n%s\r\n\r\n%s", resource, len, host, header, body);
@@ -215,6 +233,51 @@ static gchar* oauth2_get_token_from_response(Oauth2Service provider, const gchar
 	return token;
 }
 
+static gchar *oauth2_contact_server(SockInfo *sock, const gchar *request)
+{
+	gboolean got_some_error, timeout;
+	gint ret;
+	char buf[1024];
+	GString *response = g_string_sized_new(sizeof(buf));
+	time_t end_time = time(NULL);
+
+	end_time += prefs_common_get_prefs()->io_timeout_secs;
+
+	if (!response)
+		return NULL;
+
+	if (sock_write(sock, request, strlen(request)) < 0) {
+		log_message(LOG_PROTOCOL, _("OAuth2 socket write error\n"));
+		g_string_free(response, TRUE);
+		return NULL;
+	}
+
+	do {
+		ret = sock_read(sock, buf, sizeof(buf) - 1);
+		got_some_error = ret < 0;
+		timeout = time(NULL) > end_time;
+
+		if (timeout)
+			break;
+
+		if (ret < 0 && errno == EAGAIN)
+			continue;
+
+		if (got_some_error)
+			break;
+
+		if (ret) {
+			buf[ret] = '\0';
+			g_string_append_len(response, buf, ret);
+		}
+	} while (ret);
+
+	if (timeout)
+		log_message(LOG_PROTOCOL, _("OAuth2 socket timeout error\n"));
+
+	return g_string_free(response, got_some_error || timeout);
+}
+
 int oauth2_obtain_tokens (Oauth2Service provider, OAUTH2Data *OAUTH2Data, const gchar *authcode)
 {
 	gchar *request;
@@ -267,7 +330,6 @@ int oauth2_obtain_tokens (Oauth2Service provider, OAUTH2Data *OAUTH2Data, const 
 	refresh_token = g_malloc(OAUTH2BUFSIZE+1);	
 	access_token = g_malloc(OAUTH2BUFSIZE+1);
 	request = g_malloc(OAUTH2BUFSIZE+1);
-	response = g_malloc0(OAUTH2BUFSIZE+1);
 
 	if(OAUTH2Data->custom_client_id)
 	  client_id = g_strdup(OAUTH2Data->custom_client_id);
@@ -329,11 +391,11 @@ int oauth2_obtain_tokens (Oauth2Service provider, OAUTH2Data *OAUTH2Data, const 
 	  header = g_strconcat ("", NULL);
 	}
 
-        debug_print("Complete body: %s\n", body);
 	oauth2_post_request (request, OAUTH2info[i][OA2_BASE_URL], OAUTH2info[i][OA2_ACCESS_RESOURCE], header, body);
-	ret = oauth2_contact_server (sock, request, response);
+	response = oauth2_contact_server (sock, request);
+	debug_print("Response from server: %s\n", response);
 
-	if(oauth2_filter_access (response, access_token, &expiry) == 0){
+	if(response && oauth2_filter_access (response, access_token, &expiry) == 0){
 	  OAUTH2Data->access_token = g_strdup(access_token);
 	  OAUTH2Data->expiry = expiry;
 	  OAUTH2Data->expiry_str = g_strdup_printf ("%i", expiry);
@@ -345,7 +407,7 @@ int oauth2_obtain_tokens (Oauth2Service provider, OAUTH2Data *OAUTH2Data, const 
 	  ret = 1;
 	}
 
-	if(oauth2_filter_refresh (response, refresh_token) == 0){
+	if(response && oauth2_filter_refresh (response, refresh_token) == 0){
 	  OAUTH2Data->refresh_token = g_strdup(refresh_token);
 	  log_message(LOG_PROTOCOL, _("OAuth2 refresh token obtained\n"));
 	}else{
@@ -408,7 +470,6 @@ gint oauth2_use_refresh_token (Oauth2Service provider, OAUTH2Data *OAUTH2Data)
 	access_token = g_malloc(OAUTH2BUFSIZE+1);
 	refresh_token = g_malloc(OAUTH2BUFSIZE+1);
 	request = g_malloc(OAUTH2BUFSIZE+1);
-	response = g_malloc(OAUTH2BUFSIZE+1);
 
 	if(OAUTH2Data->custom_client_id)
 	  client_id = g_strdup(OAUTH2Data->custom_client_id);
@@ -467,9 +528,12 @@ gint oauth2_use_refresh_token (Oauth2Service provider, OAUTH2Data *OAUTH2Data)
 	}
 
 	oauth2_post_request (request, OAUTH2info[i][OA2_BASE_URL], OAUTH2info[i][OA2_REFRESH_RESOURCE], header, body);
-	ret = oauth2_contact_server (sock, request, response);
+	debug_print("Request: %s\n", request);
+	response = oauth2_contact_server (sock, request);
+	debug_print("Response from server: %s\n", response);
 
-	if(oauth2_filter_access (response, access_token, &expiry) == 0){
+
+	if(response && oauth2_filter_access (response, access_token, &expiry) == 0){
 	  OAUTH2Data->access_token = g_strdup(access_token);
 	  OAUTH2Data->expiry = expiry;
 	  OAUTH2Data->expiry_str = g_strdup_printf ("%i", expiry);
@@ -481,7 +545,7 @@ gint oauth2_use_refresh_token (Oauth2Service provider, OAUTH2Data *OAUTH2Data)
 	  ret = 1;
 	}
 
-	if (oauth2_filter_refresh (response, refresh_token) == 0) {
+	if (response && oauth2_filter_refresh (response, refresh_token) == 0) {
 		OAUTH2Data->refresh_token = g_strdup(refresh_token);
 		log_message(LOG_PROTOCOL, _("OAuth2 replacement refresh token provided\n"));
 	} else
@@ -501,49 +565,6 @@ gint oauth2_use_refresh_token (Oauth2Service provider, OAUTH2Data *OAUTH2Data)
 	g_free(refresh_token);
 
 	return (ret);
-}
-
-static gint oauth2_contact_server (SockInfo *sock, gchar *request, gchar *response)
-{
-	gint len;
-	gint ret;
-	gchar *token;
-	gint toread = OAUTH2BUFSIZE;	
-	time_t startplus = time(NULL);
-	gchar *tmp;
-	len = strlen(request);
-
-	gint timeout_secs = prefs_common_get_prefs()->io_timeout_secs;
-	startplus += timeout_secs;
-	
-	if (sock_write (sock, request, len+1) < 0) {
-	  log_message(LOG_PROTOCOL, _("OAuth2 socket write error\n"));
-	  return (1);
-	}
-	
-	token = g_strconcat ("", NULL);
-	do {
-	  
-	  ret = sock_read  (sock, response, OAUTH2BUFSIZE);
-	  if (ret < 0 && errno == EAGAIN)
-	    continue;
-	  if (ret < 0) 
-	    break;
-	  if (ret == 0)
-	    break;
-	  
-	  toread -= ret;
-	  tmp = g_strconcat(token, response, NULL);
-	  g_free(token);
-	  token = tmp;
-	} while ((toread > 0) && (time(NULL) < startplus)); 
-	
-	if(time(NULL) >= startplus)
-	  log_message(LOG_PROTOCOL, _("OAuth2 socket timeout error\n"));
-	
-	g_free(token);
-	
-	return (0);
 }
 
 gint oauth2_authorisation_url (Oauth2Service provider, gchar **url, const gchar *custom_client_id)
@@ -661,7 +682,9 @@ gint oauth2_check_passwds (PrefsAccount *ac_prefs)
 			passwd_store_set_account(ac_prefs->account_id, PWS_ACCOUNT_SEND, OAUTH2Data->access_token, FALSE);
 		passwd_store_set_account(ac_prefs->account_id, PWS_ACCOUNT_OAUTH2_EXPIRY, OAUTH2Data->expiry_str, FALSE);
 		//Some providers issue replacement refresh tokens with each access token. Re-store whether replaced or not. 
-		passwd_store_set_account(ac_prefs->account_id, PWS_ACCOUNT_OAUTH2_REFRESH, OAUTH2Data->refresh_token, FALSE);
+		if (OAUTH2Data->refresh_token != NULL)
+			passwd_store_set_account(ac_prefs->account_id, PWS_ACCOUNT_OAUTH2_REFRESH, OAUTH2Data->refresh_token, FALSE);
+		passwd_store_write_config();
 		log_message(LOG_PROTOCOL, _("OAuth2 access and refresh token updated\n"));  
 	}
 

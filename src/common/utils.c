@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2021 The Claws Mail Team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2024 The Claws Mail Team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -67,7 +67,6 @@
 #if HAVE_SYS_WAIT_H
 #  include <sys/wait.h>
 #endif
-#include <dirent.h>
 #include <time.h>
 #include <regex.h>
 
@@ -608,6 +607,9 @@ gchar *escape_internal_quotes(gchar *str, gchar quote_chr)
 	if (str == NULL || *str == '\0')
 		return str;
 
+	g_strstrip(str);
+	if (*str == '\0')
+		return str;
 	/* search for unescaped quote_chr */
 	p = str;
 	if (*p == quote_chr)
@@ -1370,7 +1372,7 @@ gint get_uri_len(const gchar *str)
 
 	if (is_uri_string(str)) {
 		for (p = str; *p != '\0'; p++) {
-			if (!g_ascii_isgraph(*p) || strchr("<>\"", *p))
+			if (g_ascii_isspace(*p) || strchr("<>\"", *p))
 				break;
 		}
 		return p - str;
@@ -2091,18 +2093,6 @@ gboolean is_file_entry_regular(const gchar *file)
 	return g_file_test(file, G_FILE_TEST_IS_REGULAR);
 }
 
-gboolean dirent_is_regular_file(struct dirent *d)
-{
-#if !defined(G_OS_WIN32) && defined(HAVE_DIRENT_D_TYPE)
-	if (d->d_type == DT_REG)
-		return TRUE;
-	else if (d->d_type != DT_UNKNOWN)
-		return FALSE;
-#endif
-
-	return g_file_test(d->d_name, G_FILE_TEST_IS_REGULAR);
-}
-
 gint change_dir(const gchar *dir)
 {
 	gchar *prevdir = NULL;
@@ -2471,7 +2461,6 @@ gchar *get_outgoing_rfc2822_str(FILE *fp)
 {
 	gchar buf[BUFFSIZE];
 	GString *str;
-	gchar *ret;
 
 	str = g_string_new(NULL);
 
@@ -2509,10 +2498,7 @@ gchar *get_outgoing_rfc2822_str(FILE *fp)
 		g_string_append(str, "\r\n");
 	}
 
-	ret = str->str;
-	g_string_free(str, FALSE);
-
-	return ret;
+	return g_string_free(str, FALSE);
 }
 
 /*
@@ -3532,7 +3518,7 @@ gboolean get_uri_part(const gchar *start, const gchar *scanpos,
 	 * should pass some URI type to this function and decide on that whether
 	 * to perform punctuation stripping */
 
-#define IS_REAL_PUNCT(ch)	(g_ascii_ispunct(ch) && !strchr("/?=-_~)", ch))
+#define IS_REAL_PUNCT(ch)	(g_ascii_ispunct(ch) && !strchr("$/?=-_~)", ch))
 
 	for (; ep_ - 1 > scanpos + 1 &&
 	       IS_REAL_PUNCT(*(ep_ - 1));
@@ -4450,7 +4436,6 @@ static gchar *canonical_list_to_file(GSList *list)
 	GString *result = g_string_new(NULL);
 	GSList *pathlist = g_slist_reverse(g_slist_copy(list));
 	GSList *cur;
-	gchar *str;
 
 #ifndef G_OS_WIN32
 	result = g_string_append(result, G_DIR_SEPARATOR_S);
@@ -4473,10 +4458,7 @@ static gchar *canonical_list_to_file(GSList *list)
 	}
 	g_slist_free(pathlist);
 
-	str = result->str;
-	g_string_free(result, FALSE);
-
-	return str;
+	return g_string_free(result, FALSE);
 }
 
 static GSList *cm_split_path(const gchar *filename, int depth)

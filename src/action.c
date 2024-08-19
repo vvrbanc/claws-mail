@@ -30,6 +30,9 @@
 #ifdef GDK_WINDOWING_X11
 #  include <gdk/gdkx.h>
 #endif /* GDK_WINDOWING_X11 */
+#ifdef GDK_WINDOWING_QUARTZ
+#  include <gdk/gdkquartz.h>
+#endif /* GDK_WINDOWING_QUARTZ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -363,9 +366,7 @@ static gchar *parse_action_cmd(gchar *action, MsgInfo *msginfo,
 		return NULL;
 	}
 
-	p = cmd->str;
-	g_string_free(cmd, FALSE);
-	return p;
+	return g_string_free(cmd, FALSE);
 }
 
 static gboolean parse_append_filename(GString *cmd, MsgInfo *msginfo)

@@ -212,7 +212,7 @@ fi
 pthread_name=
 case "$target" in
 *-darwin*)
-	AM_CFLAGS="$AM_CFLAGS -no-cpp-precomp -fno-common"
+	AM_CFLAGS="$AM_CFLAGS -fno-common"
 	;;
 *-*-mingw*)
 	# Note that we need to link to pthread in all cases. This
@@ -236,16 +236,8 @@ AM_ICONV
 dnl floor and ceil are  in -lm
 LIBS="$LIBS -lm"
 
-dnl
-dnl Check for bind_textdomain_codeset, including -lintl if GLib brings it in.
-dnl
-syl_save_LIBS=$LIBS
-LIBS="$LIBS $GTK_LIBS"
-AC_CHECK_FUNCS(bind_textdomain_codeset)
-LIBS=$syl_save_LIBS
-
 dnl for gettext
-ALL_LINGUAS="ca cs da de el_GR en_GB es fi fr hu id_ID it ja nb nl pl pt_BR ro ru sk sv tr zh_TW"
+ALL_LINGUAS="ca cs da de el_GR en_GB es fi fr hu id_ID it ja nb nl pl pt_BR pt_PT ro ru sk sq sv tr zh_TW"
 GETTEXT_PACKAGE=claws-mail
 AC_SUBST(GETTEXT_PACKAGE)
 AC_DEFINE_UNQUOTED(GETTEXT_PACKAGE,"$GETTEXT_PACKAGE", [Define text domain.])
@@ -341,6 +333,10 @@ AC_ARG_ENABLE(more-ldap-debug,
         [  --enable-more-ldap-debug        Build with additional LDAP debug calls],
         [enable_more_ldap_debug=$enableval], [enable_more_ldap_debug=no])
 
+AC_ARG_ENABLE(more-archive-debug,
+        [  --enable-more-archive-debug     Build with additional debug calls in archive plugin],
+        [enable_more_archive_debug=$enableval], [enable_more_archive_debug=no])
+
 manualdir='${docdir}/manual'
 AC_ARG_WITH(manualdir,
 	[  --with-manualdir=DIR    Manual directory],
@@ -416,23 +412,7 @@ if test "$ac_cv_va_opt" = yes; then
 	AC_DEFINE([HAVE_VA_OPT], [1], [Define if __VA_OPT__ macro works])
 fi
 
-dnl Check for d_type member in struct dirent
-AC_MSG_CHECKING([whether struct dirent has d_type member])
-AC_CACHE_VAL(ac_cv_dirent_d_type,[
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <dirent.h>]], [[struct dirent d; d.d_type = DT_REG;]])],[ac_cv_dirent_d_type=yes],[ac_cv_dirent_d_type=no])
-])
-AC_MSG_RESULT($ac_cv_dirent_d_type)
-if test $ac_cv_dirent_d_type = yes; then
-	AC_DEFINE(HAVE_DIRENT_D_TYPE, 1,
-		  Define if `struct dirent' has `d_type' member.)
-fi
-
-# Check whether mkdir does not take the permission argument.
-AX_FUNC_MKDIR
-
 dnl Checks for header files.
-AC_HEADER_DIRENT
-
 AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS(fcntl.h sys/file.h unistd.h paths.h \
 		 sys/param.h sys/utsname.h sys/select.h \
@@ -441,7 +421,6 @@ AC_CHECK_HEADER([execinfo.h], [AC_DEFINE(HAVE_BACKTRACE,1,[Has backtrace*() need
 AC_SEARCH_LIBS(backtrace_symbols, [execinfo])
 
 dnl Checks for typedefs, structures, and compiler characteristics.
-AC_C_CONST
 AC_TYPE_OFF_T
 AC_TYPE_PID_T
 AC_TYPE_SIZE_T
@@ -453,11 +432,7 @@ AC_CHECK_SIZEOF(unsigned long, 4)
 
 dnl Checks for library functions.
 AC_FUNC_ALLOCA
-AC_CHECK_FUNCS(gethostname mkdir mktime socket strstr strchr strcasestr \
-	       uname flock lockf inet_aton inet_addr \
-	       fchmod mkstemp truncate getuid regcomp)
-
-AC_CHECK_FUNCS(fgets_unlocked fgetc_unlocked fputs_unlocked fputc_unlocked fread_unlocked fwrite_unlocked feof_unlocked ferror_unlocked fmemopen)
+AC_CHECK_FUNCS(fchmod fgets_unlocked flock lockf strcasestr)
 
 dnl *****************
 dnl ** common code **
@@ -473,12 +448,6 @@ AC_SUBST(GLIB_CFLAGS)
 AC_SUBST(GLIB_LIBS)
 
 PKG_CHECK_MODULES(GDK_PIXBUF, [gdk-pixbuf-2.0 >= 2.26])
-
-dnl Check for bind_textdomain_codeset, including -lintl if GLib brings it in.
-syl_save_LIBS=$LIBS
-LIBS="$LIBS $GTK_LIBS"
-AC_CHECK_FUNCS(bind_textdomain_codeset)
-LIBS=$syl_save_LIBS
 
 dnl check for IPv6 option
 dnl automated checks for IPv6 support.
@@ -541,6 +510,7 @@ fi
 
 PKG_CHECK_MODULES(NETTLE, nettle)
 AC_SUBST(NETTLE_LIBS)
+AC_SUBST(NETTLE_CFLAGS)
 
 AC_ARG_WITH(passcrypt-key, [  --with-passcrypt-key=KEY     Key used to encode passwords (8 byte string)],
 	    with_passcrypt_key="$withval", with_passcrypt_key="passkey0")
@@ -1082,6 +1052,15 @@ else
 	AC_MSG_RESULT(no)
 fi
 
+AC_MSG_CHECKING([whether to build archive plugin with more debug calls])
+if test x$enable_more_archive_debug = xyes; then
+	more_debug_output_modules="$more_debug_output_modules ArchivePlugin"
+	AC_MSG_RESULT(yes)
+	AC_DEFINE(DEBUG_ARCHIVE, 1, [Define if you want additional archive plugin debug calls])
+else
+	AC_MSG_RESULT(no)
+fi
+
 dnl *************************
 dnl ** section for plugins **
 dnl *************************
@@ -1139,10 +1118,6 @@ AC_ARG_ENABLE(fancy-plugin,
 AC_ARG_ENABLE(fetchinfo-plugin,
 		[  --disable-fetchinfo-plugin      Do not build fetchinfo plugin],
 		[enable_fetchinfo_plugin=$enableval], [enable_fetchinfo_plugin=auto])
-
-AC_ARG_ENABLE(gdata-plugin,
-		[  --disable-gdata-plugin          Do not build gdata plugin],
-		[enable_gdata_plugin=$enableval], [enable_gdata_plugin=auto])
 
 AC_ARG_ENABLE(keyword_warner-plugin,
 		[  --disable-keyword_warner-plugin   Do not build keyword_warner plugin],
@@ -1235,8 +1210,7 @@ dnl either yes or no, and do the AC_SUBST calls.
 
 dnl Archive:		libarchive
 dnl Fancy:		Webkit, curl, optionally libsoup-gnome
-dnl Gdata:		libgdata
-dnl Litehtml		a C++ compiler, >=glib-2.36, cairo, fontconfig, gumbo, curl
+dnl Litehtml		a C++ compiler, glib, cairo, fontconfig, gumbo, curl
 dnl Libravatar:		libcurl
 dnl Notification:	optionally libnotify  unity/messaging-menu
 dnl 				   libcanberra_gtk3 hotkey
@@ -1292,11 +1266,6 @@ AC_CHECK_LIB([archive], [archive_read_new],
 		       HAVE_ARCHIVE=no
 		       )
 
-dnl libgdata *******************************************************************
-PKG_CHECK_MODULES(GDATA, libgdata >= 0.17.2, HAVE_GDATA=yes, HAVE_GDATA=no)
-AC_SUBST(GDATA_CFLAGS)
-AC_SUBST(GDATA_LIBS)
-
 dnl cairo **********************************************************************
 PKG_CHECK_MODULES(CAIRO, cairo >= 1.12.0, HAVE_CAIRO=yes, HAVE_CAIRO=no)
 AC_SUBST(CAIRO_CFLAGS)
@@ -1308,7 +1277,12 @@ AC_SUBST(FONTCONFIG_CFLAGS)
 AC_SUBST(FONTCONFIG_LIBS)
 
 dnl gumbo **********************************************************************
-PKG_CHECK_MODULES(LIBGUMBO, gumbo >= 0.10, HAVE_LIBGUMBO=yes, HAVE_LIBGUMBO=no)
+PKG_CHECK_MODULES(LIBGUMBO, gumbo >= 0.12, HAVE_LIBGUMBO=yes, HAVE_LIBGUMBO=no)
+if test x"$HAVE_LIBGUMBO" = xno; then
+	if test x"$enable_litehtml_viewer_plugin" = xyes; then
+		PKG_CHECK_MODULES(LIBGUMBO, gumbo >= 0.10, HAVE_LIBGUMBO=yes, HAVE_LIBGUMBO=no)
+	fi
+fi
 AC_SUBST(LIBGUMBO_CFLAGS)
 AC_SUBST(LIBGUMBO_LIBS)
 
@@ -1640,31 +1614,6 @@ else
 	AC_MSG_RESULT(no)
 fi
 
-AC_MSG_CHECKING([whether to build gdata plugin])
-if test x"$enable_gdata_plugin" != xno; then
-	dependencies_missing=""
-
-	if test x"$HAVE_GDATA" = xno; then
-		dependencies_missing="libgdata $dependencies_missing"
-	fi
-
-	if test x"$dependencies_missing" = x; then
-		PLUGINS="$PLUGINS gdata"
-		AC_MSG_RESULT(yes)
-	elif test x"$enable_gdata_plugin" = xauto; then
-		AC_MSG_RESULT(no)
-		AC_MSG_WARN("Plugin gdata will not be built; missing $dependencies_missing")
-		enable_gdata_plugin=no
-		MISSING_DEPS_PLUGINS="$MISSING_DEPS_PLUGINS gdata"
-	else
-		AC_MSG_RESULT(no)
-		AC_MSG_ERROR("Plugin gdata cannot be built; missing $dependencies_missing")
-	fi
-else
-	DISABLED_PLUGINS="$DISABLED_PLUGINS gdata"
-	AC_MSG_RESULT(no)
-fi
-
 AC_MSG_CHECKING([whether to build keyword_warner plugin])
 if test x"$enable_keyword_warner_plugin" != xno; then
 	PLUGINS="$PLUGINS keyword_warner"
@@ -1706,8 +1655,6 @@ if test x"$enable_litehtml_viewer_plugin" != xno; then
         if test x"$HAVE_CXX" = xno; then
                 dependencies_missing="C++ compiler $dependencies_missing"
         fi
-        PKG_CHECK_EXISTS([glib-2.0 >= 2.36], [],
-                [dependencies_missing="glib-2.0 >= 2.36 $dependencies_missing"])
         if test x"$HAVE_CAIRO" = xno; then
                 dependencies_missing="cairo $dependencies_missing"
         fi
@@ -2156,7 +2103,6 @@ AM_CONDITIONAL(BUILD_DEMO_PLUGIN,		test x"$enable_demo_plugin" != xno)
 AM_CONDITIONAL(BUILD_DILLO_PLUGIN,		test x"$enable_dillo_plugin" != xno)
 AM_CONDITIONAL(BUILD_FANCY_PLUGIN,		test x"$enable_fancy_plugin" != xno)
 AM_CONDITIONAL(BUILD_FETCHINFO_PLUGIN,		test x"$enable_fetchinfo_plugin" != xno)
-AM_CONDITIONAL(BUILD_GDATA_PLUGIN,		test x"$enable_gdata_plugin" != xno)
 AM_CONDITIONAL(BUILD_KEYWORD_WARNER_PLUGIN,	test x"$enable_keyword_warner_plugin" != xno)
 AM_CONDITIONAL(BUILD_LIBRAVATAR_PLUGIN,		test x"$enable_libravatar_plugin" != xno)
 AM_CONDITIONAL(BUILD_LITEHTML_VIEWER_PLUGIN,	test x"$enable_litehtml_viewer_plugin" != xno)
@@ -2214,7 +2160,6 @@ src/plugins/fancy/Makefile
 src/plugins/fancy/version.rc
 src/plugins/fetchinfo/Makefile
 src/plugins/fetchinfo/version.rc
-src/plugins/gdata/Makefile
 src/plugins/keyword_warner/Makefile
 src/plugins/keyword_warner/version.rc
 src/plugins/litehtml_viewer/Makefile

@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2022 the Claws Mail team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2024 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -185,6 +185,7 @@ typedef struct ReceivePage
 	GtkWidget *imapdir_entry;
 	GtkWidget *subsonly_checkbtn;
 	GtkWidget *low_bandwidth_checkbtn;
+	GtkWidget *imap_batch_size_spinbtn;
 
 	GtkWidget *frame_maxarticle;
 	GtkWidget *maxarticle_label;
@@ -609,6 +610,10 @@ static PrefParam receive_param[] = {
 	 &receive_page.low_bandwidth_checkbtn,
 	 prefs_set_data_from_toggle, prefs_set_toggle},
 
+	{"imap_batch_size", "500", &tmp_ac_prefs.imap_batch_size, P_INT,
+	 &receive_page.imap_batch_size_spinbtn,
+	 prefs_set_data_from_spinbtn, prefs_set_spinbtn},
+
 	{"autochk_use_default", "TRUE", &tmp_ac_prefs.autochk_use_default, P_BOOL,
 		&receive_page.autochk_use_default_checkbtn,
 		prefs_set_data_from_toggle, prefs_set_toggle},
@@ -935,7 +940,7 @@ static PrefParam ssl_param[] = {
 	{"out_ssl_client_cert_pass", "", &tmp_ac_prefs.out_ssl_client_cert_pass, P_PASSWORD,
 	 NULL, NULL, NULL},
 
-	{"ssl_certs_auto_accept", "0", &tmp_ac_prefs.ssl_certs_auto_accept, P_BOOL,
+	{"ssl_certs_auto_accept", "1", &tmp_ac_prefs.ssl_certs_auto_accept, P_BOOL,
 	 NULL, NULL, NULL},
 
 	{"use_nonblocking_ssl", "1", &tmp_ac_prefs.use_nonblocking_ssl, P_BOOL,
@@ -1567,6 +1572,7 @@ static void receive_create_widget_func(PrefsPage * _page,
 	GtkWidget *imapdir_entry;
 	GtkWidget *subsonly_checkbtn;
 	GtkWidget *low_bandwidth_checkbtn;
+	GtkWidget *imap_batch_size_spinbtn;
 	GtkWidget *local_frame;
 	GtkWidget *local_vbox;
 	GtkWidget *local_hbox;
@@ -1790,6 +1796,10 @@ static void receive_create_widget_func(PrefsPage * _page,
 	COMBOBOX_ADD (menu, "GSSAPI", IMAP_AUTH_GSSAPI);
 	COMBOBOX_ADD (menu, "DIGEST-MD5", IMAP_AUTH_DIGEST_MD5);
 	COMBOBOX_ADD (menu, "SCRAM-SHA-1", IMAP_AUTH_SCRAM_SHA1);
+	COMBOBOX_ADD (menu, "SCRAM-SHA-224", IMAP_AUTH_SCRAM_SHA224);
+	COMBOBOX_ADD (menu, "SCRAM-SHA-256", IMAP_AUTH_SCRAM_SHA256);
+	COMBOBOX_ADD (menu, "SCRAM-SHA-384", IMAP_AUTH_SCRAM_SHA384);
+	COMBOBOX_ADD (menu, "SCRAM-SHA-512", IMAP_AUTH_SCRAM_SHA512);
 	COMBOBOX_ADD (menu, "PLAIN", IMAP_AUTH_PLAIN);
 	COMBOBOX_ADD (menu, "LOGIN", IMAP_AUTH_LOGIN);
 	COMBOBOX_ADD (menu, "OAUTH2", IMAP_AUTH_OAUTH2);
@@ -1829,6 +1839,19 @@ static void receive_create_widget_func(PrefsPage * _page,
 			   _("Bandwidth-efficient mode (prevents retrieving remote tags)"));
 	CLAWS_SET_TIP(low_bandwidth_checkbtn,
 			     _("This mode uses less bandwidth, but can be slower with some servers."));
+
+	hbox1 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+	gtk_widget_show (hbox1);
+	gtk_box_pack_start (GTK_BOX (vbox2), hbox1, FALSE, FALSE, 4);
+
+	label = gtk_label_new(_("Batch size"));
+	gtk_widget_show (label);
+	gtk_box_pack_start(GTK_BOX(hbox1), label, FALSE, FALSE, 0);
+
+	imap_batch_size_spinbtn = gtk_spin_button_new_with_range(0, 1000000, 1);
+	gtk_widget_set_size_request(imap_batch_size_spinbtn, 64, -1);
+	gtk_widget_show (imap_batch_size_spinbtn);
+	gtk_box_pack_start(GTK_BOX(hbox1), imap_batch_size_spinbtn, FALSE, FALSE, 0);
 
 	hbox1 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
 	gtk_widget_show (hbox1);
@@ -1928,6 +1951,7 @@ static void receive_create_widget_func(PrefsPage * _page,
 	page->imapdir_entry		= imapdir_entry;
 	page->subsonly_checkbtn		= subsonly_checkbtn;
 	page->low_bandwidth_checkbtn	= low_bandwidth_checkbtn;
+	page->imap_batch_size_spinbtn	= imap_batch_size_spinbtn;
 	page->local_frame		= local_frame;
 	page->local_inbox_label	= local_inbox_label;
 	page->local_inbox_entry	= local_inbox_entry;
@@ -2000,6 +2024,8 @@ static void send_create_widget_func(PrefsPage * _page,
 	PACK_CHECK_BUTTON (vbox2, checkbtn_msgid_with_addr,
 			   _("Send account mail address in Message-ID"));
 
+	SET_TOGGLE_SENSITIVITY (msgid_checkbtn, checkbtn_msgid_with_addr);
+
 	PACK_CHECK_BUTTON (vbox2, xmailer_checkbtn,
 			   _("Add user agent header"));
 
@@ -2010,7 +2036,7 @@ static void send_create_widget_func(PrefsPage * _page,
 	PACK_CHECK_BUTTON (hbox, customhdr_checkbtn,
 			   _("Add user-defined header"));
 
-	customhdr_edit_btn = gtk_button_new_with_mnemonic("_Edit");
+	customhdr_edit_btn = gtk_button_new_with_mnemonic(_("_Edit"));
 	gtk_widget_show (customhdr_edit_btn);
 	gtk_box_pack_start (GTK_BOX (hbox), customhdr_edit_btn,
 			    FALSE, FALSE, 0);
@@ -2263,6 +2289,7 @@ static void oauth2_create_widget_func(PrefsPage * _page,
 	COMBOBOX_ADD (menu, "Google/Gmail", OAUTH2AUTH_GOOGLE);
 	COMBOBOX_ADD (menu, "MS Outlook", OAUTH2AUTH_OUTLOOK);
 	COMBOBOX_ADD (menu, "MS Exchange", OAUTH2AUTH_EXCHANGE);
+	COMBOBOX_ADD (menu, "MS 365 GCC High", OAUTH2AUTH_MICROSOFT_GCCHIGH);
 	COMBOBOX_ADD (menu, "Yahoo", OAUTH2AUTH_YAHOO);
 
 	protocol_optmenu = g_new(struct BasicProtocol, 1);
@@ -2516,7 +2543,7 @@ static void compose_create_widget_func(PrefsPage * _page,
 	g_signal_connect(G_OBJECT(signature_browse_button), "clicked",
 			 G_CALLBACK(prefs_account_signature_browse_cb), NULL);
 
-	signature_edit_button = gtk_button_new_with_mnemonic("_Edit");
+	signature_edit_button = gtk_button_new_with_mnemonic(_("_Edit"));
 	gtk_widget_show (signature_edit_button);
 	gtk_box_pack_start (GTK_BOX (hbox2), signature_edit_button, FALSE, FALSE, 0);
 	g_signal_connect(G_OBJECT(signature_edit_button), "clicked",
@@ -3698,7 +3725,8 @@ static gint prefs_send_apply(void)
 			FALSE);
 #ifdef USE_OAUTH2
 	/* Manual password change - reset expiry on OAUTH2 tokens*/
-	passwd_store_set_account(tmp_ac_prefs.account_id, PWS_ACCOUNT_OAUTH2_EXPIRY, "0", FALSE);
+	if (tmp_ac_prefs.use_smtp_auth && tmp_ac_prefs.smtp_auth_type == SMTPAUTH_OAUTH2)
+		passwd_store_set_account(tmp_ac_prefs.account_id, PWS_ACCOUNT_OAUTH2_EXPIRY, "0", FALSE);
 #endif
 
 	return 0;
@@ -4131,7 +4159,7 @@ static void register_send_page(void)
 	static gchar *path[3];
 
 	path[0] = _("Account");
-	path[1] = C_("Preferences menu item", "Send");
+	path[1] = (gchar *) C_("Preferences menu item", "Send");
 	path[2] = NULL;
         
 	send_page.page.path = path;
@@ -4546,8 +4574,7 @@ void prefs_account_write_config_all(GList *account_list)
         
 		str = g_string_sized_new(32);
 		g_hash_table_foreach(tmp_ac_prefs.privacy_prefs, create_privacy_prefs, str);
-		privacy_prefs = str->str;		    
-		g_string_free(str, FALSE);
+		privacy_prefs = g_string_free(str, FALSE);
 
 		WRITE_PARAM(basic_param)
 		WRITE_PARAM(receive_param)
@@ -5237,13 +5264,14 @@ static void prefs_account_oauth2_obtain_tokens(GtkButton *button, gpointer data)
 	    if(OAUTH2Data->access_token != NULL){
 			passwd_store_set_account(tmp_ac_prefs.account_id,
 				PWS_ACCOUNT_RECV, OAUTH2Data->access_token, FALSE);
-
-			passwd_store_set_account(tmp_ac_prefs.account_id,
-				PWS_ACCOUNT_SEND, OAUTH2Data->access_token, FALSE);
-			log_message(LOG_PROTOCOL, "OAuth2 access token stored\n");
-
 			gtk_entry_set_text(GTK_ENTRY(basic_page.pass_entry), OAUTH2Data->access_token);
-			gtk_entry_set_text(GTK_ENTRY(send_page.smtp_pass_entry), OAUTH2Data->access_token);
+
+			if (tmp_ac_prefs.use_smtp_auth && tmp_ac_prefs.smtp_auth_type == SMTPAUTH_OAUTH2) {
+				passwd_store_set_account(tmp_ac_prefs.account_id,
+					PWS_ACCOUNT_SEND, OAUTH2Data->access_token, FALSE);
+				gtk_entry_set_text(GTK_ENTRY(send_page.smtp_pass_entry), OAUTH2Data->access_token);
+			}
+			log_message(LOG_PROTOCOL, "OAuth2 access token stored\n");
 	    }
 
 	    if(OAUTH2Data->expiry_str != NULL){
@@ -5476,6 +5504,7 @@ static void prefs_account_protocol_changed(GtkComboBox *combobox, gpointer data)
 		gtk_widget_hide(receive_page.imapdir_entry);
 		gtk_widget_hide(receive_page.subsonly_checkbtn);
 		gtk_widget_hide(receive_page.low_bandwidth_checkbtn);
+		gtk_widget_hide(receive_page.imap_batch_size_spinbtn);
 		break;
 	case A_LOCAL:
 		gtk_widget_show(send_page.msgid_checkbtn);
@@ -5559,6 +5588,7 @@ static void prefs_account_protocol_changed(GtkComboBox *combobox, gpointer data)
 		gtk_widget_hide(receive_page.imapdir_entry);
 		gtk_widget_hide(receive_page.subsonly_checkbtn);
 		gtk_widget_hide(receive_page.low_bandwidth_checkbtn);
+		gtk_widget_hide(receive_page.imap_batch_size_spinbtn);
 		break;
 	case A_IMAP4:
 #ifndef HAVE_LIBETPAN
@@ -5651,6 +5681,7 @@ static void prefs_account_protocol_changed(GtkComboBox *combobox, gpointer data)
 		gtk_widget_show(receive_page.imapdir_entry);
 		gtk_widget_show(receive_page.subsonly_checkbtn);
 		gtk_widget_show(receive_page.low_bandwidth_checkbtn);
+		gtk_widget_show(receive_page.imap_batch_size_spinbtn);
 		break;
 	case A_NONE:
 		gtk_widget_show(send_page.msgid_checkbtn);
@@ -5732,6 +5763,7 @@ static void prefs_account_protocol_changed(GtkComboBox *combobox, gpointer data)
 		gtk_widget_hide(receive_page.imapdir_entry);
 		gtk_widget_hide(receive_page.subsonly_checkbtn);
 		gtk_widget_hide(receive_page.low_bandwidth_checkbtn);
+		gtk_widget_hide(receive_page.imap_batch_size_spinbtn);
 		break;
 	case A_POP3:
 		/* continue to default: */
@@ -5820,6 +5852,7 @@ static void prefs_account_protocol_changed(GtkComboBox *combobox, gpointer data)
 		gtk_widget_hide(receive_page.imapdir_entry);
 		gtk_widget_hide(receive_page.subsonly_checkbtn);
 		gtk_widget_hide(receive_page.low_bandwidth_checkbtn);
+		gtk_widget_hide(receive_page.imap_batch_size_spinbtn);
 		break;
 	}
 
@@ -6147,7 +6180,7 @@ static void prefs_account_oauth2_listener(GTask *task, gpointer source, gpointer
 					"</title><meta charset=\"utf-8\"></head><body><h1>", title,
 					"</h1><p>", body, "</p></body></html>", NULL);
 			reply = g_strdup_printf(
-					"HTTP/1.0 200 OK\r\nContent-Type: text/html\r\nContent-Length: %lu\r\n\r\n%s",
+					"HTTP/1.0 200 OK\r\nContent-Type: text/html\r\nContent-Length: %" G_GSIZE_FORMAT "\r\n\r\n%s",
 					strlen(reply_message), reply_message);
 			g_free(reply_message);
 			write(client_sock, reply, strlen(reply));
@@ -6182,10 +6215,11 @@ static void prefs_account_oauth2_callback(GObject *source, GAsyncResult *res, gp
 				    PWS_ACCOUNT_RECV,
 					oauth2_listener_data->OAUTH2Data->access_token,
 				    FALSE);
-			passwd_store_set_account(tmp_ac_prefs.account_id,
-					PWS_ACCOUNT_SEND,
-				    oauth2_listener_data->OAUTH2Data->access_token,
-				    FALSE);
+			if (tmp_ac_prefs.use_smtp_auth && tmp_ac_prefs.smtp_auth_type == SMTPAUTH_OAUTH2)
+				passwd_store_set_account(tmp_ac_prefs.account_id,
+						PWS_ACCOUNT_SEND,
+					    oauth2_listener_data->OAUTH2Data->access_token,
+					    FALSE);
 			log_message(LOG_PROTOCOL, "OAuth2 access token stored\n");
 		}
 
