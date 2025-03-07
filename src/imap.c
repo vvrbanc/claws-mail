@@ -3849,7 +3849,7 @@ static void imap_delete_all_cached_messages(FolderItem *item)
 	debug_print("Deleting all cached messages done.\n");
 }
 
-gint imap_folder_quotaroot(Folder *folder, guint *usage, guint *limit)
+gint imap_folder_quotaroot(Folder *folder, uint32_t *usage, uint32_t *limit)
 {
 	IMAPSession *session = NULL;
 	struct mailimap_quota_complete_data *quota_data = NULL;
@@ -3857,12 +3857,14 @@ gint imap_folder_quotaroot(Folder *folder, guint *usage, guint *limit)
 	clistiter *cur_res;
 	int result;
 
+	debug_set_mode(TRUE);
 	session = imap_session_get(FOLDER(folder));
-
+/*
 	if (imap_has_capability(session, "QUOTA") == FALSE) {
+		debug_print("Missing 'QUOTA'\n");
 		return MAILIMAP_ERROR_CAPABILITY;
 	}
-
+*/
 	result = imap_threaded_quotaroot(session->folder, &quota_data);
 
 	if (result != MAILIMAP_NO_ERROR) {
@@ -3881,6 +3883,7 @@ gint imap_folder_quotaroot(Folder *folder, guint *usage, guint *limit)
 		}
 	}
 	mailimap_quota_complete_data_free(quota_data);
+	debug_set_mode(false);
 	return MAILIMAP_NO_ERROR;
 }
 
@@ -4231,6 +4234,17 @@ static gint imap_status(IMAPSession *session, IMAPFolder *folder,
 		}
 	}
 	mailimap_mailbox_data_status_free(data_status);
+
+	uint32_t size;
+	uint32_t limit;
+	debug_set_mode(TRUE);
+	int err = imap_folder_quotaroot(FOLDER(folder), &size, &limit);
+	if (MAILIMAP_NO_ERROR == err) {
+		g_printf("%s: Used size: %u Quota: %u\n", FOLDER(folder)->name, size, limit);
+	} else {
+		g_print("Error getting quota status\n");
+	}
+	debug_set_mode(FALSE);
 	
 	if (got_values != mask) {
 		g_warning("status: incomplete values received (%d)", got_values);
