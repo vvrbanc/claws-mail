@@ -46,6 +46,7 @@ void imap_done(Folder * folder);
 int imap_threaded_connect(Folder * folder, const char * server, int port, ProxyInfo *proxy_info);
 int imap_threaded_connect_ssl(Folder * folder, const char * server, int port, ProxyInfo *proxy_info);
 int imap_threaded_capability(Folder *folder, struct mailimap_capability_data ** caps);
+int imap_threaded_quotaroot(Folder *folder, struct mailimap_quota_complete_data ** quota_data);
 
 #ifndef G_OS_WIN32
 int imap_threaded_connect_cmd(Folder * folder, const char * command,

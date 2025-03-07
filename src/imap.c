@@ -3849,6 +3849,41 @@ static void imap_delete_all_cached_messages(FolderItem *item)
 	debug_print("Deleting all cached messages done.\n");
 }
 
+gint imap_folder_quotaroot(Folder *folder, guint *usage, guint *limit)
+{
+	IMAPSession *session = NULL;
+	struct mailimap_quota_complete_data *quota_data = NULL;
+	clistiter *cur_data;
+	clistiter *cur_res;
+	int result;
+
+	session = imap_session_get(FOLDER(folder));
+
+	if (imap_has_capability(session, "QUOTA") == FALSE) {
+		return MAILIMAP_ERROR_CAPABILITY;
+	}
+
+	result = imap_threaded_quotaroot(session->folder, &quota_data);
+
+	if (result != MAILIMAP_NO_ERROR) {
+		return result;
+	}
+
+	for(cur_data = clist_begin(quota_data->quota_list); cur_data != NULL; cur_data = clist_next(cur_data)) {
+		struct mailimap_quota_quota_data *quota = (struct mailimap_quota_quota_data*)clist_content(cur_data);
+		for (cur_res = clist_begin(quota->quota_list); cur_res != NULL; cur_res = clist_next(cur_res)) {
+			struct mailimap_quota_quota_resource *res = (struct mailimap_quota_quota_resource*)clist_content(cur_res);
+			if (!strcasecmp("STORAGE", res->resource_name)) {
+				*usage = res->usage;
+				*limit = res->limit;
+				debug_print("quota storage: usage=%u limit=%u\n", res->usage, res->limit);
+			}
+		}
+	}
+	mailimap_quota_complete_data_free(quota_data);
+	return MAILIMAP_NO_ERROR;
+}
+
 gchar imap_get_path_separator_for_item(FolderItem *item)
 {
 	Folder *folder = NULL;

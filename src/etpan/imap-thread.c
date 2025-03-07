@@ -762,7 +762,56 @@ int imap_threaded_capability(Folder *folder, struct mailimap_capability_data ** 
 	return result.error;
 	
 }
-	
+
+struct quota_param {
+	mailimap * imap;
+};
+
+struct quotaroot_result {
+	int error;
+	struct mailimap_quota_complete_data *quota_data;
+};
+
+static void quotaroot_run(struct etpan_thread_op * op)
+{
+	int r;
+	struct quota_param * param;
+	struct quotaroot_result * result;
+	struct mailimap_quota_complete_data *quota_data;
+
+	param = op->param;
+	result = op->result;
+
+	CHECK_IMAP();
+
+	r = mailimap_quota_getquotaroot(param->imap, "INBOX", &quota_data);
+
+	result->error = r;
+	result->quota_data = (r == 0 ? quota_data : NULL);
+}
+
+int imap_threaded_quotaroot(Folder *folder, struct mailimap_quota_complete_data ** quota_data)
+{
+	struct quota_param param;
+	struct quotaroot_result result;
+	mailimap *imap;
+
+	imap = get_imap(folder);
+
+	param.imap = imap;
+
+	threaded_run(folder, &param, &result, quotaroot_run);
+
+	debug_print("quotaroot %d\n", result.error);
+
+	if ((result.error == MAILIMAP_NO_ERROR) /* only testing no_error may leak? */
+		|| (result.error == MAILIMAP_NO_ERROR_AUTHENTICATED)
+		|| (result.error == MAILIMAP_NO_ERROR_NON_AUTHENTICATED))
+		*quota_data = result.quota_data;
+
+	return result.error;
+}
+
 struct disconnect_param {
 	mailimap * imap;
 };
