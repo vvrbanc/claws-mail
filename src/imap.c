@@ -4235,20 +4235,20 @@ static gint imap_status(IMAPSession *session, IMAPFolder *folder,
 	}
 	mailimap_mailbox_data_status_free(data_status);
 
-	uint32_t size;
-	uint32_t limit;
-	debug_set_mode(TRUE);
-	int err = imap_folder_quotaroot(FOLDER(folder), &size, &limit);
-	if (MAILIMAP_NO_ERROR == err) {
-		g_printf("%s: Used size: %u Quota: %u\n", FOLDER(folder)->name, size, limit);
-	} else {
-		g_print("Error getting quota status\n");
-	}
-	debug_set_mode(FALSE);
-	
 	if (got_values != mask) {
 		g_warning("status: incomplete values received (%d)", got_values);
-	}
+	} else {
+	    uint32_t size;
+	    uint32_t limit;
+	    debug_set_mode(TRUE);
+	    int err = imap_folder_quotaroot(FOLDER(folder), &size, &limit);
+	    if (MAILIMAP_NO_ERROR == err) {
+		    g_printf("%s: Used size: %u Quota: %u\n", FOLDER(folder)->name, size, limit);
+	    } else {
+		    g_print("Error getting quota status\n");
+	    }
+	    debug_set_mode(FALSE);
+    }
 	return MAILIMAP_NO_ERROR;
 }
 
