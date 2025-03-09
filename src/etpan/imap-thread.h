@@ -180,4 +180,6 @@ int imap_threaded_store(Folder * folder, struct mailimap_set * set,
 
 void imap_threaded_cancel(Folder * folder);
 
+int imap_has_quota_extension(Folder * folder);
+
 #endif

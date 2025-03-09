@@ -3427,6 +3427,14 @@ int imap_threaded_store(Folder * folder, struct mailimap_set * set,
 	return result.error;
 }
 
+int imap_has_quota_extension(Folder* folder) {
+	if (folder == NULL)
+		return 0;
+
+	mailimap* session = get_imap(folder);
+	return mailimap_has_extension(session, "QUOTA");
+}
+
 
 #ifndef G_OS_WIN32
 static void do_exec_command(int fd, const char * command,

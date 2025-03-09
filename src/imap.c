@@ -3859,12 +3859,13 @@ gint imap_folder_quotaroot(Folder *folder, uint32_t *usage, uint32_t *limit)
 
 	debug_set_mode(TRUE);
 	session = imap_session_get(FOLDER(folder));
-/*
-	if (imap_has_capability(session, "QUOTA") == FALSE) {
-		debug_print("Missing 'QUOTA'\n");
+
+	if (!imap_has_quota_extension(FOLDER(folder))) {
+		debug_print("%s: Does not support the QUOTA extension\n",
+				FOLDER(folder)->name);
 		return MAILIMAP_ERROR_CAPABILITY;
 	}
-*/
+
 	result = imap_threaded_quotaroot(session->folder, &quota_data);
 
 	if (result != MAILIMAP_NO_ERROR) {
