@@ -3432,6 +3432,9 @@ int imap_has_quota_extension(Folder* folder) {
 		return 0;
 
 	mailimap* session = get_imap(folder);
+	if (session == NULL)
+		return 0;
+
 	return mailimap_has_extension(session, "QUOTA");
 }
 
