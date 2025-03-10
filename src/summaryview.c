@@ -2645,8 +2645,6 @@ static void summary_status_show(SummaryView *summaryview)
 	MsgInfo *msginfo;
 	gchar *name;
 	gchar *tooltip;
-//	uint32_t size = 0;
-//    uint32_t limit = 0;
 	guint size = 0;
     guint limit = 0;
     gint has_quota = 1;
@@ -2752,11 +2750,18 @@ static void summary_status_show(SummaryView *summaryview)
 	}
 
     Folder* folder = summaryview->folder_item->folder;
-    int err = imap_folder_quotaroot(FOLDER(folder), &size, &limit);
-    if (err > 0) {
-        has_quota = 0;
-        debug_print("%s: Error getting quota status\n", FOLDER(folder)->name);
-    }
+    if (folder && FOLDER_TYPE(folder) == F_IMAP) {
+		int err = imap_folder_quotaroot(FOLDER(folder), &size, &limit);
+		if (err > 0) {
+			has_quota = 0;
+			debug_print("%s: Error getting quota status\n", FOLDER(folder)->name);
+		} else {
+			debug_print("Size: %lu - Limit: %lu\n", size, limit);
+			has_quota = 1;
+		}
+	} else {
+		has_quota = 0;
+	}
 		
 	if (prefs_common.layout_mode != SMALL_LAYOUT) {
 		str = g_strconcat(n_selected ? itos(n_selected) : "",
@@ -2771,15 +2776,15 @@ static void summary_status_show(SummaryView *summaryview)
 		g_free(str);
 
         if (has_quota) {
-		str = g_strdup_printf(_("%d new, %d unread, %d total (%s) [used: %d%%]"),
+			str = g_strdup_printf(_("%d new, %d unread, %d total (%s) [used: %d%%]"),
 				n_new, n_unread, n_total,
 				to_human_readable((goffset)n_size),
 				(size*100)/limit);
-	} else {
-		str = g_strdup_printf(_("%d new, %d unread, %d total (%s)"),
-				n_new, n_unread, n_total,
-				to_human_readable((goffset)n_size));
-	}
+		} else {
+			str = g_strdup_printf(_("%d new, %d unread, %d total (%s)"),
+			n_new, n_unread, n_total,
+			to_human_readable((goffset)n_size));
+		}
 
 	g_signal_connect(G_OBJECT(summaryview->popupmenu), "selection-done",
 			G_CALLBACK(popup_menu_selection_done), summaryview);
@@ -2849,13 +2854,23 @@ static void summary_status_show(SummaryView *summaryview)
 		if (n_selected) {
 			ssize = g_strdup(to_human_readable((goffset)sel_size));
 			tsize = g_strdup(to_human_readable((goffset)n_size));
-			str = g_strdup_printf(_("%d/%d selected (%s/%s), %d unread"),
+			if (has_quota) {
+				str = g_strdup_printf(_("%d/%d selected (%s/%s), %d unread [used: %d%%]"),
+				n_selected, n_total, ssize, tsize, n_unread, (size*100)/limit);
+			} else {
+				str = g_strdup_printf(_("%d/%d selected (%s/%s), %d unread"),
 				n_selected, n_total, ssize, tsize, n_unread);
+			}
 			g_free(ssize);
 			g_free(tsize);
 		} else
-			str = g_strdup_printf(_("%d new, %d unread, %d total (%s)"),
+			if (has_quota) {
+				str = g_strdup_printf(_("%d new, %d unread, %d total (%s) [used: %d%%]"),
+				n_new, n_unread, n_total, to_human_readable((goffset)n_size), (size*100)/limit);
+			} else {
+				str = g_strdup_printf(_("%d new, %d unread, %d total (%s)"),
 				n_new, n_unread, n_total, to_human_readable((goffset)n_size));
+			}
 		g_free(sel);
 		g_free(del);
 		g_free(mv);
