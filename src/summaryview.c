@@ -2792,7 +2792,7 @@ static void summary_status_show(SummaryView *summaryview)
 		gtk_label_set_text(GTK_LABEL(summaryview->statlabel_msgs), str);
 		g_free(str);
 
-/*
+
     //Why does this cause 'Segmentation fault'?!!!!!
 
 		tooltip = g_strdup_printf("<b>%s</b>\n"
@@ -2805,8 +2805,8 @@ static void summary_status_show(SummaryView *summaryview)
 					"<b>%s</b> %d\n"
 					"<b>%s</b> %d\n"
 					"<b>%s</b> %d\n"
-					"<b>%s</b> %d\n",
-					"<b>%s</b> %lu\n",
+					"<b>%s</b> %d\n"
+					"<b>%s</b> %lu\n"
 					"<b>%s</b> %lu",
 					_("Message summary"),
 					_("New:"), n_new,
@@ -2821,7 +2821,7 @@ static void summary_status_show(SummaryView *summaryview)
 					_("Watched:"), n_watched,
                     _("Size:"), size,
                     _("Limit:"), limit);
-*/
+/*
 
 		tooltip = g_strdup_printf("<b>%s</b>\n"
 					"<b>%s</b> %d\n"
@@ -2845,7 +2845,7 @@ static void summary_status_show(SummaryView *summaryview)
 					_("Locked:"), n_locked,
 					_("Ignored:"), n_ignored,
 					_("Watched:"), n_watched);
-
+*/
 		gtk_widget_set_tooltip_markup(GTK_WIDGET(summaryview->statlabel_msgs),
 				            tooltip); 
 		g_free(tooltip);
