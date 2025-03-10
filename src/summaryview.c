@@ -2771,10 +2771,10 @@ static void summary_status_show(SummaryView *summaryview)
 		g_free(str);
 
         if (has_quota) {
-		str = g_strdup_printf(_("%d new, %d unread, %d total (%s) [used: %.2f%%]"),
+		str = g_strdup_printf(_("%d new, %d unread, %d total (%s) [used: %d%%]"),
 				n_new, n_unread, n_total,
 				to_human_readable((goffset)n_size),
-				((size*100)/limit)*1.0);
+				(size*100)/limit);
 	} else {
 		str = g_strdup_printf(_("%d new, %d unread, %d total (%s)"),
 				n_new, n_unread, n_total,
