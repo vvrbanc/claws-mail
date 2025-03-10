@@ -2645,7 +2645,12 @@ static void summary_status_show(SummaryView *summaryview)
 	MsgInfo *msginfo;
 	gchar *name;
 	gchar *tooltip;
-	
+//	uint32_t size = 0;
+//    uint32_t limit = 0;
+	guint size = 0;
+    guint limit = 0;
+    gint has_quota = 1;
+
 	if (!summaryview->folder_item) {
 		gtk_label_set_text(GTK_LABEL(summaryview->statlabel_folder), "");
 		gtk_label_set_text(GTK_LABEL(summaryview->statlabel_select), "");
@@ -2745,6 +2750,13 @@ static void summary_status_show(SummaryView *summaryview)
 		sel = g_strdup("");
 		itstr = g_strdup("");
 	}
+
+    Folder* folder = summaryview->folder_item->folder;
+    int err = imap_folder_quotaroot(FOLDER(folder), &size, &limit);
+    if (err > 0) {
+        has_quota = 0;
+        debug_print("%s: Error getting quota status\n", FOLDER(folder)->name);
+    }
 		
 	if (prefs_common.layout_mode != SMALL_LAYOUT) {
 		str = g_strconcat(n_selected ? itos(n_selected) : "",
@@ -2758,15 +2770,54 @@ static void summary_status_show(SummaryView *summaryview)
 		gtk_label_set_text(GTK_LABEL(summaryview->statlabel_select), str);
 		g_free(str);
 
+        if (has_quota) {
+		str = g_strdup_printf(_("%d new, %d unread, %d total (%s) [used: %.2f%%]"),
+				n_new, n_unread, n_total,
+				to_human_readable((goffset)n_size),
+				((size*100)/limit)*1.0);
+	} else {
 		str = g_strdup_printf(_("%d new, %d unread, %d total (%s)"),
-					      n_new, n_unread, n_total,
-					      to_human_readable((goffset)n_size));
+				n_new, n_unread, n_total,
+				to_human_readable((goffset)n_size));
+	}
 
 	g_signal_connect(G_OBJECT(summaryview->popupmenu), "selection-done",
 			G_CALLBACK(popup_menu_selection_done), summaryview);
 
 		gtk_label_set_text(GTK_LABEL(summaryview->statlabel_msgs), str);
 		g_free(str);
+
+/*
+    //Why does this cause 'Segmentation fault'?!!!!!
+
+		tooltip = g_strdup_printf("<b>%s</b>\n"
+					"<b>%s</b> %d\n"
+					"<b>%s</b> %d\n"
+					"<b>%s</b> %d\n"
+					"<b>%s</b> %s\n\n"
+					"<b>%s</b> %d\n"
+					"<b>%s</b> %d\n"
+					"<b>%s</b> %d\n"
+					"<b>%s</b> %d\n"
+					"<b>%s</b> %d\n"
+					"<b>%s</b> %d\n",
+					"<b>%s</b> %lu\n",
+					"<b>%s</b> %lu",
+					_("Message summary"),
+					_("New:"), n_new,
+					_("Unread:"), n_unread,
+					_("Total:"), n_total,
+					_("Size:"), to_human_readable((goffset)n_size),
+					_("Marked:"), n_marked,
+					_("Replied:"), n_replied,
+					_("Forwarded:"), n_forwarded,
+					_("Locked:"), n_locked,
+					_("Ignored:"), n_ignored,
+					_("Watched:"), n_watched,
+                    _("Size:"), size,
+                    _("Limit:"), limit);
+*/
+
 		tooltip = g_strdup_printf("<b>%s</b>\n"
 					"<b>%s</b> %d\n"
 					"<b>%s</b> %d\n"

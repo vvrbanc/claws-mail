@@ -3857,7 +3857,6 @@ gint imap_folder_quotaroot(Folder *folder, uint32_t *usage, uint32_t *limit)
 	clistiter *cur_res;
 	int result;
 
-	debug_set_mode(TRUE);
 	session = imap_session_get(FOLDER(folder));
 
 	if (!imap_has_quota_extension(FOLDER(folder))) {
@@ -3884,7 +3883,6 @@ gint imap_folder_quotaroot(Folder *folder, uint32_t *usage, uint32_t *limit)
 		}
 	}
 	mailimap_quota_complete_data_free(quota_data);
-	debug_set_mode(false);
 	return MAILIMAP_NO_ERROR;
 }
 
@@ -4238,18 +4236,8 @@ static gint imap_status(IMAPSession *session, IMAPFolder *folder,
 
 	if (got_values != mask) {
 		g_warning("status: incomplete values received (%d)", got_values);
-	} else {
-	    uint32_t size;
-	    uint32_t limit;
-	    debug_set_mode(TRUE);
-	    int err = imap_folder_quotaroot(FOLDER(folder), &size, &limit);
-	    if (MAILIMAP_NO_ERROR == err) {
-		    g_printf("%s: Used size: %u Quota: %u\n", FOLDER(folder)->name, size, limit);
-	    } else {
-		    g_print("Error getting quota status\n");
-	    }
-	    debug_set_mode(FALSE);
-    }
+	}
+
 	return MAILIMAP_NO_ERROR;
 }
 
