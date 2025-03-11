@@ -2776,15 +2776,15 @@ static void summary_status_show(SummaryView *summaryview)
 		g_free(str);
 
         if (has_quota) {
-			str = g_strdup_printf(_("%d new, %d unread, %d total (%s) [used: %d%%]"),
+		str = g_strdup_printf(_("%d new, %d unread, %d total (%s) [used: %d%%]"),
 				n_new, n_unread, n_total,
 				to_human_readable((goffset)n_size),
 				(size*100)/limit);
-		} else {
-			str = g_strdup_printf(_("%d new, %d unread, %d total (%s)"),
-			n_new, n_unread, n_total,
-			to_human_readable((goffset)n_size));
-		}
+	} else {
+		str = g_strdup_printf(_("%d new, %d unread, %d total (%s)"),
+				n_new, n_unread, n_total,
+				to_human_readable((goffset)n_size));
+	}
 
 	g_signal_connect(G_OBJECT(summaryview->popupmenu), "selection-done",
 			G_CALLBACK(popup_menu_selection_done), summaryview);
@@ -2793,9 +2793,8 @@ static void summary_status_show(SummaryView *summaryview)
 		g_free(str);
 
 
-    //Why does this cause 'Segmentation fault'?!!!!!
-
-		tooltip = g_strdup_printf("<b>%s</b>\n"
+		if (has_quota) {
+			tooltip = g_strdup_printf("<b>%s</b>\n"
 					"<b>%s</b> %d\n"
 					"<b>%s</b> %d\n"
 					"<b>%s</b> %d\n"
@@ -2819,11 +2818,10 @@ static void summary_status_show(SummaryView *summaryview)
 					_("Locked:"), n_locked,
 					_("Ignored:"), n_ignored,
 					_("Watched:"), n_watched,
-                    _("Size:"), size,
-                    _("Limit:"), limit);
-/*
-
-		tooltip = g_strdup_printf("<b>%s</b>\n"
+				       	_("Size:"), size,
+					_("Limit:"), limit);
+		} else {
+			tooltip = g_strdup_printf("<b>%s</b>\n"
 					"<b>%s</b> %d\n"
 					"<b>%s</b> %d\n"
 					"<b>%s</b> %d\n"
@@ -2845,7 +2843,8 @@ static void summary_status_show(SummaryView *summaryview)
 					_("Locked:"), n_locked,
 					_("Ignored:"), n_ignored,
 					_("Watched:"), n_watched);
-*/
+		}
+	
 		gtk_widget_set_tooltip_markup(GTK_WIDGET(summaryview->statlabel_msgs),
 				            tooltip); 
 		g_free(tooltip);
