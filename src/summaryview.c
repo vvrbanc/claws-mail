@@ -2792,8 +2792,10 @@ static void summary_status_show(SummaryView *summaryview)
 		gtk_label_set_text(GTK_LABEL(summaryview->statlabel_msgs), str);
 		g_free(str);
 
-
 		if (has_quota) {
+            gchar* s_size = to_human_readable_ext(size*1024);
+            gchar* s_limit = to_human_readable_ext(limit*1024);
+
 			tooltip = g_strdup_printf("<b>%s</b>\n"
 					"<b>%s</b> %d\n"
 					"<b>%s</b> %d\n"
@@ -2805,8 +2807,8 @@ static void summary_status_show(SummaryView *summaryview)
 					"<b>%s</b> %d\n"
 					"<b>%s</b> %d\n"
 					"<b>%s</b> %d\n"
-					"<b>%s</b> %lu\n"
-					"<b>%s</b> %lu",
+					"<b>%s</b> %s\n"
+					"<b>%s</b> %s",
 					_("Message summary"),
 					_("New:"), n_new,
 					_("Unread:"), n_unread,
@@ -2818,8 +2820,10 @@ static void summary_status_show(SummaryView *summaryview)
 					_("Locked:"), n_locked,
 					_("Ignored:"), n_ignored,
 					_("Watched:"), n_watched,
-				       	_("Size:"), size,
-					_("Limit:"), limit);
+				    _("Size:"), s_size,
+					_("Limit:"), s_limit);
+			g_free(s_size);
+			g_free(s_limit);
 		} else {
 			tooltip = g_strdup_printf("<b>%s</b>\n"
 					"<b>%s</b> %d\n"

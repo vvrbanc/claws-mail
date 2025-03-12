@@ -288,6 +288,7 @@ gchar *itos_buf			(gchar	     *nstr,
 				 gint	      n);
 gchar *itos			(gint	      n);
 gchar *to_human_readable	(goffset      size);
+gchar *to_human_readable_ext (gulong size);
 
 /* alternative string functions */
 gint path_cmp		(const gchar	*s1,

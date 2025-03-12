@@ -203,6 +203,29 @@ gchar *to_human_readable(goffset size)
 	}
 }
 
+/*!
+ * \brief Convert a given size in bytes in a human-readable string
+ *
+ * \param size  The size expressed in bytes to convert in string
+ * \return      The string that respresents the size in an human-readable way
+ */
+gchar *to_human_readable_ext (gulong bytes) {
+	char *suffix[] = {"B", "KB", "MB", "GB", "TB"};
+	char length = sizeof(suffix) / sizeof(suffix[0]);
+
+	int i = 0;
+	double dblBytes = bytes;
+
+	if (bytes > 1024) {
+		for (i = 0; (bytes / 1024) > 0 && i<length-1; i++, bytes /= 1024)
+			dblBytes = bytes / 1024.0;
+	}
+
+	gchar *output;
+	output = g_strdup_printf("%.02lf%s", dblBytes, suffix[i]);
+	return output;
+}
+
 /* compare paths */
 gint path_cmp(const gchar *s1, const gchar *s2)
 {
