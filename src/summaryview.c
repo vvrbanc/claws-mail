@@ -2646,8 +2646,8 @@ static void summary_status_show(SummaryView *summaryview)
 	gchar *name;
 	gchar *tooltip;
 	guint size = 0;
-    guint limit = 0;
-    gint has_quota = 1;
+	guint limit = 0;
+	gint has_quota = 1;
 
 	if (!summaryview->folder_item) {
 		gtk_label_set_text(GTK_LABEL(summaryview->statlabel_folder), "");
@@ -2776,10 +2776,10 @@ static void summary_status_show(SummaryView *summaryview)
 		g_free(str);
 
         if (has_quota) {
-		str = g_strdup_printf(_("%d new, %d unread, %d total (%s) [used: %d%%]"),
+		str = g_strdup_printf(_("%d new, %d unread, %d total (%s) [used: %.2f%%]"),
 				n_new, n_unread, n_total,
 				to_human_readable((goffset)n_size),
-				(size*100)/limit);
+				(size*100*1.0)/limit*1.0);
 	} else {
 		str = g_strdup_printf(_("%d new, %d unread, %d total (%s)"),
 				n_new, n_unread, n_total,
@@ -2858,8 +2858,8 @@ static void summary_status_show(SummaryView *summaryview)
 			ssize = g_strdup(to_human_readable((goffset)sel_size));
 			tsize = g_strdup(to_human_readable((goffset)n_size));
 			if (has_quota) {
-				str = g_strdup_printf(_("%d/%d selected (%s/%s), %d unread [used: %d%%]"),
-				n_selected, n_total, ssize, tsize, n_unread, (size*100)/limit);
+				str = g_strdup_printf(_("%d/%d selected (%s/%s), %d unread [used: %.2f%%]"),
+				n_selected, n_total, ssize, tsize, n_unread, (size*100*1.0)/limit*1.0);
 			} else {
 				str = g_strdup_printf(_("%d/%d selected (%s/%s), %d unread"),
 				n_selected, n_total, ssize, tsize, n_unread);
@@ -2868,8 +2868,8 @@ static void summary_status_show(SummaryView *summaryview)
 			g_free(tsize);
 		} else
 			if (has_quota) {
-				str = g_strdup_printf(_("%d new, %d unread, %d total (%s) [used: %d%%]"),
-				n_new, n_unread, n_total, to_human_readable((goffset)n_size), (size*100)/limit);
+				str = g_strdup_printf(_("%d new, %d unread, %d total (%s) [used: %.2f%%]"),
+				n_new, n_unread, n_total, to_human_readable((goffset)n_size), (size*100*1.0)/limit*1.0);
 			} else {
 				str = g_strdup_printf(_("%d new, %d unread, %d total (%s)"),
 				n_new, n_unread, n_total, to_human_readable((goffset)n_size));
