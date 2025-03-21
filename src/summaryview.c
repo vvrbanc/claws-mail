@@ -2793,8 +2793,8 @@ static void summary_status_show(SummaryView *summaryview)
 		g_free(str);
 
 		if (has_quota) {
-			gchar* s_size = to_human_readable_ext(size*1024);
-			gchar* s_limit = to_human_readable_ext(limit*1024);
+			gchar* s_size = to_human_readable_new(size*1024);
+			gchar* s_limit = to_human_readable_new(limit*1024);
 
 			tooltip = g_strdup_printf("<b>%s</b>\n"
 					"<b>%s</b> %d\n"

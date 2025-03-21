@@ -209,7 +209,7 @@ gchar *to_human_readable(goffset size)
  * \param size  The size expressed in bytes to convert in string
  * \return      The string that respresents the size in an human-readable way
  */
-gchar *to_human_readable_ext (gulong bytes) {
+gchar *to_human_readable_new (guint32 bytes) {
 	char *suffix[] = {"B", "KB", "MB", "GB", "TB"};
 	char length = sizeof(suffix) / sizeof(suffix[0]);
 
