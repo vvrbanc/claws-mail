@@ -124,13 +124,15 @@ static void rssyl_create_default_mailbox(void)
 
 static gboolean rssyl_update_all_feeds_deferred(gpointer data)
 {
-	rssyl_update_all_feeds();
+    /* automated refreshing */
+	rssyl_update_all_feeds(FALSE);
 	return FALSE;
 }
 
 static void rssyl_toolbar_cb_refresh_all_feeds(gpointer parent, const gchar *item_name, gpointer data)
 {
-	rssyl_update_all_feeds();
+    /* refreshing upon user manual request */
+	rssyl_update_all_feeds(TRUE);
 }
 
 void rssyl_init(void)
@@ -209,13 +211,13 @@ static void rssyl_get_last_num(Folder *folder, FolderItem *item)
 
 	g_return_if_fail(item != NULL);
 
-	debug_print("rssyl_get_last_num(): Scanning %s ...\n", item->path);
+	debug_print("RSSyl: rssyl_get_last_num(): scanning %s ...\n", item->path);
 	path = folder_item_get_path(item);
 	g_return_if_fail(path != NULL);
 
 	if( (dp = g_dir_open(path, 0, &error)) == NULL ) {
 		FILE_OP_ERROR(item->path, "g_dir_open");
-		debug_print("g_dir_open() failed on \"%s\", error %d (%s).\n",
+		debug_print("RSSyl: g_dir_open() failed on \"%s\", error %d (%s).\n",
 				path, error->code, error->message);
 		g_error_free(error);
 		g_free(path);
@@ -233,7 +235,7 @@ static void rssyl_get_last_num(Folder *folder, FolderItem *item)
 	}
 	g_dir_close(dp);
 
-	debug_print("Last number in dir %s = %d\n", item->path, max);
+	debug_print("RSSyl: last number in dir %s = %d\n", item->path, max);
 	item->last_num = max;
 }
 
@@ -498,7 +500,7 @@ static FolderItem *rssyl_create_folder(Folder *folder,
 	path = folder_item_get_path(parent);
 	if( !is_dir_exist(path) ) {
 		if( (make_dir_hier(path) != 0) ) {
-			debug_print("RSSyl: Couldn't create directory (rec) '%s'\n", path);
+			debug_print("RSSyl: couldn't create directory (rec) '%s'\n", path);
 			return NULL;
 		}
 	}
@@ -507,7 +509,7 @@ static FolderItem *rssyl_create_folder(Folder *folder,
 	path = g_strconcat(path, G_DIR_SEPARATOR_S, basepath, NULL);
 
 	if( make_dir(path) < 0 ) {
-		debug_print("RSSyl: Couldn't create directory '%s'\n", path);
+		debug_print("RSSyl: couldn't create directory '%s'\n", path);
 		g_free(path);
 		g_free(basepath);
 		return NULL;
@@ -685,7 +687,7 @@ static gint rssyl_get_num_list(Folder *folder, FolderItem *item,
 	g_return_val_if_fail(path != NULL, -1);
 
 	if( (dp = g_dir_open(path, 0, &error)) == NULL ) {
-		debug_print("g_dir_open() failed on \"%s\", error %d (%s).\n",
+		debug_print("RSSyl: g_dir_open() failed on \"%s\", error %d (%s).\n",
 				path, error->code, error->message);
 		g_error_free(error);
 		g_free(path);

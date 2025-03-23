@@ -62,7 +62,7 @@ static void _elparse_start_oldrssyl(void *data, const gchar *el,
 		of->silent_update = GETVAL_INT("silent_update");
 		of->ssl_verify_peer = GETVAL_INT("ssl_verify_peer");
 
-		debug_print("RSSyl: old feeds.xml: Adding '%s' (%s).\n", of->name,
+		debug_print("RSSyl: old feeds.xml: adding '%s' (%s).\n", of->name,
 				of->url);
 
 		ctx->oldfeeds = g_slist_prepend(ctx->oldfeeds, of);
@@ -85,13 +85,13 @@ GSList *rssyl_old_feed_metadata_parse(gchar *filepath)
 	GError *error = NULL;
 	struct _oldrssyl_ctx *ctx;
 
-	debug_print("RSSyl: Starting to parse old feeds.xml\n");
+	debug_print("RSSyl: starting to parse old feeds.xml\n");
 
 	/* Read contents of the file into memory */
 	if (!g_file_get_contents(filepath, &contents, &length, &error)) {
 		alertpanel_error(_("Couldn't read contents of old feeds.xml file:\n%s"),
 				error->message);
-		debug_print("RSSyl: Couldn't read contents of feeds.xml\n");
+		debug_print("RSSyl: couldn't read contents of feeds.xml\n");
 		g_error_free(error);
 		return NULL;
 	}

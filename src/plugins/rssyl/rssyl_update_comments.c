@@ -74,7 +74,7 @@ void rssyl_update_comments(RFolderItem *ritem)
 	debug_print("RSSyl: starting to parse comments, path is '%s'\n", path);
 
 	if( (dp = g_dir_open(path, 0, &error)) == NULL ) {
-		debug_print("g_dir_open on \"%s\" failed with error %d (%s)\n",
+		debug_print("RSSyl: g_dir_open on \"%s\" failed with error %d (%s)\n",
 				path, error->code, error->message);
 		g_error_free(error);
 		g_free(path);
@@ -128,7 +128,7 @@ void rssyl_update_comments(RFolderItem *ritem)
 									feed_item_get_id(fi));
 
 							if( !rssyl_parse_feed(ritem, fetchctx->feed) ) {
-								debug_print("RSSyl: Error processing comments feed\n");
+								debug_print("RSSyl: error processing comments feed\n");
 								log_error(LOG_PROTOCOL, RSSYL_LOG_ERROR_PROC, fetchctx->feed->url);
 							}
 						}
