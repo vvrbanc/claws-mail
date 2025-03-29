@@ -211,7 +211,7 @@ static void rssyl_get_last_num(Folder *folder, FolderItem *item)
 
 	g_return_if_fail(item != NULL);
 
-	debug_print("RSSyl: rssyl_get_last_num(): scanning %s ...\n", item->path);
+	debug_print("RSSyl: rssyl_get_last_num(): Scanning %s ...\n", item->path);
 	path = folder_item_get_path(item);
 	g_return_if_fail(path != NULL);
 
@@ -235,7 +235,7 @@ static void rssyl_get_last_num(Folder *folder, FolderItem *item)
 	}
 	g_dir_close(dp);
 
-	debug_print("RSSyl: last number in dir %s = %d\n", item->path, max);
+	debug_print("RSSyl: Last number in dir %s = %d\n", item->path, max);
 	item->last_num = max;
 }
 
@@ -500,7 +500,7 @@ static FolderItem *rssyl_create_folder(Folder *folder,
 	path = folder_item_get_path(parent);
 	if( !is_dir_exist(path) ) {
 		if( (make_dir_hier(path) != 0) ) {
-			debug_print("RSSyl: couldn't create directory (rec) '%s'\n", path);
+			debug_print("RSSyl: Couldn't create directory (rec) '%s'\n", path);
 			return NULL;
 		}
 	}
@@ -509,7 +509,7 @@ static FolderItem *rssyl_create_folder(Folder *folder,
 	path = g_strconcat(path, G_DIR_SEPARATOR_S, basepath, NULL);
 
 	if( make_dir(path) < 0 ) {
-		debug_print("RSSyl: couldn't create directory '%s'\n", path);
+		debug_print("RSSyl: Couldn't create directory '%s'\n", path);
 		g_free(path);
 		g_free(basepath);
 		return NULL;

@@ -170,7 +170,7 @@ static gchar* extract_filename(const gchar *str)
 
   filename = g_strrstr(str, "/");
   if(!filename || *(filename+1) == '\0') {
-    debug_print("Error: could not extract filename from %s\n", str);
+    debug_print("Error: Could not extract filename from %s\n", str);
     return NULL;
   }
   filename++;
@@ -182,7 +182,7 @@ static void run_script_file(const gchar *filename, Compose *compose)
   FILE *fp;
   fp = claws_fopen(filename, "r");
   if(!fp) {
-    debug_print("Error: could not open file '%s'\n", filename);
+    debug_print("Error: Could not open file '%s'\n", filename);
     return;
   }
   put_composewindow_into_module(compose);
@@ -320,9 +320,9 @@ static void migrate_scripts_out_of_base_dir(void)
       gchar *dest_file;
       dest_file = g_strconcat(dest_dir, G_DIR_SEPARATOR_S, filename, NULL);
       if(move_file(filepath, dest_file, FALSE) == 0)
-        debug_print("Python plugin: moved file '%s' to %s subdir\n", filename, PYTHON_SCRIPTS_MAIN_DIR);
+        debug_print("Python plugin: Moved file '%s' to %s subdir\n", filename, PYTHON_SCRIPTS_MAIN_DIR);
       else
-        debug_print("Python plugin: warning: could not move file '%s' to %s subdir\n", filename, PYTHON_SCRIPTS_MAIN_DIR);
+        debug_print("Python plugin: Warning: Could not move file '%s' to %s subdir\n", filename, PYTHON_SCRIPTS_MAIN_DIR);
       g_free(dest_file);
     }
     g_free(filepath);
@@ -488,7 +488,7 @@ static void browse_python_scripts_dir(GtkAction *action, gpointer data)
 
   mainwin =  mainwindow_get_mainwindow();
   if(!mainwin) {
-      debug_print("Browse Python scripts: problems getting the mainwindow\n");
+      debug_print("Browse Python scripts: Problems getting the mainwindow\n");
       return;
   }
   launch_context = gdk_app_launch_context_new();
@@ -497,7 +497,7 @@ static void browse_python_scripts_dir(GtkAction *action, gpointer data)
   g_app_info_launch_default_for_uri(uri, G_APP_LAUNCH_CONTEXT(launch_context), &error);
 
   if(error) {
-      debug_print("could not open scripts dir browser: '%s'\n", error->message);
+      debug_print("Could not open scripts dir browser: '%s'\n", error->message);
       g_error_free(error);
   }
 
@@ -598,19 +598,19 @@ static PyObject *get_StringIO_instance(void)
 
   module_StringIO = PyImport_ImportModule("io");
   if(!module_StringIO) {
-    debug_print("Error getting traceback: could not import module io\n");
+    debug_print("Error getting traceback: Could not import module io\n");
     goto done;
   }
 
   class_StringIO = PyObject_GetAttrString(module_StringIO, "StringIO");
   if(!class_StringIO) {
-    debug_print("Error getting traceback: could not get StringIO class\n");
+    debug_print("Error getting traceback: Could not get StringIO class\n");
     goto done;
   }
 
   inst_StringIO = PyObject_CallObject(class_StringIO, NULL);
   if(!inst_StringIO) {
-    debug_print("Error getting traceback: could not create an instance of the StringIO class\n");
+    debug_print("Error getting traceback: Could not create an instance of the StringIO class\n");
     goto done;
   }
 
@@ -724,7 +724,7 @@ const gchar *plugin_name(void)
 
 const gchar *plugin_desc(void)
 {
-  return _("This plugin provides Python integration features.\n"
+  return _("This plugin provides Python integration features.\n\n"
       "Python code can be entered interactively into an embedded Python console, "
       "under Tools -> Show Python console, or stored in scripts.\n\n"
       "These scripts are then available via the menu. You can assign "
@@ -732,29 +732,26 @@ const gchar *plugin_desc(void)
       "You can also put buttons for script invocation into the toolbars "
       "using Claws Mail's builtin toolbar editor.\n\n"
       "You can provide scripts working on the main window by placing files "
-      "into ~/.claws-mail/python-scripts/main.\n\n"
+      "into '~/.claws-mail/python-scripts/main'.\n\n"
       "You can also provide scripts working on an open compose window "
-      "by placing files into ~/.claws-mail/python-scripts/compose.\n\n"
-      "The folder ~/.claws-mail/python-scripts/auto/ may contain some "
+      "by placing files into '~/.claws-mail/python-scripts/compose'.\n\n"
+      "The folder '~/.claws-mail/python-scripts/auto/' may contain some "
       "scripts that are automatically executed when certain events "
       "occur. Currently, the following files in this directory "
       "are recognised:\n\n"
-      "compose_any\n"
-      "Gets executed whenever a compose window is opened, no matter "
+      " 'compose_any' - gets executed whenever a compose window is opened, no matter "
       "if that opening happened as a result of composing a new message, "
       "replying or forwarding a message.\n\n"
-      "startup\n"
-      "Executed at plugin load\n\n"
-      "shutdown\n"
-      "Executed at plugin unload\n\n"
-      "\nFor the most up-to-date API documentation, type\n"
-      "\n help(clawsmail)\n"
-      "\nin the interactive Python console.\n"
-      "\nThe source distribution of this plugin comes with various example scripts "
+      " 'startup' - executed at plugin load.\n\n"
+      " 'shutdown' - executed at plugin unload.\n\n"
+      "For the most up-to-date API documentation, type:\n\n"
+      " help(clawsmail)\n\n"
+      "in the interactive Python console.\n\n"
+      "The source distribution of this plugin comes with various example scripts "
       "in the \"examples\" subdirectory. If you wrote a script that you would be "
       "interested in sharing, feel free to send it to me to have it considered "
-      "for inclusion in the examples.\n"
-      "\nFeedback to <berndth@gmx.de> is welcome.");
+      "for inclusion in the examples.\n\n"
+      "Feedback to <berndth@gmx.de> is welcome.");
 }
 
 const gchar *plugin_type(void)

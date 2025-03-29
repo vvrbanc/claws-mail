@@ -6185,7 +6185,7 @@ static ComposeQueueResult compose_queue_sub(Compose *compose, gint *msgnum, Fold
                 if (compose->account->protocol == A_NNTP)
                         newsac = compose->account;
                 else {
-			alertpanel_error(_("Selected account isn't NNTP: posting is impossible."));
+			alertpanel_error(_("Selected account isn't NNTP: Posting is impossible."));
 			return COMPOSE_QUEUE_ERROR_NO_MSG;
 		}			
 	}
@@ -7699,7 +7699,7 @@ static void compose_spell_menu_changed(void *data)
 	parent_item = gtk_ui_manager_get_widget(compose->ui_manager, 
 			"/Menu/Spelling/Options");
 
-	/* setting the submenu removes /Spelling/Options from the factory 
+	/* setting the submenu removes '/Spelling/Options' from the factory 
 	 * so we need to save it */
 
 	if (parent_item == NULL) {

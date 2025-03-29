@@ -68,7 +68,7 @@ void rssyl_subscribe_dialog(RSubCtx *ctx) {
 	gtk_entry_set_activates_default(GTK_ENTRY(title), TRUE);
 	gtk_widget_set_tooltip_text(title,
 			_("Instead of using official title, you can enter a different folder "
-				"name for the feed."));
+				"name for the feed"));
 	gtk_container_add(GTK_CONTAINER(titleframe), title);
 
 	editprops = gtk_check_button_new_with_mnemonic(_("_Edit feed properties after subscribing"));
@@ -83,7 +83,7 @@ void rssyl_subscribe_dialog(RSubCtx *ctx) {
 		/* Modify ctx->feed based on user changes in dialog */
 		newtitle = (gchar *)gtk_entry_get_text(GTK_ENTRY(title));
 		if (strcmp(feed_get_title(ctx->feed), newtitle)) {
-			debug_print("RSSyl: using user-supplied feed title '%s', instead of '%s'\n", newtitle, feed_get_title(ctx->feed));
+			debug_print("RSSyl: Using user-supplied feed title '%s', instead of '%s'\n", newtitle, feed_get_title(ctx->feed));
 			ctx->official_title = g_strdup(feed_get_title(ctx->feed));
 			feed_set_title(ctx->feed, newtitle);
 		}

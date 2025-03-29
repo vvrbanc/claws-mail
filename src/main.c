@@ -1999,7 +1999,7 @@ static void parse_cmd_opt(int argc, char *argv[])
  			g_print("%s\n", _("  --statistics           show session statistics"));
  			g_print("%s\n", _("  --reset-statistics     reset session statistics"));
 			g_print("%s\n", _("  --select folder[/msg]  jump to the specified folder/message\n" 
-					  "                         folder is a folder id like 'folder/sub_folder', a file:// uri or an absolute path"));
+					  "                         folder is a folder id like 'folder/sub-folder', a file:// uri or an absolute path"));
 			g_print("%s\n", _("  --import-mbox file     import the specified mbox file\n"));
 			g_print("%s\n", _("  --online               switch to online mode"));
 			g_print("%s\n", _("  --offline              switch to offline mode"));
@@ -2921,13 +2921,13 @@ static void networkmanager_state_change_cb(DBusGProxy *proxy, gchar *dev,
 			if(online && went_offline_nm) {
 				went_offline_nm = FALSE;
 				main_window_toggle_work_offline(mainWin, FALSE, FALSE);
-				debug_print("NetworkManager: went online\n");
+				debug_print("NetworkManager: Went online\n");
 				log_message(LOG_PROTOCOL, _("NetworkManager: network is online.\n"));
 			}
 			else if(!online) {
 				went_offline_nm = TRUE;
 				main_window_toggle_work_offline(mainWin, TRUE, FALSE);
-				debug_print("NetworkManager: went offline\n");
+				debug_print("NetworkManager: Went offline\n");
 				log_message(LOG_PROTOCOL, _("NetworkManager: network is offline.\n"));
 			}
 		}
@@ -2938,7 +2938,7 @@ static void networkmanager_state_change_cb(DBusGProxy *proxy, gchar *dev,
 		}
 	}
 	else
-		debug_print("NetworkManager: cannot change connection state because "
+		debug_print("NetworkManager: Cannot change connection state because "
 						 "main window does not exist\n");
 }
 
