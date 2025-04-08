@@ -37,6 +37,7 @@
 
 /* Local includes */
 #include "libfeed/feed.h"
+#include "libfeed/date.h"
 #include "rssyl.h"
 #include "rssyl_deleted.h"
 #include "rssyl_feed.h"
@@ -95,7 +96,7 @@ static void *rssyl_fetch_feed_thr(void *arg)
 	gchar *user_agent = rssyl_get_user_agent(ctx->ritem);
 
 	/* Fetch and parse the feed. */
-	ctx->response_code = feed_update(ctx->feed, -1, user_agent);
+	ctx->response_code = feed_update(ctx->feed, user_agent);
 	g_free(user_agent);
 
 	/* Signal main thread that we're done here. */
@@ -114,8 +115,7 @@ void rssyl_fetch_feed(RFetchCtx *ctx, RSSylVerboseFlags verbose)
 	g_return_if_fail(ctx != NULL);
 
 #ifdef USE_PTHREAD
-	if( pthread_create(&pt, NULL, rssyl_fetch_feed_thr,
-				(void *)ctx) != 0 ) {
+	if (pthread_create(&pt, NULL, rssyl_fetch_feed_thr, (void *)ctx) != 0) {
 		/* Bummer, couldn't create thread. Continue non-threaded. */
 		rssyl_fetch_feed_thr(ctx);
 	} else {
@@ -136,16 +136,16 @@ void rssyl_fetch_feed(RFetchCtx *ctx, RSSylVerboseFlags verbose)
 
 	debug_print("RSSyl: got response_code %d\n", ctx->response_code);
 
-	if( ctx->response_code == FEED_ERR_INIT ) {
+	if (ctx->response_code == FEED_ERR_INIT) {
 		debug_print("RSSyl: libfeed reports init error from libcurl\n");
 		ctx->error = g_strdup("Internal error");
-	} else if( ctx->response_code == FEED_ERR_FETCH ) {
+	} else if (ctx->response_code == FEED_ERR_FETCH) {
 		debug_print("RSSyl: libfeed reports some other error from libcurl\n");
 		ctx->error = g_strdup(ctx->feed->fetcherr);
-	} else if( ctx->response_code == FEED_ERR_UNAUTH ) {
+	} else if (ctx->response_code == FEED_ERR_UNAUTH) {
 		debug_print("RSSyl: URL authorization type is unknown\n");
 		ctx->error = g_strdup("Unknown value for URL authorization type");
-	} else if( ctx->response_code >= 400 && ctx->response_code < 500 ) {
+	} else if (ctx->response_code >= 400 && ctx->response_code <= 599) {
 		switch( ctx->response_code ) {
 			case 401:
 				ctx->error = g_strdup(_("401 (Authorisation required)"));
@@ -164,10 +164,10 @@ void rssyl_fetch_feed(RFetchCtx *ctx, RSSylVerboseFlags verbose)
 
 	/* Here we handle "imperfect" conditions. If requested, we also
 	 * display error dialogs for user. We always log the error. */
-	if( ctx->error != NULL ) {
+	if (ctx->error != NULL) {
 		/* libcurl wasn't happy */
 		debug_print("RSSyl: Error: %s\n", ctx->error);
-		if( verbose & RSSYL_SHOW_ERRORS) {
+		if (verbose & RSSYL_SHOW_ERRORS) {
 			gchar *msg = g_markup_printf_escaped(
 					(const char *) C_("First parameter is URL, second is error text",
 						"Error fetching feed at\n<b>%s</b>:\n\n%s"),
@@ -179,9 +179,9 @@ void rssyl_fetch_feed(RFetchCtx *ctx, RSSylVerboseFlags verbose)
 		log_error(LOG_PROTOCOL, RSSYL_LOG_ERROR_FETCH, ctx->feed->url, ctx->error);
 
 		ctx->success = FALSE;
-	} else {
-		if( ctx->feed == NULL || ctx->response_code == FEED_ERR_NOFEED) {
-			if( verbose & RSSYL_SHOW_ERRORS) {
+	} else if (ctx->response_code != 304) {
+		if (ctx->feed == NULL || ctx->response_code == FEED_ERR_NOFEED) {
+			if (verbose & RSSYL_SHOW_ERRORS) {
 				gchar *msg = g_markup_printf_escaped(
 						(const char *) _("No valid feed found at\n<b>%s</b>"),
 						feed_get_url(ctx->feed));
@@ -229,6 +229,8 @@ RFetchCtx *rssyl_prep_fetchctx_from_item(RFolderItem *ritem)
 		debug_print("RSSyl: using cert file '%s'\n", feed_get_cacert_file(ctx->feed));
 	}
 #endif
+	feed_set_etag(ctx->feed, ritem->etag);
+	feed_set_last_modified(ctx->feed, ritem->last_modified);
 
 	return ctx;
 }
@@ -302,20 +304,42 @@ gboolean rssyl_update_feed(RFolderItem *ritem, RSSylVerboseFlags verbose)
 			ctx->success ? "TRUE" : "FALSE");
 
 	if (!ctx->success) {
+		ritem->retry_after = ctx->feed->retry_after;
+		if (ritem->retry_after) {
+			gchar *tmp = createRFC822Date(&ritem->retry_after);
+			log_print(LOG_PROTOCOL, RSSYL_LOG_RETRY_AFTER, ritem->url, tmp);
+			g_free(tmp);
+		}
 		feed_free(ctx->feed);
 		g_free(ctx->error);
 		g_free(ctx);
 		STATUSBAR_POP(mainwin);
 		return FALSE;
 	}
+	/* Successful reply means we don't have to throttle auto-updates */
+	ritem->retry_after = 0;
+
+	g_free(ritem->etag);
+	gchar *etag = feed_get_etag(ctx->feed);
+	ritem->etag = etag ? g_strdup(etag) : NULL;
+	g_free(ritem->last_modified);
+	gchar *last_modified = feed_get_last_modified(ctx->feed);
+	ritem->last_modified = last_modified ? g_strdup(last_modified) : NULL;
+
+	/* Not modified, no content, nothing to parse */
+	if (ctx->response_code == 304) {
+		STATUSBAR_POP(mainwin);
+		log_print(LOG_PROTOCOL, RSSYL_LOG_NOT_MODIFIED, ritem->url);
+		goto cleanup;
+	}
 
 	rssyl_deleted_update(ritem);
 
 	debug_print("RSSyl: Starting to parse feed\n");
-	if( ctx->success && !(ctx->success = rssyl_parse_feed(ritem, ctx->feed)) ) {
+	if (ctx->success && !(ctx->success = rssyl_parse_feed(ritem, ctx->feed))) {
 		/* both libcurl and libfeed were happy, but we weren't */
 		debug_print("RSSyl: Error processing feed\n");
-		if( verbose & RSSYL_SHOW_ERRORS ) {
+		if (verbose & RSSYL_SHOW_ERRORS) {
 			gchar *msg = g_markup_printf_escaped(
 					(const char *) _("Couldn't process feed at\n<b>%s</b>\n\n"
 						"Please contact developers, this should not happen."),
@@ -331,14 +355,14 @@ gboolean rssyl_update_feed(RFolderItem *ritem, RSSylVerboseFlags verbose)
 
 	STATUSBAR_POP(mainwin);
 
-	if( claws_is_exiting() ) {
+	if (claws_is_exiting()) {
 		feed_free(ctx->feed);
 		g_free(ctx->error);
 		g_free(ctx);
 		return FALSE;
 	}
 
-	if( ritem->fetch_comments )
+	if (ritem->fetch_comments)
 		rssyl_update_comments(ritem);
 
 	/* Prune our deleted items list of items which are no longer in
@@ -347,6 +371,7 @@ gboolean rssyl_update_feed(RFolderItem *ritem, RSSylVerboseFlags verbose)
 	rssyl_deleted_store(ritem);
 	rssyl_deleted_free(ritem);
 
+cleanup:
 	/* Clean up. */
 	success = ctx->success;
 	feed_free(ctx->feed);
@@ -366,9 +391,9 @@ static gboolean rssyl_update_recursively_func(GNode *node, gpointer data, gboole
 	item = FOLDER_ITEM(node->data);
 	ritem = (RFolderItem *)item;
 
-	if( ritem->url != NULL ) {
+	if (ritem->url != NULL) {
 		debug_print("RSSyl: %s refresh'\n", manual_refresh ? "Manual" : "Automated");
-		if((manual_refresh == FALSE) &&
+		if ((manual_refresh == FALSE) &&
 			rssyl_prefs_get()->refresh_all_skips &&
 			(ritem->default_refresh_interval == FALSE) &&
 			(ritem->refresh_interval == 0)) {

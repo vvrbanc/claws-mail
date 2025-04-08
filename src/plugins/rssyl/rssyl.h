@@ -70,6 +70,9 @@ struct _RFolderItem {
 	guint refresh_id;
 	gboolean fetching_comments;
 	time_t last_update;
+	gchar *last_modified;
+	gchar *etag;
+	time_t retry_after;
 
 	gboolean use_default_user_agent;
 	gchar *specific_user_agent;
