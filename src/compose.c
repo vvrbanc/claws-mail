@@ -598,7 +598,7 @@ static void from_name_activate_cb(GtkWidget *widget, gpointer data);
 
 static GtkActionEntry compose_popup_entries[] =
 {
-	{"Compose",            NULL, "Compose", NULL, NULL, NULL },
+	{"Compose",            NULL, "Write", NULL, NULL, NULL },
 	{"Compose/Add",        NULL, N_("_Add..."), NULL, NULL, G_CALLBACK(compose_attach_cb) },
 	{"Compose/Remove",     NULL, N_("_Remove"), NULL, NULL, G_CALLBACK(compose_attach_remove_selected) },
 	{"Compose/---",        NULL, "---", NULL, NULL, NULL },
@@ -1427,7 +1427,7 @@ static Compose *compose_reply_mode(ComposeMode mode, GSList *msginfo_list, gchar
 		compose = compose_redirect(NULL, msginfo, FALSE);
 		break;
 	default:
-		g_warning("compose_reply_mode(): invalid Compose Mode: %d", mode);
+		g_warning("compose_reply_mode(): invalid Write Mode: %d", mode);
 	}
 	
 	if (compose == NULL) {
@@ -3504,7 +3504,7 @@ static void compose_reply_set_entry(Compose *compose, MsgInfo *msginfo,
 				compose_entry_append(compose, (gchar *)cur->data,
 						     COMPOSE_CC, PREF_NONE);
 			else
-				debug_print("Cc address same as compose account's, ignoring\n");
+				debug_print("Cc address same as write account's, ignoring\n");
 
 			g_free(addr);
 		}
@@ -4896,12 +4896,12 @@ static void compose_set_title(Compose *compose)
 
 #ifndef GENERIC_UMPC
 	if (subject && strlen(subject))
-		str = g_strdup_printf(_("%s - Compose message%s"),
+		str = g_strdup_printf(_("%s - Write message%s"),
 				      subject, edited);	
 	else
-		str = g_strdup_printf(_("[no subject] - Compose message%s"), edited);
+		str = g_strdup_printf(_("[no subject] - Write message%s"), edited);
 #else
-	str = g_strdup(_("Compose message"));
+	str = g_strdup(_("Write message"));
 #endif
 
 	gtk_window_set_title(GTK_WINDOW(compose->window), str);
@@ -7303,7 +7303,7 @@ static void compose_create_header_entry(Compose *compose)
 	GSList *pwd_servers = addrindex_get_password_protected_ldap_servers();
 	if (pwd_servers != NULL && primary_passphrase() == NULL) {
 		gboolean enable = FALSE;
-		debug_print("Primary passphrase not available, disabling password-protected LDAP servers for this compose window.\n");
+		debug_print("Primary passphrase not available, disabling password-protected LDAP servers for this write window.\n");
 		/* Temporarily disable password-protected LDAP servers,
 		 * because user did not provide a primary passphrase.
 		 * We can safely enable searchFlag on all servers in this list
@@ -7629,6 +7629,7 @@ static gboolean text_clicked(GtkWidget *text, GdkEventButton *event,
 {
 	gint prev_autowrap;
 	GtkTextBuffer *buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(text));
+
 #if USE_ENCHANT
 	if (event->button == 3) {
 		GtkTextIter iter;
@@ -7666,7 +7667,6 @@ static gboolean text_clicked(GtkWidget *text, GdkEventButton *event,
 		GtkTextIter iter;
 		gint x, y;
 		BLOCK_WRAP();
-		
 		/* get the middle-click position to paste at the correct place */
 		gtk_text_view_window_to_buffer_coords(GTK_TEXT_VIEW(text),
 			GTK_TEXT_WINDOW_TEXT, event->x, event->y,
@@ -7803,7 +7803,7 @@ static Compose *compose_create(PrefsAccount *account,
 	default_header_bgcolor = prefs_common.color[COL_DEFAULT_HEADER_BG],
 	default_header_color = prefs_common.color[COL_DEFAULT_HEADER],
 
-	debug_print("Creating compose window...\n");
+	debug_print("Creating write window...\n");
 	compose = g_new0(Compose, 1);
 
 	compose->batch = batch;

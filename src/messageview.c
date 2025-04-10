@@ -298,7 +298,7 @@ static GtkActionEntry msgview_entries[] =
 	{"View/Quotes",                              NULL, N_("Quotes"), NULL, NULL, NULL }, 
 
 /* Message menu */
-	{"Message/Compose",                          NULL, N_("Compose _new message"), "<control>M", NULL, G_CALLBACK(compose_cb) },
+	{"Message/Compose",                          NULL, N_("Write _new message"), "<control>M", NULL, G_CALLBACK(compose_cb) },
 	{"Message/---",                              NULL, "---", NULL, NULL, NULL },
 
 	{"Message/Reply",                            NULL, N_("_Reply"), "<control>R", NULL, G_CALLBACK(reply_cb) }, /* COMPOSE_REPLY */

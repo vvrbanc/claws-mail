@@ -660,8 +660,8 @@ static GtkActionEntry mainwin_entries[] =
 
 	{"Message/---",                                  NULL, "---", NULL, NULL, NULL },
 
-	{"Message/ComposeEmail",                         NULL, N_("Compose a_n email message"), "<control>M", NULL, G_CALLBACK(mw_compose_mail_cb) },
-	{"Message/ComposeNews",                          NULL, N_("Compose a news message"), NULL, NULL, G_CALLBACK(mw_compose_news_cb) },
+	{"Message/ComposeEmail",                         NULL, N_("Write a_n email message"), "<control>M", NULL, G_CALLBACK(mw_compose_mail_cb) },
+	{"Message/ComposeNews",                          NULL, N_("Write a news message"), NULL, NULL, G_CALLBACK(mw_compose_news_cb) },
 
 	{"Message/Reply",                                NULL, N_("_Reply"), "<control>R", NULL, G_CALLBACK(main_window_reply_cb) }, /* COMPOSE_REPLY */
 	{"Message/ReplyTo",                              NULL, N_("Repl_y to"), NULL, NULL, NULL }, 
