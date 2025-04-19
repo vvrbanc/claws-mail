@@ -2775,7 +2775,7 @@ static void summary_status_show(SummaryView *summaryview)
 		g_free(str);
 
         if (has_quota) {
-		str = g_strdup_printf(_("%d new, %d unread, %d total (%s) [used: %.2f%%]"),
+		str = g_strdup_printf(_("%d new, %d unread, %d total (%s) [Account used: %.2f%%]"),
 				n_new, n_unread, n_total,
 				to_human_readable((goffset)n_size),
 				(size*100*1.0)/limit*1.0);
@@ -2819,8 +2819,8 @@ static void summary_status_show(SummaryView *summaryview)
 					_("Locked:"), n_locked,
 					_("Ignored:"), n_ignored,
 					_("Watched:"), n_watched,
-					_("Size:"), s_size,
-					_("Limit:"), s_limit);
+					_("Account size:"), s_size,
+					_("Account Limit:"), s_limit);
 			g_free(s_size);
 			g_free(s_limit);
 		} else {
@@ -2857,7 +2857,7 @@ static void summary_status_show(SummaryView *summaryview)
 			ssize = g_strdup(to_human_readable((goffset)sel_size));
 			tsize = g_strdup(to_human_readable((goffset)n_size));
 			if (has_quota) {
-				str = g_strdup_printf(_("%d/%d selected (%s/%s), %d unread [used: %.2f%%]"),
+				str = g_strdup_printf(_("%d/%d selected (%s/%s), %d unread [Account used: %.2f%%]"),
 				n_selected, n_total, ssize, tsize, n_unread, (size*100*1.0)/limit*1.0);
 			} else {
 				str = g_strdup_printf(_("%d/%d selected (%s/%s), %d unread"),
