@@ -490,6 +490,7 @@ static int _try_to_connect_tcp(const struct transport *tp, int *sockptr)
 #ifdef SPAMC_HAS_ADDRINFO
         res = tp->hosts[hostix];
         while(res) {
+#ifdef DO_CONNECT_DEBUG_SYSLOGS
             char *family = NULL;
             switch(res->ai_family) {
             case AF_INET:
@@ -502,6 +503,7 @@ static int _try_to_connect_tcp(const struct transport *tp, int *sockptr)
                 family = "Unknown";
                 break;
             }
+#endif
 
             if ((ret = _opensocket(tp->flags, res, &mysock)) != EX_OK) {
                 res = res->ai_next;
@@ -1304,7 +1306,6 @@ int message_filter(struct transport *tp, const char *username,
     unsigned int throwaway;
     SSL_CTX *ctx = NULL;
     SSL *ssl = NULL;
-    const SSL_METHOD *meth;
     char zlib_on = 0;
     unsigned char *zlib_buf = NULL;
     int zlib_bufsiz = 0;
@@ -2055,7 +2056,7 @@ static void _randomize_hosts(struct transport *tp)
 int transport_setup(struct transport *tp, int flags)
 {
 #ifdef SPAMC_HAS_ADDRINFO
-    struct addrinfo hints, *res, *addrp;
+    struct addrinfo hints, *res; /*, *addrp; */
     char port[6];
     int origerr;
 #else
