@@ -2427,10 +2427,14 @@ static gint textview_key_pressed(GtkWidget *widget, GdkEventKey *event,
 	case GDK_KEY_Down:
 	case GDK_KEY_Control_L:
 	case GDK_KEY_Control_R:
+	case GDK_KEY_KP_Down:
+	case GDK_KEY_KP_Up:
 		return FALSE;
 	case GDK_KEY_Home:
 	case GDK_KEY_End:
-		textview_scroll_max(textview,(event->keyval == GDK_KEY_Home));
+	case GDK_KEY_KP_Home:
+	case GDK_KEY_KP_End:
+		textview_scroll_max(textview,(event->keyval == GDK_KEY_Home || event->keyval == GDK_KEY_KP_Home));
 		return TRUE;
 	case GDK_KEY_space:
 		mod_pressed = ((event->state & (GDK_SHIFT_MASK|GDK_MOD1_MASK)) != 0);
@@ -2442,13 +2446,13 @@ static gint textview_key_pressed(GtkWidget *widget, GdkEventKey *event,
 				summary_select_next_unread(summaryview);
 		}
 		break;
+	case GDK_KEY_KP_Page_Down:
 	case GDK_KEY_Page_Down:
-	case GDK_KEY_KP_Down:
 		mimeview_scroll_page(messageview->mimeview, FALSE);
 		break;
+	case GDK_KEY_KP_Page_Up:
 	case GDK_KEY_Page_Up:
 	case GDK_KEY_BackSpace:
-	case GDK_KEY_KP_Up:
 		mimeview_scroll_page(messageview->mimeview, TRUE);
 		break;
 	case GDK_KEY_Return:
