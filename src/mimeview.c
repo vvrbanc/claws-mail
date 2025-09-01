@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2024 the Claws Mail team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2025 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1090,6 +1090,11 @@ static void update_signature_noticeview(MimeView *mimeview, gboolean special, Si
 		button_text = _("Check again");
 		func = check_signature_cb;
 		icon = STOCK_PIXMAP_PRIVACY_UNKNOWN;
+		break;
+	case SIGNATURE_CHECK_NO_KEY:
+		button_text = _("This key is not in your keyring");
+		func = check_signature_cb;
+		icon = STOCK_PIXMAP_PRIVACY_FAILED;
 		break;
 	default:
 		break;
@@ -2578,6 +2583,7 @@ static void icon_list_append_icon (MimeView *mimeview, MimeInfo *mimeinfo)
 			    STOCK_PIXMAP_PRIVACY_EMBLEM_WARN, OVERLAY_BOTTOM_RIGHT, 6, 3);
 			break;
 		case SIGNATURE_INVALID:
+		case SIGNATURE_CHECK_NO_KEY:
 			pixmap = stock_pixmap_widget_with_overlay(stockp,
 			    STOCK_PIXMAP_PRIVACY_EMBLEM_FAILED, OVERLAY_BOTTOM_RIGHT, 6, 3);
 			break;
