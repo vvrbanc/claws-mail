@@ -2001,7 +2001,9 @@ static void textview_show_avatar(TextView *textview)
 	MsgInfo *msginfo = textview->messageview->msginfo;
 	gint x, wx, wy;
 	AvatarRender *avatarr;
-	
+
+	cm_return_if_fail(msginfo);
+
 	if (prefs_common.display_header_pane || !prefs_common.display_xface)
 		goto bail;
 	
@@ -2086,6 +2088,8 @@ static void textview_save_contact_pic(TextView *textview)
 	GError *error = NULL;
 	GdkPixbuf *picture = NULL;
 
+	cm_return_if_fail(msginfo);
+
 	if (!msginfo->extradata || !msginfo->extradata->avatars)
 		return;
 
@@ -2123,6 +2127,8 @@ static void textview_show_contact_pic(TextView *textview)
 	GdkPixbuf *picture = NULL;
 	gint w, h;
 	GtkAllocation allocation;
+
+	cm_return_if_fail(msginfo);
 
 	if (prefs_common.display_header_pane
 		|| !prefs_common.display_xface)
@@ -2217,6 +2223,8 @@ static void textview_show_tags(TextView *textview)
 	ClickableText *uri;
 	GSList *cur, *orig;
 	gboolean found_tag = FALSE;
+
+	cm_return_if_fail(msginfo);
 	
 	if (!msginfo->tags)
 		return;
