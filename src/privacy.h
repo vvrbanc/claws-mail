@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2025 the Claws Mail team and Hiroyuki Yamamoto
+ * Copyright (C) 1999-2026 the Claws Mail team and Hiroyuki Yamamoto
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -76,8 +76,7 @@ GSList *privacy_get_system_ids			();
 const gchar *privacy_system_get_name		(const gchar *);
 gboolean privacy_system_can_sign		(const gchar *);
 gboolean privacy_system_can_encrypt		(const gchar *);
-gboolean privacy_system_can_locate_keys	(void);
-gboolean privacy_system_locate_key		(gchar *);
+
 gboolean privacy_sign				(const gchar  *system,
 						 MimeInfo     *mimeinfo,
 						 PrefsAccount *account,
@@ -123,7 +122,7 @@ struct _PrivacySystem {
 	const gchar	*(*get_encrypt_warning)	(void);
 	void 		 (*inhibit_encrypt_warning)	(gboolean inhibit);
 	gboolean	 (*auto_check_signatures)(void);
-	gboolean	 (*locate_keys)(const gchar *email_addr);
+	gboolean	 (*locate_keys)(const gchar *email_addr, MimeInfo *mimeinfo);
 };
 
 struct _PrivacyData {

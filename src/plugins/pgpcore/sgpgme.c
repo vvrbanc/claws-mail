@@ -1,6 +1,6 @@
 /*
  * Claws Mail -- a GTK based, lightweight, and fast e-mail client
- * Copyright (C) 1999-2025 the Claws Mail team
+ * Copyright (C) 1999-2026 the Claws Mail team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1443,7 +1443,7 @@ sgpgme_download_key (gpgme_ctx_t listctx, const char *fpr, gpgme_key_t *r_key)
 }
 
 
-gboolean sgpgme_propose_pgp_key_search(const gchar *email_addr)
+gboolean sgpgme_propose_pgp_key_search(const gchar *email_addr, MimeInfo *mimeinfo)
 {
 	AlertValue val = G_ALERTDEFAULT;
 	gpgme_ctx_t ctx = NULL;
@@ -1489,7 +1489,7 @@ gboolean sgpgme_propose_pgp_key_search(const gchar *email_addr)
 	gpgme_release(ctx);
 
 	if (!res) {
-		if (val == G_ALERTOTHER)
+		if(val == G_ALERTOTHER)
 			alertpanel_error(_("Cannot locate the missing key from Web Key Directory."));
 		else
 			alertpanel_error(_("Cannot locate the missing key from keyserver."));
