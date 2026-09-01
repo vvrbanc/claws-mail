@@ -1668,9 +1668,7 @@ gboolean summary_show(SummaryView *summaryview, FolderItem *item, gboolean avoid
 	}
 
 	summary_status_show(summaryview);
-	summary_set_menu_sensitive(summaryview);
-	toolbar_main_set_sensitive(summaryview->mainwin);
-	
+
 	summary_thaw(summaryview);
 	STATUSBAR_PUSH(summaryview->mainwin, _("Done."));
 	STATUSBAR_POP(summaryview->mainwin);
@@ -1741,8 +1739,6 @@ void summary_clear_all(SummaryView *summaryview)
 	mimeview_clear(summaryview->messageview->mimeview);
 	messageview_clear(summaryview->messageview);
 	summary_clear_list(summaryview);
-	summary_set_menu_sensitive(summaryview);
-	toolbar_main_set_sensitive(summaryview->mainwin);
 	summary_status_show(summaryview);
 }
 
@@ -7132,6 +7128,7 @@ static gboolean summary_key_pressed(GtkWidget *widget, GdkEventKey *event,
 
 	switch (event->keyval) {
 	case GDK_KEY_Left:		/* Move focus */
+	case GDK_KEY_KP_Left:
 		adj = gtk_scrolled_window_get_hadjustment
 			(GTK_SCROLLED_WINDOW(summaryview->scrolledwin));
 		if (gtk_adjustment_get_lower(adj) != gtk_adjustment_get_value(adj))
@@ -7209,6 +7206,7 @@ static gboolean summary_key_pressed(GtkWidget *widget, GdkEventKey *event,
 
 	switch (event->keyval) {
 	case GDK_KEY_Delete:
+	case GDK_KEY_KP_Delete:
 		BREAK_ON_MODIFIER_KEY();
 		summary_delete_trash(summaryview);
 		break;
@@ -7334,8 +7332,6 @@ static void summary_selected(GtkCMCTree *ctree, GtkCMCTreeNode *row,
 	if (GTK_CMCLIST(ctree)->selection &&
 	    GTK_CMCLIST(ctree)->selection->next) {
 		summaryview->display_msg = FALSE;
-		summary_set_menu_sensitive(summaryview);
-		toolbar_main_set_sensitive(summaryview->mainwin);
 		return;
 	}
 
